@@ -14,7 +14,9 @@ const playerData = [
     { username: "iownlivy", faction: "AH/URF", country: "America" },
     { username: "Jokerkingksh", faction: "TAE", country: "India" },
     { username: "kbfrm242", faction: "AH", country: "Poland" },
+    { username: "ligth_hand", faction: "N/A", country: "Morocco" },
     { username: "MILITARYPRO123458", faction: "URF/RKA", country: "Pakistan" },
+    { username: "MyNameIsBrickWall", faction: "DK", country: "UK" },
     { username: "nessa2008s", faction: "NDV", country: "Poland" },
     { username: "Ninbinsin", faction: "TWL", country: "Uzbekistan" },
     { username: "noah464", faction: "TWL", country: "USA" },
@@ -137,6 +139,7 @@ const countryEmojis = {
     'Germany': '🇩🇪',
     'Italy': '🇮🇹',
     'Korea': '🇰🇷',
+    'Morocco': '🇲🇦',
     'Pakistan': '🇵🇰',
     'Uzbekistan': '🇺🇿',
     'N/A': '❓'

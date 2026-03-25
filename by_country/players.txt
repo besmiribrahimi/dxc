@@ -29,6 +29,9 @@ Kazakhstan:
 Korea:
 - ramq124 | Faction: N/A
 
+Morocco:
+- ligth_hand | Faction: N/A
+
 N/A:
 - Clown213o | Faction: TCL
 
@@ -60,6 +63,7 @@ Turkey:
 - hamit_gamer13000 | Faction: URF
 
 UK:
+- MyNameIsBrickWall | Faction: DK
 - OnlyToast0 | Faction: AH
 - stolemyxrp | Faction: AH
 - xxninjaxx9065 | Faction: TWL

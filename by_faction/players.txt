@@ -22,9 +22,11 @@ CZSK:
 DK:
 - 20SovietSO21 | Country: Spain
 - crimsvonn | Country: US
+- MyNameIsBrickWall | Country: UK
 
 N/A:
 - DaSpokeyNameYT | Country: England
+- ligth_hand | Country: Morocco
 - ramq124 | Country: Korea
 
 NDV:
