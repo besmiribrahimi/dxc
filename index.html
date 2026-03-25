@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[D.X.C] Draxar Competitive - 1v1 Leaderboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>[D.X.C] Draxar Competitive</h1>
+                <p>1v1 Competitive Rankings</p>
+            </div>
+            <nav class="nav">
+                <a href="#leaderboard" class="nav-link active" onclick="switchView('leaderboard', event)">Leaderboard</a>
+                <a href="#elo" class="nav-link" onclick="switchView('elo', event)">ELO System</a>
+                <a href="#matches" class="nav-link" onclick="switchView('matches', event)">Match History</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Leaderboard View -->
+        <section id="leaderboard-view" class="view active">
+            <div class="page-header">
+                <h2>Global Leaderboard</h2>
+                <div class="quick-stats" id="quickStats">
+                    <div class="quick-stat-card">
+                        <span class="quick-stat-label">Players</span>
+                        <strong class="quick-stat-value" id="totalPlayers">0</strong>
+                    </div>
+                    <div class="quick-stat-card">
+                        <span class="quick-stat-label">Factions</span>
+                        <strong class="quick-stat-value" id="totalFactions">0</strong>
+                    </div>
+                    <div class="quick-stat-card">
+                        <span class="quick-stat-label">Countries</span>
+                        <strong class="quick-stat-value" id="totalCountries">0</strong>
+                    </div>
+                    <div class="quick-stat-card">
+                        <span class="quick-stat-label">Showing</span>
+                        <strong class="quick-stat-value" id="shownPlayers">0</strong>
+                    </div>
+                </div>
+                <div class="filters">
+                    <input type="text" id="searchInput" placeholder="Search username, faction, or country..." class="search-input">
+                    <select id="factionFilter" class="filter-select">
+                        <option value="">All Factions</option>
+                    </select>
+                    <select id="countryFilter" class="filter-select">
+                        <option value="">All Countries</option>
+                    </select>
+                </div>
+                <div class="quick-chip-row" id="quickChips">
+                    <button type="button" class="quick-chip active" data-chip="all">All</button>
+                    <button type="button" class="quick-chip" data-chip="top10">Top 10</button>
+                    <button type="button" class="quick-chip" data-chip="my-faction">My Faction</button>
+                    <button type="button" class="quick-chip" data-chip="new">New Players</button>
+                </div>
+            </div>
+
+            <div class="podium-wrap">
+                <div id="topPodium" class="top-podium"></div>
+            </div>
+
+            <div class="leaderboard">
+                <div class="leaderboard-header">
+                    <div class="rank">#</div>
+                    <div class="player-info">Player</div>
+                    <div class="stats-header">
+                        <div class="stat">Level</div>
+                        <div class="stat">ELO</div>
+                        <div class="stat">W/L</div>
+                        <div class="stat">Faction</div>
+                        <div class="stat">Country</div>
+                    </div>
+                    <div class="trend">Trend</div>
+                </div>
+                <div id="leaderboardTable" class="leaderboard-body"></div>
+            </div>
+        </section>
+
+        <section id="elo-view" class="view">
+            <div class="page-header">
+                <h2>ELO System</h2>
+            </div>
+            <div class="elo-system" id="eloRules">
+                <div class="elo-system-header">
+                    <h3>ELO Rating System</h3>
+                    <p>All players start at <strong>1000 ELO</strong>. Fast climb for strong players, fast drop for poor performance.</p>
+                </div>
+
+                <div class="elo-grid">
+                    <article class="elo-card">
+                        <h4>1v1 Matches</h4>
+                        <p>High impact for fast ladder movement.</p>
+                        <ul class="elo-list">
+                            <li><span>Win vs same level</span><strong>+500</strong></li>
+                            <li><span>Win vs higher ELO</span><strong>+650</strong></li>
+                            <li><span>Win vs lower ELO</span><strong>+350</strong></li>
+                            <li><span>Loss vs same level</span><strong>-400</strong></li>
+                            <li><span>Loss vs higher ELO</span><strong>-250</strong></li>
+                            <li><span>Loss vs lower ELO</span><strong>-550</strong></li>
+                        </ul>
+                    </article>
+
+                    <article class="elo-card">
+                        <h4>Faction Battles</h4>
+                        <p>Scoreboard performance decides your ELO impact.</p>
+                        <ul class="elo-list">
+                            <li><span>Top performer on winning team</span><strong>+400</strong></li>
+                            <li><span>Average performance win</span><strong>+200</strong></li>
+                            <li><span>Low performance win</span><strong>+100</strong></li>
+                            <li><span>Top performer on losing team</span><strong>-100</strong></li>
+                            <li><span>Average performance loss</span><strong>-200</strong></li>
+                            <li><span>Low performance loss</span><strong>-305</strong></li>
+                        </ul>
+                    </article>
+                </div>
+
+                <article class="elo-card elo-levels">
+                    <h4>Level Thresholds</h4>
+                    <div class="levels-grid">
+                        <div class="level-chip"><span>Level 1</span><strong>450</strong></div>
+                        <div class="level-chip"><span>Level 2</span><strong>500</strong></div>
+                        <div class="level-chip"><span>Level 3</span><strong>600</strong></div>
+                        <div class="level-chip"><span>Level 4</span><strong>750</strong></div>
+                        <div class="level-chip"><span>Level 5</span><strong>1000</strong></div>
+                        <div class="level-chip"><span>Level 6</span><strong>1200</strong></div>
+                        <div class="level-chip"><span>Level 7</span><strong>1400</strong></div>
+                        <div class="level-chip"><span>Level 8</span><strong>1800</strong></div>
+                        <div class="level-chip"><span>Level 9</span><strong>2000</strong></div>
+                        <div class="level-chip"><span>Level 10</span><strong>2400+</strong></div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section id="matches-view" class="view">
+            <div class="page-header">
+                <h2>Match History</h2>
+            </div>
+            <div class="match-history">
+                <div class="match-card">
+                    <div class="no-matches-message">No match history has been published yet.</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Player Profile Modal -->
+    <div id="playerModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="playerModalName">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="playerModalName"></h2>
+                <button class="close-btn" aria-label="Close player profile" onclick="closePlayerModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="player-stats">
+                    <div class="stat-box">
+                        <div class="stat-label">Rank</div>
+                        <div class="stat-value" id="playerRank">-</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">ELO</div>
+                        <div class="stat-value elo" id="playerELO">-</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Win/Loss</div>
+                        <div class="stat-value" id="playerWL">-</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Level</div>
+                        <div class="stat-value" id="playerLevel">-</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Faction</div>
+                        <div class="stat-value" id="playerFaction">-</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Country</div>
+                        <div class="stat-value" id="playerCountry">-</div>
+                    </div>
+                </div>
+                <div class="player-matches">
+                    <h3>Profile Note</h3>
+                    <div class="player-matches-list">
+                        <div class="no-matches-message">Match history is hidden for public release.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2026 [D.X.C] Draxar Competitive. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
