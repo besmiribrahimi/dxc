@@ -3,6 +3,7 @@ Players sorted by Faction:
 AH:
 - doudperfectcom | Country: Denmark
 - kbfrm242 | Country: Poland
+- mattyDEAS | Country: Scotland
 - OnlyToast0 | Country: UK
 - Quackenxnator | Country: USA
 - Ruukke666 | Country: Netherlands
@@ -25,6 +26,7 @@ DK:
 - MyNameIsBrickWall | Country: UK
 
 N/A:
+- 1Xoji | Country: North America
 - DaSpokeyNameYT | Country: England
 - ligth_hand | Country: Morocco
 - ramq124 | Country: Korea

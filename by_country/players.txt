@@ -32,6 +32,9 @@ Korea:
 Morocco:
 - ligth_hand | Faction: N/A
 
+North America:
+- 1Xoji | Faction: N/A
+
 N/A:
 - Clown213o | Faction: TCL
 
@@ -41,6 +44,9 @@ Netherlands:
 
 Pakistan:
 - MILITARYPRO123458 | Faction: URF/RKA
+
+Scotland:
+- mattyDEAS | Faction: AH
 
 Poland:
 - kbfrm242 | Faction: AH

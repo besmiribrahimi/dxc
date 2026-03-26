@@ -1,5 +1,6 @@
 // Player Data
 const playerData = [
+    { username: "1Xoji", faction: "N/A", country: "North America" },
     { username: "20SovietSO21", faction: "DK", country: "Spain" },
     { username: "BLESK_BLESKAC", faction: "CZSK", country: "Slovakia" },
     { username: "Clown213o", faction: "TCL", country: "N/A" },
@@ -15,6 +16,7 @@ const playerData = [
     { username: "Jokerkingksh", faction: "TAE", country: "India" },
     { username: "kbfrm242", faction: "AH", country: "Poland" },
     { username: "ligth_hand", faction: "N/A", country: "Morocco" },
+    { username: "mattyDEAS", faction: "AH", country: "Scotland" },
     { username: "MILITARYPRO123458", faction: "URF/RKA", country: "Pakistan" },
     { username: "MyNameIsBrickWall", faction: "DK", country: "UK" },
     { username: "nessa2008s", faction: "NDV", country: "Poland" },
@@ -140,7 +142,9 @@ const countryEmojis = {
     'Italy': '🇮🇹',
     'Korea': '🇰🇷',
     'Morocco': '🇲🇦',
+    'North America': '🌎',
     'Pakistan': '🇵🇰',
+    'Scotland': '🏴',
     'Uzbekistan': '🇺🇿',
     'N/A': '❓'
 };
@@ -157,16 +161,27 @@ const factionImages = {
     'TWL': 'faction_flags/TWL.png',
     'TAE': 'faction_flags/TAE.png',
     'NDV': 'faction_flags/NDV.png',
-    'URF': 'faction_flags/AEF.png',
-    'AH/URF': 'faction_flags/AH.png',
+    'URF': 'faction_flags/URF.png',
+    'AH/URF': 'faction_flags/URF.png',
+    'URF/RKA': 'faction_flags/URF.png',
     'FLASH': 'faction_flags/DK.png',
     'N/A': ''
 };
 
 function getFactionFlag(faction) {
-    const fileName = factionImages[(faction || '').toUpperCase()];
-    if (!fileName) return '';
-    return fileName;
+    const normalizedFaction = (faction || '').toUpperCase().trim();
+    if (!normalizedFaction) return '';
+
+    if (factionImages[normalizedFaction]) {
+        return factionImages[normalizedFaction];
+    }
+
+    if (normalizedFaction.includes('URF')) {
+        return factionImages.URF;
+    }
+
+    const firstToken = normalizedFaction.split(/[\s,/|]+/).find(Boolean);
+    return firstToken ? (factionImages[firstToken] || '') : '';
 }
 
 // Initialize page
