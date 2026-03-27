@@ -6,18 +6,47 @@
     <title>[D.X.C] Draxar Competitive - 1v1 Leaderboard</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="is-loading" data-style-preset="clean-esports">
+    <div id="bootLoader" class="boot-loader" role="status" aria-live="polite" aria-atomic="true">
+        <div class="boot-loader__panel">
+            <div class="boot-loader__ring">
+                <img src="logo.png" alt="Draxar boot logo" class="boot-loader__logo">
+            </div>
+            <h2 class="boot-loader__title">Initializing Competitive Network</h2>
+            <p class="boot-loader__status" id="bootLoaderStatus">Syncing ranked telemetry...</p>
+            <div class="boot-loader__progress" aria-hidden="true">
+                <span id="bootLoaderBar"></span>
+            </div>
+            <div class="boot-loader__meta">
+                <strong id="bootLoaderPercent">0%</strong>
+                <span>v2026.3 live client</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="ambient-bg" aria-hidden="true">
+        <span class="ambient-dot"></span>
+        <span class="ambient-dot"></span>
+        <span class="ambient-dot"></span>
+        <span class="ambient-dot"></span>
+        <span class="ambient-dot"></span>
+        <span class="ambient-dot"></span>
+    </div>
+
     <!-- Header -->
     <header class="header">
         <div class="container">
             <div class="logo">
-                <h1>[D.X.C] Draxar Competitive</h1>
-                <p>1v1 Competitive Rankings</p>
+                <img src="logo.png" alt="Draxar Competitive logo" class="logo-image">
+                <div class="logo-text">
+                    <h1>[D.X.C] Draxar Competitive</h1>
+                    <p>1v1 Competitive Rankings</p>
+                </div>
             </div>
             <nav class="nav">
-                <a href="#leaderboard" class="nav-link active" onclick="switchView('leaderboard', event)">Leaderboard</a>
-                <a href="#elo" class="nav-link" onclick="switchView('elo', event)">ELO System</a>
-                <a href="#matches" class="nav-link" onclick="switchView('matches', event)">Match History</a>
+                <a href="#leaderboard" class="nav-link active" data-tip="Live ranking board" onclick="switchView('leaderboard', event)">Leaderboard</a>
+                <a href="#elo" class="nav-link" data-tip="Scoring rules" onclick="switchView('elo', event)">ELO System</a>
+                <a href="#matches" class="nav-link" data-tip="Recent matches" onclick="switchView('matches', event)">Match History</a>
             </nav>
         </div>
     </header>
@@ -56,10 +85,10 @@
                     </select>
                 </div>
                 <div class="quick-chip-row" id="quickChips">
-                    <button type="button" class="quick-chip active" data-chip="all">All</button>
-                    <button type="button" class="quick-chip" data-chip="top10">Top 10</button>
-                    <button type="button" class="quick-chip" data-chip="my-faction">My Faction</button>
-                    <button type="button" class="quick-chip" data-chip="new">New Players</button>
+                    <button type="button" class="quick-chip active" data-chip="all" data-tip="Show everyone">All</button>
+                    <button type="button" class="quick-chip" data-chip="top10" data-tip="Only top ten">Top 10</button>
+                    <button type="button" class="quick-chip" data-chip="my-faction" data-tip="Most common faction">My Faction</button>
+                    <button type="button" class="quick-chip" data-chip="new" data-tip="Recently added">New Players</button>
                 </div>
             </div>
 
@@ -160,6 +189,23 @@
                 <button class="close-btn" aria-label="Close player profile" onclick="closePlayerModal()">&times;</button>
             </div>
             <div class="modal-body">
+                <div class="player-hero" id="playerHero">
+                    <div class="player-hero-avatar-wrap">
+                        <span class="player-hero-sparks" aria-hidden="true">
+                            <i></i><i></i><i></i><i></i><i></i><i></i>
+                        </span>
+                        <div class="player-hero-avatar" id="playerHeroAvatar">-</div>
+                        <span class="player-hero-rank-ring" id="playerHeroRankRing">#-</span>
+                    </div>
+                    <div class="player-hero-copy">
+                        <p class="player-hero-subtitle" id="playerHeroSubtitle">Competitive Snapshot</p>
+                        <div class="player-hero-chips">
+                            <span class="player-hero-chip" id="playerHeroChipTrend">Trend: Stable</span>
+                            <span class="player-hero-chip" id="playerHeroChipRecord">Record: 0W-0L</span>
+                            <span class="player-hero-chip" id="playerHeroChipTier">Tier: Rookie</span>
+                        </div>
+                    </div>
+                </div>
                 <div class="player-stats">
                     <div class="stat-box">
                         <div class="stat-label">Rank</div>
@@ -200,6 +246,9 @@
     <footer class="footer">
         <p>&copy; 2026 [D.X.C] Draxar Competitive. All rights reserved.</p>
     </footer>
+
+    <div id="matchResultStack" class="match-popup-stack" aria-live="polite" aria-atomic="false"></div>
+    <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
     <script src="script.js"></script>
 </body>

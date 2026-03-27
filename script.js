@@ -4,7 +4,7 @@ const playerData = [
     { username: "20SovietSO21", faction: "DK", country: "Spain" },
     { username: "BLESK_BLESKAC", faction: "CZSK", country: "Slovakia" },
     { username: "Clown213o", faction: "TCL", country: "N/A" },
-    { username: "crimsvonn", faction: "DK", country: "US" },
+    { username: "crimsvonn", faction: "DK", country: "USA" },
     { username: "DaSpokeyNameYT", faction: "N/A", country: "England" },
     { username: "Dociusaltius", faction: "URF", country: "Sweden" },
     { username: "doudperfectcom", faction: "AH", country: "Denmark" },
@@ -12,17 +12,17 @@ const playerData = [
     { username: "Flexmaster2002", faction: "CZSK", country: "Czechia" },
     { username: "hamit_gamer13000", faction: "URF", country: "Turkey" },
     { username: "ILIKEJOCK", faction: "TWL", country: "India" },
-    { username: "iownlivy", faction: "AH/URF", country: "America" },
+    { username: "iownlivy", faction: "AH/URF", country: "USA" },
     { username: "Jokerkingksh", faction: "TAE", country: "India" },
     { username: "kbfrm242", faction: "AH", country: "Poland" },
     { username: "ligth_hand", faction: "N/A", country: "Morocco" },
     { username: "mattyDEAS", faction: "AH", country: "Scotland" },
     { username: "MILITARYPRO123458", faction: "URF/RKA", country: "Pakistan" },
-    { username: "MyNameIsBrickWall", faction: "DK", country: "UK" },
+    { username: "MyNameIsBrickWall", faction: "DK", country: "United Kingdom" },
     { username: "nessa2008s", faction: "NDV", country: "Poland" },
     { username: "Ninbinsin", faction: "TWL", country: "Uzbekistan" },
     { username: "noah464", faction: "TWL", country: "USA" },
-    { username: "OnlyToast0", faction: "AH", country: "UK" },
+    { username: "OnlyToast0", faction: "AH", country: "United Kingdom" },
     { username: "polloxlikop0911", faction: "CZSK", country: "Spain" },
     { username: "Prehist0rick", faction: "CZSK", country: "Netherlands" },
     { username: "Quackenxnator", faction: "AH", country: "USA" },
@@ -30,14 +30,14 @@ const playerData = [
     { username: "Ruukke666", faction: "AH", country: "Netherlands" },
     { username: "SAMOJEBEAST678", faction: "URF", country: "Slovakia" },
     { username: "Sonyah13", faction: "NDV", country: "Sweden" },
-    { username: "stolemyxrp", faction: "AH", country: "UK" },
+    { username: "stolemyxrp", faction: "AH", country: "United Kingdom" },
     { username: "Strango7", faction: "CZSK", country: "Italy" },
     { username: "SussyAmogusbals2", faction: "NDV", country: "Kazakhstan" },
     { username: "SwissAbyss1", faction: "TWL", country: "USA" },
     { username: "tamika2006s", faction: "NDV", country: "Sweden" },
-    { username: "ThatRandomPerson142", faction: "RKA", country: "US" },
+    { username: "ThatRandomPerson142", faction: "RKA", country: "USA" },
     { username: "vcfghcemil", faction: "CZSK", country: "Germany" },
-    { username: "xxninjaxx9065", faction: "TWL", country: "UK" }
+    { username: "xxninjaxx9065", faction: "TWL", country: "United Kingdom" }
 ];
 
 // ELO system configuration (public rules)
@@ -99,8 +99,399 @@ function getRelativeTierByLevel(playerElo, opponentElo) {
 let quickFilterMode = 'all';
 let searchDebounceTimer = null;
 
+function createBootLoaderController() {
+    const loader = document.getElementById('bootLoader');
+    if (!loader) {
+        return { complete: () => {} };
+    }
+
+    const statusNode = document.getElementById('bootLoaderStatus');
+    const percentNode = document.getElementById('bootLoaderPercent');
+    const barNode = document.getElementById('bootLoaderBar');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const steps = [
+        { at: 0, text: 'Syncing ranked telemetry...' },
+        { at: 20, text: 'Loading faction banners...' },
+        { at: 45, text: 'Calibrating ELO systems...' },
+        { at: 70, text: 'Preparing match overlays...' },
+        { at: 90, text: 'Finalizing competitive feed...' }
+    ];
+
+    let progress = 0;
+    let activeStep = 0;
+    let isComplete = false;
+
+    const paintProgress = (value) => {
+        progress = Math.max(progress, Math.min(100, value));
+        if (barNode) barNode.style.width = `${progress}%`;
+        if (percentNode) percentNode.textContent = `${Math.round(progress)}%`;
+
+        while (activeStep < steps.length - 1 && progress >= steps[activeStep + 1].at) {
+            activeStep += 1;
+        }
+        if (statusNode) statusNode.textContent = steps[activeStep].text;
+    };
+
+    paintProgress(4);
+
+    const timer = setInterval(() => {
+        if (isComplete) return;
+        const increment = progress < 70
+            ? (6 + Math.random() * 8)
+            : (2 + Math.random() * 4);
+        paintProgress(Math.min(94, progress + increment));
+    }, reducedMotion ? 80 : 120);
+
+    return {
+        complete(finalText = 'Arena online. Good luck.') {
+            if (isComplete) return;
+            isComplete = true;
+            clearInterval(timer);
+            if (statusNode) statusNode.textContent = finalText;
+            paintProgress(100);
+
+            setTimeout(() => {
+                loader.classList.add('is-glitching');
+                setTimeout(() => {
+                    loader.classList.add('is-done');
+                    document.body.classList.remove('is-loading');
+                    setTimeout(() => loader.remove(), 420);
+                }, reducedMotion ? 20 : 150);
+            }, reducedMotion ? 80 : 240);
+        }
+    };
+}
+
+function showToast(title, detail, tone = 'queue') {
+    const stack = document.getElementById('toastStack');
+    if (!stack) return;
+
+    const toast = document.createElement('div');
+    const safeTone = ['win', 'loss', 'queue'].includes(tone) ? tone : 'queue';
+    toast.className = `toast ${safeTone}`;
+    toast.innerHTML = `<span class="toast-title">${title}</span><span class="toast-meta">${detail}</span>`;
+
+    stack.prepend(toast);
+
+    if (stack.children.length > 4) {
+        stack.lastElementChild?.remove();
+    }
+
+    setTimeout(() => {
+        toast.classList.add('hide');
+        setTimeout(() => toast.remove(), 240);
+    }, 2800);
+}
+
+const matchPopupProfiles = {
+    oneVOneWin: { tone: 'win', icon: '⚔', cue: 'match.win.1v1' },
+    oneVOneLoss: { tone: 'loss', icon: '☠', cue: 'match.loss.1v1' },
+    factionWin: { tone: 'win', icon: '▲', cue: 'match.win.faction' },
+    factionLoss: { tone: 'loss', icon: '▼', cue: 'match.loss.faction' },
+    queue: { tone: 'queue', icon: '◆', cue: 'queue.status' },
+    queueStatus: { tone: 'queue', icon: '◉', cue: 'queue.status.update' },
+    systemNotice: { tone: 'queue', icon: '⌁', cue: 'system.notice.general' },
+    streakWin: { tone: 'win', icon: '🔥', cue: 'streak.win.update' },
+    streakLoss: { tone: 'loss', icon: '❄', cue: 'streak.loss.update' }
+};
+
+function getMatchPopupProfile(profileName) {
+    const safeName = typeof profileName === 'string' ? profileName.trim() : '';
+    const selected = matchPopupProfiles[safeName] || matchPopupProfiles.queue;
+    return { ...selected };
+}
+
+function setMatchPopupProfile(profileName, updates = {}) {
+    const safeName = typeof profileName === 'string' ? profileName.trim() : '';
+    if (!safeName || typeof updates !== 'object' || updates === null) return false;
+
+    const base = matchPopupProfiles[safeName] || matchPopupProfiles.queue;
+    matchPopupProfiles[safeName] = {
+        ...base,
+        ...updates
+    };
+
+    return true;
+}
+
+function emitSoundHook(cue, payload = {}) {
+    if (!cue) return;
+
+    const detail = { cue, ...payload, timestamp: Date.now() };
+    document.dispatchEvent(new CustomEvent('draxar:sound-cue', { detail }));
+
+    if (typeof window.onDraxarSoundCue === 'function') {
+        window.onDraxarSoundCue(detail);
+    }
+}
+
+function createSoundFxEngine() {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let audioContext = null;
+    let masterGain = null;
+    let enabled = !prefersReducedMotion;
+
+    const ensureContext = () => {
+        if (audioContext) return audioContext;
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return null;
+
+        audioContext = new AudioCtx();
+        masterGain = audioContext.createGain();
+        masterGain.gain.value = 0.12;
+        masterGain.connect(audioContext.destination);
+        return audioContext;
+    };
+
+    const unlock = () => {
+        const ctx = ensureContext();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+        }
+    };
+
+    const playTone = ({
+        freqStart,
+        freqEnd = freqStart,
+        duration = 0.09,
+        type = 'triangle',
+        volume = 0.22,
+        when = 0
+    }) => {
+        if (!enabled) return;
+        const ctx = ensureContext();
+        if (!ctx || !masterGain) return;
+
+        const startAt = ctx.currentTime + when;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(Math.max(50, freqStart), startAt);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(50, freqEnd), startAt + duration);
+
+        gain.gain.setValueAtTime(0.0001, startAt);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), startAt + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+
+        osc.connect(gain);
+        gain.connect(masterGain);
+
+        osc.start(startAt);
+        osc.stop(startAt + duration + 0.01);
+    };
+
+    const playCue = (cue = '') => {
+        if (!enabled) return;
+        unlock();
+
+        if (cue.includes('match.win')) {
+            playTone({ freqStart: 520, freqEnd: 640, duration: 0.09, type: 'triangle', volume: 0.23 });
+            playTone({ freqStart: 660, freqEnd: 840, duration: 0.11, type: 'triangle', volume: 0.2, when: 0.085 });
+            return;
+        }
+
+        if (cue.includes('match.loss')) {
+            playTone({ freqStart: 430, freqEnd: 260, duration: 0.12, type: 'sawtooth', volume: 0.17 });
+            playTone({ freqStart: 280, freqEnd: 170, duration: 0.13, type: 'triangle', volume: 0.15, when: 0.1 });
+            return;
+        }
+
+        if (cue.includes('streak.win')) {
+            playTone({ freqStart: 640, freqEnd: 760, duration: 0.08, type: 'triangle', volume: 0.2 });
+            playTone({ freqStart: 820, freqEnd: 980, duration: 0.1, type: 'triangle', volume: 0.19, when: 0.075 });
+            playTone({ freqStart: 1040, freqEnd: 1160, duration: 0.08, type: 'sine', volume: 0.13, when: 0.16 });
+            return;
+        }
+
+        if (cue.includes('streak.loss')) {
+            playTone({ freqStart: 380, freqEnd: 240, duration: 0.11, type: 'triangle', volume: 0.15 });
+            return;
+        }
+
+        if (cue === 'ui.modal.player.open') {
+            playTone({ freqStart: 580, freqEnd: 700, duration: 0.07, type: 'sine', volume: 0.14 });
+            playTone({ freqStart: 920, freqEnd: 1060, duration: 0.08, type: 'triangle', volume: 0.1, when: 0.065 });
+            return;
+        }
+
+        if (cue.includes('queue') || cue.includes('system.notice')) {
+            playTone({ freqStart: 470, freqEnd: 520, duration: 0.07, type: 'sine', volume: 0.12 });
+            return;
+        }
+
+        playTone({ freqStart: 500, freqEnd: 560, duration: 0.07, type: 'triangle', volume: 0.11 });
+    };
+
+    const onSoundCue = (event) => {
+        const cue = event?.detail?.cue || '';
+        playCue(cue);
+    };
+
+    const unlockEvents = ['pointerdown', 'keydown', 'touchstart'];
+    unlockEvents.forEach((eventName) => {
+        window.addEventListener(eventName, unlock, { passive: true });
+    });
+
+    document.addEventListener('draxar:sound-cue', onSoundCue);
+
+    return {
+        playCue,
+        enable() {
+            enabled = true;
+            unlock();
+        },
+        disable() {
+            enabled = false;
+        },
+        setVolume(value) {
+            if (!masterGain) ensureContext();
+            if (!masterGain) return;
+            const safeVolume = Math.max(0, Math.min(1, Number(value) || 0));
+            masterGain.gain.value = safeVolume;
+        },
+        isEnabled() {
+            return enabled;
+        }
+    };
+}
+
+const soundFx = createSoundFxEngine();
+window.soundFx = soundFx;
+
+function showMatchResultPopup({ title, detail, tone = 'queue', icon = 'i', cue = '', profileName = '', soundPayload = {} }) {
+    const profile = profileName ? getMatchPopupProfile(profileName) : null;
+    const resolvedTone = profile?.tone || tone;
+    const resolvedIcon = profile?.icon || icon;
+    const resolvedCue = profile?.cue || cue;
+
+    const stack = document.getElementById('matchResultStack');
+    if (!stack) {
+        showToast(title, detail, resolvedTone);
+        emitSoundHook(resolvedCue, soundPayload);
+        return;
+    }
+
+    const popup = document.createElement('article');
+    const safeTone = ['win', 'loss', 'queue'].includes(resolvedTone) ? resolvedTone : 'queue';
+    popup.className = `match-popup ${safeTone}`;
+    popup.innerHTML = `
+        <span class="match-popup-icon" aria-hidden="true">${resolvedIcon}</span>
+        <div class="match-popup-copy">
+            <strong>${title}</strong>
+            <span>${detail}</span>
+        </div>
+    `;
+
+    stack.prepend(popup);
+
+    if (stack.children.length > 3) {
+        stack.lastElementChild?.remove();
+    }
+
+    emitSoundHook(resolvedCue, soundPayload);
+
+    setTimeout(() => {
+        popup.classList.add('hide');
+        setTimeout(() => popup.remove(), 260);
+    }, 3000);
+}
+
+function notifyWithProfile(profileName, title, detail, soundPayload = {}) {
+    showMatchResultPopup({
+        title,
+        detail,
+        profileName,
+        soundPayload
+    });
+}
+
+function getRevealTargetsForView(viewName, viewEl) {
+    const selectors = {
+        leaderboard: ['.page-header', '.podium-wrap', '.leaderboard'],
+        elo: ['.page-header', '.elo-system-header', '.elo-card'],
+        matches: ['.page-header', '.match-card']
+    };
+
+    const configured = selectors[viewName] || [];
+    if (configured.length) {
+        const matches = configured
+            .flatMap((selector) => Array.from(viewEl.querySelectorAll(selector)))
+            .filter((item, index, list) => list.indexOf(item) === index);
+        if (matches.length) {
+            return matches;
+        }
+    }
+
+    return Array.from(viewEl.children);
+}
+
+function runCinematicSectionReveal(viewName) {
+    const targetView = document.getElementById(`${viewName}-view`);
+    if (!targetView) return;
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const targets = getRevealTargetsForView(viewName, targetView);
+
+    targetView.classList.remove('cinematic-ready', 'cinematic-run');
+    targets.forEach((item) => {
+        item.classList.remove('cinematic-item');
+        item.style.removeProperty('--cinematic-delay');
+    });
+
+    if (!targets.length) return;
+
+    targetView.classList.add('cinematic-ready');
+    targets.forEach((item, index) => {
+        item.classList.add('cinematic-item');
+        item.style.setProperty('--cinematic-delay', `${reducedMotion ? 0 : Math.min(index * 95, 420)}ms`);
+    });
+
+    requestAnimationFrame(() => {
+        targetView.classList.add('cinematic-run');
+    });
+}
+
+function normalizeCountry(country) {
+    const rawValue = (country || 'N/A').trim();
+    const key = rawValue
+        .toLowerCase()
+        .replace(/[^a-z\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const countryAliases = {
+        'uk': 'United Kingdom',
+        'united kingdom': 'United Kingdom',
+        'great britain': 'United Kingdom',
+        'britain': 'United Kingdom',
+        'us': 'USA',
+        'usa': 'USA',
+        'united states': 'USA',
+        'united states of america': 'USA',
+        'america': 'USA'
+    };
+
+    return countryAliases[key] || rawValue;
+}
+
+playerData.forEach((player) => {
+    player.country = normalizeCountry(player.country);
+});
+
+const seededPerformanceOverrides = {
+    // 2 wins vs same-level opponents: 2 * +500 ELO
+    '20SovietSO21': { eloDelta: 1000, wins: 2, losses: 0 }
+};
+
 // Initialize player rankings
 let playerRankings = playerData.map((player, index) => {
+    const seeded = seededPerformanceOverrides[player.username] || { eloDelta: 0, wins: 0, losses: 0 };
+    const seededElo = Math.max(0, ELO_DEFAULT + seeded.eloDelta);
+
     return {
         rank: index + 1,
         previousRank: index + 1,
@@ -110,10 +501,10 @@ let playerRankings = playerData.map((player, index) => {
         country: player.country,
         addedOrder: index + 1,
         isNew: index >= playerData.length - 8,
-        level: getLevelFromElo(ELO_DEFAULT),
-        elo: ELO_DEFAULT,
-        wins: 0,
-        losses: 0,
+        level: getLevelFromElo(seededElo),
+        elo: seededElo,
+        wins: seeded.wins,
+        losses: seeded.losses,
         trend: 'neutral'
     };
 });
@@ -131,11 +522,9 @@ const countryEmojis = {
     'Slovakia': '🇸🇰',
     'Spain': '🇪🇸',
     'Denmark': '🇩🇰',
-    'UK': '🇬🇧',
+    'United Kingdom': '🇬🇧',
     'England': '🇬🇧',
     'Netherlands': '🇳🇱',
-    'America': '🇺🇸',
-    'US': '🇺🇸',
     'USA': '🇺🇸',
     'Kazakhstan': '🇰🇿',
     'Germany': '🇩🇪',
@@ -186,6 +575,9 @@ function getFactionFlag(faction) {
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
+    const bootLoader = createBootLoaderController();
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     populateFilters();
     renderLeaderboard(playerRankings);
     updateQuickStats(playerRankings.length);
@@ -203,6 +595,17 @@ document.addEventListener('DOMContentLoaded', function() {
             closePlayerModal();
         }
     });
+
+    initializePlayerModalFx();
+
+    setTimeout(() => {
+        bootLoader.complete();
+
+        setTimeout(() => {
+            runCinematicSectionReveal('leaderboard');
+            notifyWithProfile('queueStatus', 'Ranked Queue', 'Status: Open and matching players', { status: 'open' });
+        }, reducedMotion ? 0 : 210);
+    }, reducedMotion ? 160 : 900);
 });
 
 // Populate filter dropdowns
@@ -323,6 +726,11 @@ function renderTopPodium(players) {
         if (!player) {
             return `
                 <div class="podium-slot slot-${place} empty">
+                    <div class="podium-player-card">
+                        <div class="podium-crown">OPEN</div>
+                        <strong>Awaiting contender</strong>
+                        <small>Climb the ladder to claim this spot</small>
+                    </div>
                     <div class="podium-step step-${place}">#${place}</div>
                 </div>
             `;
@@ -331,6 +739,13 @@ function renderTopPodium(players) {
         const factionImg = getFactionFlag(player.faction);
         const factionDisplay = factionImg ? `<img src="${factionImg}" alt="${player.faction}" class="faction-flag">` : '';
         const medal = place === 1 ? 'GOLD' : place === 2 ? 'SILVER' : 'BRONZE';
+        const medalIcon = place === 1 ? '★' : place === 2 ? '◆' : '▲';
+        const rankShift = player.rankChange > 0
+            ? `+${player.rankChange}`
+            : player.rankChange < 0
+                ? `${player.rankChange}`
+                : '0';
+        const rankShiftClass = player.rankChange > 0 ? 'up' : player.rankChange < 0 ? 'down' : 'steady';
         const badges = getPlayerBadges(player).slice(0, 1)
             .map((badge) => `<span class="player-badge badge-${badge.toLowerCase().replace(/\s+/g, '-')}">${badge}</span>`)
             .join('');
@@ -338,15 +753,20 @@ function renderTopPodium(players) {
         return `
             <div class="podium-slot slot-${place}" data-username="${player.username}">
                 <div class="podium-player-card">
-                    <div class="podium-crown">${medal}</div>
+                    <div class="podium-crown"><span>${medal}</span><span class="podium-medal-icon">${medalIcon}</span></div>
                     <strong>${player.username}</strong>
                     <small>${factionDisplay}${factionDisplay ? ' ' : ''}${player.faction}</small>
                     <span>${getCountryEmoji(player.country)} ${player.country}</span>
+                    <div class="podium-meta-row">
+                        <span class="podium-level">Lvl ${player.level}</span>
+                        <span class="podium-record">${player.wins}W-${player.losses}L</span>
+                    </div>
                     ${badges}
                 </div>
                 <div class="podium-step step-${place}">
                     <div class="podium-place">#${place}</div>
                     <div class="podium-elo">${player.elo.toFixed(0)} ELO</div>
+                    <div class="podium-rank-delta ${rankShiftClass}">${rankShift}</div>
                 </div>
             </div>
         `;
@@ -419,6 +839,10 @@ function setQuickFilter(mode) {
         chip.classList.toggle('active', chip.dataset.chip === mode);
     });
     filterLeaderboard();
+
+    if (mode !== 'all') {
+        notifyWithProfile('systemNotice', 'Filter Updated', `Mode: ${mode.replace('-', ' ')}`, { mode });
+    }
 }
 
 function getMostCommonFaction() {
@@ -497,6 +921,13 @@ function apply1v1Result(winnerUsername, loserUsername) {
     resortRankings();
     renderLeaderboard(playerRankings);
 
+    showMatchResultPopup({
+        title: `1v1 Result: ${winner.username} won`,
+        detail: `${winner.username} +${winnerDelta} ELO | ${loser.username} ${loserDelta} ELO`,
+        profileName: 'oneVOneWin',
+        soundPayload: { winner: winner.username, loser: loser.username }
+    });
+
     return {
         winner: { username: winner.username, delta: winnerDelta, elo: winner.elo, level: winner.level },
         loser: { username: loser.username, delta: loserDelta, elo: loser.elo, level: loser.level }
@@ -520,6 +951,13 @@ function applyFactionBattleResult(username, teamResult, performanceTier) {
     resortRankings();
     renderLeaderboard(playerRankings);
 
+    showMatchResultPopup({
+        title: 'Faction Battle Update',
+        detail: `${player.username} ${delta >= 0 ? '+' : ''}${delta} ELO (${mappedTier})`,
+        profileName: delta >= 0 ? 'factionWin' : 'factionLoss',
+        soundPayload: { username: player.username, delta, tier: mappedTier }
+    });
+
     return { username: player.username, delta, elo: player.elo, level: player.level };
 }
 
@@ -529,7 +967,15 @@ window.eloSystem = {
     getLevelFromElo,
     apply1v1Result,
     applyFactionBattleResult,
-    getRankings: () => [...playerRankings]
+    getRankings: () => [...playerRankings],
+    notify: (title, detail) => notifyWithProfile('systemNotice', title, detail),
+    queueStatus: (status) => notifyWithProfile('queueStatus', 'Queue Status', status, { status }),
+    streakUpdate: (username, streakCount) => {
+        const count = Number(streakCount) || 0;
+        const profileName = count >= 0 ? 'streakWin' : 'streakLoss';
+        const label = count >= 0 ? `+${count}` : `${count}`;
+        notifyWithProfile(profileName, 'Streak Update', `${username} ${label} momentum`, { username, streakCount: count });
+    }
 };
 
 // Switch between views
@@ -543,10 +989,97 @@ function switchView(viewName, event) {
     });
     
     document.getElementById(viewName + '-view').classList.add('active');
+    runCinematicSectionReveal(viewName);
     
     if (event && event.target && event.target.classList) {
         event.target.classList.add('active');
     }
+}
+
+function getPlayerTierLabel(player) {
+    if (player.rank === 1) return 'Champion';
+    if (player.rank <= 3) return 'Podium';
+    if (player.rank <= 10) return 'Contender';
+    if (player.elo >= 1800) return 'Elite';
+    if (player.elo >= 1200) return 'Veteran';
+    return 'Rookie';
+}
+
+function getPlayerModalMoodClass(player) {
+    if (player.rank === 1) return 'modal-elite';
+    if (player.trend === 'up') return 'modal-rising';
+    if (player.trend === 'down') return 'modal-falling';
+    return 'modal-steady';
+}
+
+function animateModalNumber(node, targetValue, { prefix = '', suffix = '', duration = 440 } = {}) {
+    if (!node) return;
+
+    const endValue = Number(targetValue);
+    if (!Number.isFinite(endValue)) {
+        node.textContent = `${prefix}${targetValue}${suffix}`;
+        return;
+    }
+
+    const startValue = Number(node.dataset.lastValue || 0);
+    const delta = endValue - startValue;
+
+    if (Math.abs(delta) < 1) {
+        node.textContent = `${prefix}${Math.round(endValue)}${suffix}`;
+        node.dataset.lastValue = String(endValue);
+        return;
+    }
+
+    const startTime = performance.now();
+    const animate = (now) => {
+        const progress = Math.min(1, (now - startTime) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = startValue + (delta * eased);
+        node.textContent = `${prefix}${Math.round(current)}${suffix}`;
+
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        } else {
+            node.dataset.lastValue = String(endValue);
+        }
+    };
+
+    requestAnimationFrame(animate);
+}
+
+function resetModalMotion(content) {
+    if (!content) return;
+    content.style.setProperty('--modal-tilt-x', '0deg');
+    content.style.setProperty('--modal-tilt-y', '0deg');
+    content.style.setProperty('--modal-pointer-x', '50%');
+    content.style.setProperty('--modal-pointer-y', '50%');
+}
+
+function initializePlayerModalFx() {
+    const modal = document.getElementById('playerModal');
+    const content = modal?.querySelector('.modal-content');
+    if (!modal || !content) return;
+
+    resetModalMotion(content);
+
+    content.addEventListener('pointermove', (event) => {
+        if (!modal.classList.contains('active')) return;
+
+        const rect = content.getBoundingClientRect();
+        const pointerX = ((event.clientX - rect.left) / rect.width) * 100;
+        const pointerY = ((event.clientY - rect.top) / rect.height) * 100;
+        const tiltX = ((pointerY - 50) / 50) * -2.4;
+        const tiltY = ((pointerX - 50) / 50) * 2.4;
+
+        content.style.setProperty('--modal-pointer-x', `${pointerX.toFixed(2)}%`);
+        content.style.setProperty('--modal-pointer-y', `${pointerY.toFixed(2)}%`);
+        content.style.setProperty('--modal-tilt-x', `${tiltX.toFixed(2)}deg`);
+        content.style.setProperty('--modal-tilt-y', `${tiltY.toFixed(2)}deg`);
+    });
+
+    content.addEventListener('pointerleave', () => {
+        resetModalMotion(content);
+    });
 }
 
 // Open player profile modal
@@ -556,28 +1089,56 @@ function openPlayerModal(username) {
     
     // Set player info
     document.getElementById('playerModalName').textContent = player.username;
-    document.getElementById('playerRank').textContent = `#${player.rank}`;
-    document.getElementById('playerELO').textContent = player.elo.toFixed(0);
+    animateModalNumber(document.getElementById('playerRank'), player.rank, { prefix: '#', duration: 320 });
+    animateModalNumber(document.getElementById('playerELO'), player.elo, { duration: 520 });
     document.getElementById('playerWL').textContent = `${player.wins}W - ${player.losses}L`;
-    document.getElementById('playerLevel').textContent = `Level ${player.level}`;
+    animateModalNumber(document.getElementById('playerLevel'), player.level, { prefix: 'Level ', duration: 360 });
     
     const factionImg = getFactionFlag(player.faction);
     const factionDisplay = factionImg ? `<img src="${factionImg}" alt="${player.faction}" class="faction-flag"> ${player.faction}` : player.faction;
     document.getElementById('playerFaction').innerHTML = factionDisplay;
     
     document.getElementById('playerCountry').textContent = `${getCountryEmoji(player.country)} ${player.country}`;
+
+    const trendLabel = player.trend === 'up' ? 'Rising' : player.trend === 'down' ? 'Under Pressure' : 'Stable';
+    const trendArrow = player.trend === 'up' ? '↑' : player.trend === 'down' ? '↓' : '→';
+    const heroAvatar = document.getElementById('playerHeroAvatar');
+    const heroRankRing = document.getElementById('playerHeroRankRing');
+    const heroSubtitle = document.getElementById('playerHeroSubtitle');
+    const heroChipTrend = document.getElementById('playerHeroChipTrend');
+    const heroChipRecord = document.getElementById('playerHeroChipRecord');
+    const heroChipTier = document.getElementById('playerHeroChipTier');
+
+    if (heroAvatar) heroAvatar.textContent = player.username.charAt(0).toUpperCase();
+    if (heroRankRing) heroRankRing.textContent = `#${player.rank}`;
+    if (heroSubtitle) heroSubtitle.textContent = `${getCountryEmoji(player.country)} ${player.country} | ${player.faction}`;
+    if (heroChipTrend) heroChipTrend.textContent = `${trendArrow} Trend: ${trendLabel}`;
+    if (heroChipRecord) heroChipRecord.textContent = `Record: ${player.wins}W-${player.losses}L`;
+    if (heroChipTier) heroChipTier.textContent = `Tier: ${getPlayerTierLabel(player)}`;
     
     // Show modal
     const modal = document.getElementById('playerModal');
+    const modalContent = modal.querySelector('.modal-content');
+    modalContent.classList.remove('modal-elite', 'modal-rising', 'modal-falling', 'modal-steady');
+    modalContent.classList.add(getPlayerModalMoodClass(player));
+    resetModalMotion(modalContent);
     modal.classList.remove('closing');
     modal.classList.add('active');
     document.body.classList.add('modal-open');
+
+    emitSoundHook('ui.modal.player.open', {
+        username: player.username,
+        rank: player.rank,
+        trend: player.trend,
+        tier: getPlayerTierLabel(player)
+    });
 }
 
 // Close player profile modal
 function closePlayerModal() {
     const modal = document.getElementById('playerModal');
     if (!modal.classList.contains('active')) return;
+    resetModalMotion(modal.querySelector('.modal-content'));
     modal.classList.add('closing');
     setTimeout(() => {
         modal.classList.remove('active', 'closing');
@@ -592,3 +1153,14 @@ window.addEventListener('click', function(event) {
         closePlayerModal();
     }
 });
+
+window.matchPopups = {
+    show: showMatchResultPopup,
+    soundHook: emitSoundHook,
+    getProfile: getMatchPopupProfile,
+    setProfile: setMatchPopupProfile,
+    profiles: matchPopupProfiles,
+    notifyQueue: (title, detail, payload = {}) => notifyWithProfile('queueStatus', title, detail, payload),
+    notifySystem: (title, detail, payload = {}) => notifyWithProfile('systemNotice', title, detail, payload),
+    notifyStreak: (title, detail, isPositive = true, payload = {}) => notifyWithProfile(isPositive ? 'streakWin' : 'streakLoss', title, detail, payload)
+};

@@ -1,8 +1,5 @@
 Players sorted by Country:
 
-America:
-- iownlivy | Faction: AH/URF
-
 Czechia:
 - Flexmaster2002 | Faction: CZSK
 
@@ -68,20 +65,19 @@ Sweden:
 Turkey:
 - hamit_gamer13000 | Faction: URF
 
-UK:
+United Kingdom:
 - MyNameIsBrickWall | Faction: DK
 - OnlyToast0 | Faction: AH
 - stolemyxrp | Faction: AH
 - xxninjaxx9065 | Faction: TWL
 
-US:
-- crimsvonn | Faction: DK
-- ThatRandomPerson142 | Faction: RKA
-
 USA:
+- crimsvonn | Faction: DK
+- iownlivy | Faction: AH/URF
 - noah464 | Faction: TWL
 - Quackenxnator | Faction: AH
 - SwissAbyss1 | Faction: TWL
+- ThatRandomPerson142 | Faction: RKA
 
 Uzbekistan:
 - Ninbinsin | Faction: TWL
