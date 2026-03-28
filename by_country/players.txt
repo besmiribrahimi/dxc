@@ -2,6 +2,7 @@ Players sorted by Country:
 
 Czechia:
 - Flexmaster2002 | Faction: CZSK
+- Vespartan_alt | Faction: TWL
 
 Denmark:
 - doudperfectcom | Faction: AH
@@ -28,6 +29,7 @@ Korea:
 
 Morocco:
 - ligth_hand | Faction: N/A
+- mlo1050 | Faction: CZSK
 
 North America:
 - 1Xoji | Faction: N/A
@@ -55,6 +57,7 @@ Slovakia:
 
 Spain:
 - 20SovietSO21 | Faction: DK
+- Mike030312 | Faction: AH
 - polloxlikop0911 | Faction: CZSK
 
 Sweden:
@@ -76,6 +79,7 @@ USA:
 - iownlivy | Faction: AH/URF
 - noah464 | Faction: TWL
 - Quackenxnator | Faction: AH
+- rittwdvk | Faction: AH
 - SwissAbyss1 | Faction: TWL
 - ThatRandomPerson142 | Faction: RKA
 

@@ -17,7 +17,9 @@ const playerData = [
     { username: "kbfrm242", faction: "AH", country: "Poland" },
     { username: "ligth_hand", faction: "N/A", country: "Morocco" },
     { username: "mattyDEAS", faction: "AH", country: "Scotland" },
+    { username: "Mike030312", faction: "AH", country: "Spain" },
     { username: "MILITARYPRO123458", faction: "URF/RKA", country: "Pakistan" },
+    { username: "mlo1050", faction: "CZSK", country: "Morocco" },
     { username: "MyNameIsBrickWall", faction: "DK", country: "United Kingdom" },
     { username: "nessa2008s", faction: "NDV", country: "Poland" },
     { username: "Ninbinsin", faction: "TWL", country: "Uzbekistan" },
@@ -27,6 +29,7 @@ const playerData = [
     { username: "Prehist0rick", faction: "CZSK", country: "Netherlands" },
     { username: "Quackenxnator", faction: "AH", country: "USA" },
     { username: "ramq124", faction: "N/A", country: "Korea" },
+    { username: "rittwdvk", faction: "AH", country: "USA" },
     { username: "Ruukke666", faction: "AH", country: "Netherlands" },
     { username: "SAMOJEBEAST678", faction: "URF", country: "Slovakia" },
     { username: "Sonyah13", faction: "NDV", country: "Sweden" },
@@ -36,6 +39,7 @@ const playerData = [
     { username: "SwissAbyss1", faction: "TWL", country: "USA" },
     { username: "tamika2006s", faction: "NDV", country: "Sweden" },
     { username: "ThatRandomPerson142", faction: "RKA", country: "USA" },
+    { username: "Vespartan_alt", faction: "TWL", country: "Czechia" },
     { username: "vcfghcemil", faction: "CZSK", country: "Germany" },
     { username: "xxninjaxx9065", faction: "TWL", country: "United Kingdom" }
 ];

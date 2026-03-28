@@ -4,8 +4,10 @@ AH:
 - doudperfectcom | Country: Denmark
 - kbfrm242 | Country: Poland
 - mattyDEAS | Country: Scotland
+- Mike030312 | Country: Spain
 - OnlyToast0 | Country: UK
 - Quackenxnator | Country: USA
+- rittwdvk | Country: USA
 - Ruukke666 | Country: Netherlands
 - stolemyxrp | Country: UK
 
@@ -15,6 +17,7 @@ AH/URF:
 CZSK:
 - BLESK_BLESKAC | Country: Slovakia
 - Flexmaster2002 | Country: Czechia
+- mlo1050 | Country: Morocco
 - polloxlikop0911 | Country: Spain
 - Prehist0rick | Country: Netherlands
 - Strango7 | Country: Italy
@@ -52,6 +55,7 @@ TWL:
 - Ninbinsin | Country: Uzbekistan
 - noah464 | Country: USA
 - SwissAbyss1 | Country: USA
+- Vespartan_alt | Country: Czechia
 - xxninjaxx9065 | Country: UK
 
 URF:
