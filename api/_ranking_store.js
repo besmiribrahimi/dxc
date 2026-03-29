@@ -5,8 +5,12 @@ function normalizeEnvValue(value) {
 }
 
 function getKvConfig() {
-    const baseUrl = normalizeEnvValue(process.env.KV_REST_API_URL);
-    const token = normalizeEnvValue(process.env.KV_REST_API_TOKEN);
+    const baseUrl = normalizeEnvValue(
+        process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL
+    );
+    const token = normalizeEnvValue(
+        process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN
+    );
 
     return {
         baseUrl,
@@ -22,7 +26,7 @@ function isGlobalOrderStoreConfigured() {
 async function runKvCommand(command, args = []) {
     const { baseUrl, token, configured } = getKvConfig();
     if (!configured) {
-        throw new Error('Vercel KV is not configured');
+        throw new Error('KV/Redis REST is not configured');
     }
 
     const commandPath = [command, ...args]
@@ -75,7 +79,7 @@ async function getGlobalRankingOrder() {
 
 async function setGlobalRankingOrder(orderUsernames) {
     if (!isGlobalOrderStoreConfigured()) {
-        throw new Error('Vercel KV is not configured');
+        throw new Error('KV/Redis REST is not configured');
     }
 
     const sanitizedOrder = Array.from(new Set(

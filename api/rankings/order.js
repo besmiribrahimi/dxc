@@ -20,7 +20,7 @@ module.exports = async function handler(req, res) {
         return toJson(res, 200, {
             order: [],
             globalSync: false,
-            message: 'Global ranking sync is not configured'
+            message: 'Global ranking sync backend is not configured'
         });
     }
 

@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (!isGlobalOrderStoreConfigured()) {
-        return toJson(res, 503, { error: 'Global sync is not configured (missing KV env vars)' });
+        return toJson(res, 503, { error: 'Global sync is not configured (missing KV/Redis REST env vars)' });
     }
 
     let body = {};

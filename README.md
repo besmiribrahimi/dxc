@@ -176,13 +176,17 @@ Set these variables in Vercel Environment Variables:
 
 - `ADMIN_PANEL_PASSWORD=FREE_168aff8f8d58eee686ad23f4dd192e2f`
 - `ADMIN_PANEL_SECRET=FREE_168aff8f8d58eee686ad23f4dd192e2f`
-- `KV_REST_API_URL=your_vercel_kv_rest_url`
-- `KV_REST_API_TOKEN=your_vercel_kv_rest_token`
+- One global sync backend option:
+   - `KV_REST_API_URL=your_vercel_kv_rest_url`
+   - `KV_REST_API_TOKEN=your_vercel_kv_rest_token`
+- Or Upstash Redis option:
+   - `UPSTASH_REDIS_REST_URL=your_upstash_rest_url`
+   - `UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token`
 
 Notes:
 
 - Auth session is stored in an HTTP-only cookie
-- With KV configured, player order syncs across devices and users
+- With KV/Upstash configured, player order syncs across devices and users
 - If KV is not configured, the panel falls back to local browser storage only
 
 ## Support
