@@ -508,8 +508,10 @@ function normalizeLevelValue(value) {
     return Math.max(0, Math.min(10, parsed));
 }
 
+const UNRATED_DEFAULT_LEVEL = 5;
+
 function defaultLevelForRank(rank) {
-    if (rank < 1 || rank > 10) return 0;
+    if (rank < 1 || rank > 10) return UNRATED_DEFAULT_LEVEL;
     return Math.max(1, 11 - rank);
 }
 
@@ -528,7 +530,7 @@ function buildRankingsFromPlayerData(previousRankings = []) {
         const storedPlayerLevel = normalizeLevelValue(player?.level);
         const existingLevel = normalizeLevelValue(existing?.level);
         const levelCandidate = existingLevel || storedPlayerLevel || defaultLevelForRank(rank);
-        const safeLevel = rank <= 10 ? levelCandidate : 0;
+        const safeLevel = levelCandidate || defaultLevelForRank(rank);
 
         player.level = safeLevel;
 
@@ -726,16 +728,17 @@ function renderLeaderboard(players) {
         
         const factionImg = getFactionFlag(player.faction);
         const factionDisplay = factionImg ? `<img src="${factionImg}" alt="${player.faction}" class="faction-flag">` : '';
-        const hasLevel = player.rank <= 10 && player.level > 0;
-        const leftColumnLevel = hasLevel ? player.level : 0;
+        const displayLevel = normalizeLevelValue(player.level) || defaultLevelForRank(player.rank);
+        const hasLevel = displayLevel > 0;
+        const leftColumnLevel = hasLevel ? displayLevel : UNRATED_DEFAULT_LEVEL;
         const levelMarkup = hasLevel
             ? `
                 <span class="level-badge">
-                    <img src="${player.level}.png" alt="Level ${player.level}" class="level-img" onerror="this.style.display='none'">
-                    Lvl ${player.level}
+                    <img src="${displayLevel}.png" alt="Level ${displayLevel}" class="level-img" onerror="this.style.display='none'">
+                    Lvl ${displayLevel}
                 </span>
             `
-            : '<span class="level-badge level-empty">Unrated</span>';
+            : `<span class="level-badge">Lvl ${UNRATED_DEFAULT_LEVEL}</span>`;
         
         row.innerHTML = `
             <div class="rank">${leftColumnLevel}</div>
@@ -947,7 +950,7 @@ function resortRankings() {
         player.rank = newRank;
         player.rankChange = oldRank - newRank;
         player.trend = player.rankChange > 0 ? 'up' : player.rankChange < 0 ? 'down' : 'neutral';
-        player.level = newRank <= 10 ? (normalizeLevelValue(player.level) || defaultLevelForRank(newRank)) : 0;
+        player.level = normalizeLevelValue(player.level) || defaultLevelForRank(newRank);
     });
 
     const rankingByUsername = new Map(playerRankings.map((player) => [player.username, player]));
@@ -990,9 +993,7 @@ function createAdminOrderDraft() {
         username: player.username,
         faction: player.faction,
         country: player.country,
-        level: player.rank <= 10
-            ? (normalizeLevelValue(player.level) || defaultLevelForRank(player.rank))
-            : 0
+        level: normalizeLevelValue(player.level) || defaultLevelForRank(player.rank)
     }));
 }
 
@@ -1093,7 +1094,7 @@ function createLevelMapFromAdminDraft() {
 function normalizeAdminDraftLevels() {
     adminOrderDraft.forEach((entry, index) => {
         if (index >= 10) {
-            entry.level = 0;
+            entry.level = defaultLevelForRank(index + 1);
             return;
         }
 
@@ -1144,9 +1145,7 @@ function applyManualPlayerOrder(usernames, { persist = true, refresh = true, lev
         const fallbackLevel = defaultLevelForRank(rank);
         const existingLevel = normalizeLevelValue(player.level);
         const selectedLevel = normalizeLevelValue(safeLevels[player.username]);
-        const nextLevel = rank <= 10
-            ? (selectedLevel || existingLevel || fallbackLevel)
-            : 0;
+        const nextLevel = selectedLevel || existingLevel || fallbackLevel;
 
         player.level = nextLevel;
         const source = dataByUsername.get(player.username);
@@ -1251,10 +1250,10 @@ function renderAdminPlayerList(listNode) {
             levelSelect.value = String(normalizeLevelValue(player.level) || defaultLevelForRank(index + 1));
         } else {
             const option = document.createElement('option');
-            option.value = '0';
-            option.textContent = 'Unrated';
+            option.value = String(UNRATED_DEFAULT_LEVEL);
+            option.textContent = `Lvl ${UNRATED_DEFAULT_LEVEL} (default)`;
             levelSelect.appendChild(option);
-            levelSelect.value = '0';
+            levelSelect.value = String(UNRATED_DEFAULT_LEVEL);
             levelSelect.disabled = true;
         }
 
@@ -1913,7 +1912,7 @@ function openPlayerModal(username) {
     const levelNode = document.getElementById('playerLevel');
     if (levelNode) {
         const safeLevel = normalizeLevelValue(player.level);
-        levelNode.textContent = player.rank <= 10 && safeLevel > 0 ? `Level ${safeLevel}` : 'Unrated';
+        levelNode.textContent = `Level ${safeLevel || defaultLevelForRank(player.rank)}`;
     }
     
     const factionImg = getFactionFlag(player.faction);
