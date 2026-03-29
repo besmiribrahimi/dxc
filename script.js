@@ -1081,8 +1081,6 @@ function createLevelMapFromAdminDraft() {
     const levels = {};
 
     adminOrderDraft.forEach((entry, index) => {
-        if (index >= 10) return;
-
         const fallbackLevel = defaultLevelForRank(index + 1);
         const safeLevel = normalizeLevelValue(entry.level) || fallbackLevel;
         levels[entry.username] = safeLevel;
@@ -1093,11 +1091,6 @@ function createLevelMapFromAdminDraft() {
 
 function normalizeAdminDraftLevels() {
     adminOrderDraft.forEach((entry, index) => {
-        if (index >= 10) {
-            entry.level = defaultLevelForRank(index + 1);
-            return;
-        }
-
         const fallbackLevel = defaultLevelForRank(index + 1);
         entry.level = normalizeLevelValue(entry.level) || fallbackLevel;
     });
@@ -1155,7 +1148,7 @@ function applyManualPlayerOrder(usernames, { persist = true, refresh = true, lev
     if (persist) {
         storeAdminOrder(orderedUsernames);
         const levelsToStore = {};
-        playerRankings.slice(0, 10).forEach((player) => {
+        playerRankings.forEach((player) => {
             const safeLevel = normalizeLevelValue(player.level);
             if (safeLevel > 0) {
                 levelsToStore[player.username] = safeLevel;
@@ -1239,23 +1232,14 @@ function renderAdminPlayerList(listNode) {
         levelSelect.className = 'admin-level-select';
         levelSelect.dataset.levelIndex = String(index);
 
-        if (index < 10) {
-            for (let level = 1; level <= 10; level += 1) {
-                const option = document.createElement('option');
-                option.value = String(level);
-                option.textContent = `Lvl ${level}`;
-                levelSelect.appendChild(option);
-            }
-
-            levelSelect.value = String(normalizeLevelValue(player.level) || defaultLevelForRank(index + 1));
-        } else {
+        for (let level = 1; level <= 10; level += 1) {
             const option = document.createElement('option');
-            option.value = String(UNRATED_DEFAULT_LEVEL);
-            option.textContent = `Lvl ${UNRATED_DEFAULT_LEVEL} (default)`;
+            option.value = String(level);
+            option.textContent = `Lvl ${level}`;
             levelSelect.appendChild(option);
-            levelSelect.value = String(UNRATED_DEFAULT_LEVEL);
-            levelSelect.disabled = true;
         }
+
+        levelSelect.value = String(normalizeLevelValue(player.level) || defaultLevelForRank(index + 1));
 
         controls.appendChild(levelSelect);
 
@@ -1418,7 +1402,7 @@ function initializeMovableEditor() {
         const authenticated = await refreshAuthState();
         if (authenticated) {
             refreshDraftFromRankings();
-            setEditorStatus('Admin unlocked. Reorder players and set top-10 levels.', 'success');
+            setEditorStatus('Admin unlocked. Reorder players and edit levels for all players.', 'success');
         } else {
             setEditorStatus('Locked: enter admin password.', 'error');
             passwordInput.focus();
@@ -1478,7 +1462,7 @@ function initializeMovableEditor() {
         passwordInput.value = '';
         setAuthView(true);
         refreshDraftFromRankings();
-        setEditorStatus('Admin unlocked. You can reorder players and edit top-10 levels.', 'success');
+        setEditorStatus('Admin unlocked. You can reorder players and edit levels for all players.', 'success');
     });
 
     passwordInput.addEventListener('keydown', async (event) => {
@@ -1517,7 +1501,6 @@ function initializeMovableEditor() {
 
         const index = Number.parseInt(target.dataset.levelIndex || '-1', 10);
         if (!Number.isInteger(index) || index < 0 || index >= adminOrderDraft.length) return;
-        if (index >= 10) return;
 
         adminOrderDraft[index].level = normalizeLevelValue(target.value) || defaultLevelForRank(index + 1);
     });
