@@ -158,6 +158,28 @@ Local test example:
 curl -H "x-bot-token: your_secret_token_here" http://localhost:3000/api/bot/stats
 ```
 
+## Password-Protected Admin Panel
+
+The website now includes a movable admin panel for reordering players.
+
+- Hidden from normal visitors (not shown as a visible floating button)
+- Open with one of these secret triggers:
+   - `Ctrl+Shift+A`
+   - Type `draxaradmin` on the page
+   - Click the top logo 5 times quickly
+- Requires password login
+- Uses server-side auth endpoints (`/api/admin/login`, `/api/admin/session`, `/api/admin/logout`)
+
+Set these variables in Vercel Environment Variables:
+
+- `ADMIN_PANEL_PASSWORD=FREE_168aff8f8d58eee686ad23f4dd192e2f`
+- `ADMIN_PANEL_SECRET=FREE_168aff8f8d58eee686ad23f4dd192e2f`
+
+Notes:
+
+- Auth session is stored in an HTTP-only cookie
+- Player order changes apply live in the current browser session and are also saved in local storage
+
 ## Support
 
 To modify or extend the website:

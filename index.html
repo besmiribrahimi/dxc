@@ -247,6 +247,37 @@
         <p>&copy; 2026 [D.X.C] Draxar Competitive. All rights reserved.</p>
     </footer>
 
+    <button type="button" id="editorToggle" class="editor-toggle hidden-access" aria-hidden="true" tabindex="-1">Admin Panel</button>
+
+    <section id="movableEditor" class="movable-editor" aria-hidden="true">
+        <header id="movableEditorHandle" class="movable-editor-header" title="Drag to move">
+            <h3>Admin Player Panel</h3>
+            <div class="movable-editor-head-actions">
+                <button type="button" id="adminLogout" class="editor-action-btn" hidden>Logout</button>
+                <button type="button" id="editorClose" class="editor-close-btn" aria-label="Close editor">&times;</button>
+            </div>
+        </header>
+
+        <div id="adminAuthBlock" class="admin-auth-block">
+            <label for="adminPasswordInput" class="admin-auth-label">Enter admin password</label>
+            <div class="admin-auth-row">
+                <input type="password" id="adminPasswordInput" class="admin-auth-input" placeholder="Admin password" autocomplete="current-password">
+                <button type="button" id="adminLoginBtn" class="editor-action-btn primary">Unlock</button>
+            </div>
+        </div>
+
+        <div id="adminControls" class="admin-controls" hidden>
+            <p class="movable-editor-help">Drag players to move them up or down, then press Apply Order.</p>
+            <ul id="adminPlayerList" class="admin-player-list"></ul>
+            <div class="movable-editor-actions">
+                <button type="button" id="adminApplyOrder" class="editor-action-btn primary">Apply Order</button>
+                <button type="button" id="adminResetOrder" class="editor-action-btn">Reset List</button>
+            </div>
+        </div>
+
+        <p id="editorStatus" class="movable-editor-status">Locked: login required.</p>
+    </section>
+
     <div id="matchResultStack" class="match-popup-stack" aria-live="polite" aria-atomic="false"></div>
     <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 

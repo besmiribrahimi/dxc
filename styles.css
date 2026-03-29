@@ -1888,6 +1888,325 @@ main {
     width: min(360px, calc(100vw - 1.5rem));
 }
 
+.editor-toggle {
+    position: fixed;
+    right: 1rem;
+    bottom: 5.4rem;
+    z-index: 3100;
+    border: 1px solid rgba(255, 91, 68, 0.5);
+    background: linear-gradient(120deg, rgba(255, 43, 55, 0.92), rgba(255, 125, 68, 0.92));
+    color: #19060a;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 8px;
+    padding: 0.56rem 0.88rem;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(255, 43, 55, 0.34);
+    transition: transform var(--fast) var(--ease-smooth), box-shadow var(--fast) var(--ease-smooth), filter var(--fast) var(--ease-smooth);
+}
+
+.editor-toggle:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 14px 26px rgba(255, 43, 55, 0.42);
+    filter: brightness(1.05);
+}
+
+.editor-toggle.active {
+    box-shadow: 0 0 0 2px rgba(123, 189, 255, 0.45), 0 14px 26px rgba(255, 43, 55, 0.42);
+}
+
+.editor-toggle.hidden-access {
+    position: fixed !important;
+    right: -9999px !important;
+    bottom: auto !important;
+    width: 1px !important;
+    height: 1px !important;
+    min-height: 1px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    color: transparent !important;
+    overflow: hidden !important;
+}
+
+.editor-toggle.hidden-access:hover,
+.editor-toggle.hidden-access.active {
+    transform: none !important;
+    box-shadow: none !important;
+    filter: none !important;
+}
+
+.movable-editor {
+    position: fixed;
+    right: 1rem;
+    top: 6.3rem;
+    z-index: 3090;
+    width: min(540px, calc(100vw - 1.5rem));
+    max-height: min(74vh, 760px);
+    display: none;
+    grid-template-rows: auto auto 1fr auto auto;
+    gap: 0.62rem;
+    border: 1px solid rgba(255, 91, 68, 0.45);
+    border-radius: 12px;
+    padding: 0.72rem;
+    background: linear-gradient(155deg, rgba(12, 18, 29, 0.95), rgba(25, 14, 15, 0.95));
+    box-shadow: 0 24px 46px rgba(0, 0, 0, 0.5), 0 0 18px rgba(255, 91, 68, 0.14);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+}
+
+.movable-editor.active {
+    display: grid;
+    animation: editorPopIn 0.24s var(--ease-smooth);
+}
+
+.movable-editor.dragging {
+    user-select: none;
+    box-shadow: 0 30px 52px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(123, 189, 255, 0.55);
+}
+
+.movable-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.5rem 0.58rem;
+    border: 1px solid rgba(123, 189, 255, 0.25);
+    border-radius: 8px;
+    background: linear-gradient(100deg, rgba(255, 43, 55, 0.2), rgba(123, 189, 255, 0.14));
+    cursor: move;
+}
+
+.movable-editor-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.movable-editor-head-actions .editor-action-btn {
+    min-height: 32px;
+    padding: 0 0.62rem;
+    font-size: 0.68rem;
+}
+
+.movable-editor-header h3 {
+    margin: 0;
+    font-size: 0.98rem;
+    font-family: 'Bebas Neue', 'Oxanium', sans-serif;
+    letter-spacing: 0.08em;
+    color: var(--text-primary);
+}
+
+.editor-close-btn {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.editor-close-btn:hover {
+    border-color: rgba(255, 91, 68, 0.62);
+    background: rgba(255, 43, 55, 0.18);
+}
+
+.movable-editor-help {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+}
+
+.admin-auth-block {
+    display: grid;
+    gap: 0.48rem;
+}
+
+.admin-auth-label {
+    color: var(--text-secondary);
+    font-size: 0.77rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.admin-auth-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.55rem;
+}
+
+.admin-auth-input {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid rgba(123, 189, 255, 0.3);
+    border-radius: 8px;
+    padding: 0 0.65rem;
+    background: rgba(8, 11, 17, 0.9);
+    color: #ecf2ff;
+    font-size: 0.84rem;
+}
+
+.admin-auth-input:focus {
+    outline: none;
+    border-color: rgba(123, 189, 255, 0.64);
+    box-shadow: 0 0 0 2px rgba(123, 189, 255, 0.18);
+}
+
+.admin-controls {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.admin-player-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    max-height: 320px;
+    overflow: auto;
+    display: grid;
+    gap: 0.4rem;
+}
+
+.admin-player-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.55rem;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.45rem 0.5rem;
+    cursor: move;
+}
+
+.admin-player-item.drag-over {
+    border-color: rgba(123, 189, 255, 0.7);
+    background: rgba(123, 189, 255, 0.12);
+}
+
+.admin-player-item.dragging-item {
+    opacity: 0.45;
+}
+
+.admin-player-main {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.admin-player-rank {
+    min-width: 42px;
+    color: var(--accent);
+    font-weight: 900;
+    font-size: 0.82rem;
+}
+
+.admin-player-meta {
+    display: grid;
+    min-width: 0;
+}
+
+.admin-player-meta strong {
+    color: var(--text-primary);
+    font-size: 0.86rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-player-meta small {
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-player-move {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.admin-player-move .editor-action-btn {
+    min-height: 30px;
+    padding: 0 0.52rem;
+    font-size: 0.66rem;
+}
+
+.movable-editor-textarea {
+    width: 100%;
+    min-height: 260px;
+    resize: vertical;
+    border: 1px solid rgba(123, 189, 255, 0.3);
+    border-radius: 8px;
+    padding: 0.68rem;
+    background: rgba(8, 11, 17, 0.9);
+    color: #ecf2ff;
+    font-size: 0.83rem;
+    line-height: 1.42;
+    font-family: Consolas, Monaco, 'Courier New', monospace;
+}
+
+.movable-editor-textarea:focus {
+    outline: none;
+    border-color: rgba(123, 189, 255, 0.64);
+    box-shadow: 0 0 0 2px rgba(123, 189, 255, 0.18);
+}
+
+.movable-editor-actions {
+    display: flex;
+    gap: 0.58rem;
+}
+
+.editor-action-btn {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    border-radius: 7px;
+    min-height: 36px;
+    padding: 0 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.editor-action-btn:hover {
+    border-color: rgba(123, 189, 255, 0.55);
+    background: rgba(123, 189, 255, 0.12);
+}
+
+.editor-action-btn.primary {
+    border-color: rgba(255, 91, 68, 0.6);
+    background: linear-gradient(120deg, rgba(255, 43, 55, 0.92), rgba(255, 125, 68, 0.92));
+    color: #180607;
+}
+
+.movable-editor-status {
+    margin: 0;
+    min-height: 1.2rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.movable-editor-status.success {
+    color: var(--success);
+}
+
+.movable-editor-status.error {
+    color: var(--danger);
+}
+
 .match-popup-stack {
     position: fixed;
     left: 1rem;
@@ -2239,6 +2558,17 @@ main {
     }
 }
 
+@keyframes editorPopIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .quick-stats {
@@ -2301,6 +2631,21 @@ main {
         right: 0.6rem;
         bottom: 0.75rem;
         width: min(330px, calc(100vw - 1rem));
+    }
+
+    .editor-toggle {
+        right: 0.6rem;
+        bottom: 5rem;
+    }
+
+    .movable-editor {
+        right: 0.6rem;
+        top: 5.3rem;
+        width: min(520px, calc(100vw - 1rem));
+    }
+
+    .admin-player-list {
+        max-height: 280px;
     }
 
     .match-popup-stack {
@@ -2615,6 +2960,34 @@ main {
 
     .player-stats {
         grid-template-columns: 1fr;
+    }
+
+    .editor-toggle {
+        right: 0.5rem;
+        bottom: 4.8rem;
+        min-height: 40px;
+        padding: 0.48rem 0.7rem;
+        font-size: 0.7rem;
+    }
+
+    .movable-editor {
+        right: 0.5rem;
+        left: 0.5rem;
+        width: auto;
+        max-height: min(76vh, 680px);
+        top: 5rem;
+    }
+
+    .admin-auth-row {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-player-item {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-player-move {
+        justify-content: flex-start;
     }
 }
 

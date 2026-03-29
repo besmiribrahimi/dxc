@@ -102,6 +102,15 @@ function getRelativeTierByLevel(playerElo, opponentElo) {
 
 let quickFilterMode = 'all';
 let searchDebounceTimer = null;
+const ADMIN_ORDER_STORAGE_KEY = 'draxar_admin_order_v1';
+let adminOrderDraft = [];
+let adminDragIndex = null;
+let adminSessionActive = false;
+const editorDragState = {
+    active: false,
+    offsetX: 0,
+    offsetY: 0
+};
 
 function createBootLoaderController() {
     const loader = document.getElementById('bootLoader');
@@ -491,27 +500,38 @@ const seededPerformanceOverrides = {
     '20SovietSO21': { eloDelta: 1000, wins: 2, losses: 0 }
 };
 
-// Initialize player rankings
-let playerRankings = playerData.map((player, index) => {
-    const seeded = seededPerformanceOverrides[player.username] || { eloDelta: 0, wins: 0, losses: 0 };
-    const seededElo = Math.max(0, ELO_DEFAULT + seeded.eloDelta);
+function buildRankingsFromPlayerData(previousRankings = []) {
+    const previousByUsername = new Map((previousRankings || []).map((player) => [player.username, player]));
 
-    return {
-        rank: index + 1,
-        previousRank: index + 1,
-        rankChange: 0,
-        username: player.username,
-        faction: player.faction,
-        country: player.country,
-        addedOrder: index + 1,
-        isNew: index >= playerData.length - 8,
-        level: getLevelFromElo(seededElo),
-        elo: seededElo,
-        wins: seeded.wins,
-        losses: seeded.losses,
-        trend: 'neutral'
-    };
-});
+    return playerData.map((player, index) => {
+        const seeded = seededPerformanceOverrides[player.username] || { eloDelta: 0, wins: 0, losses: 0 };
+        const seededElo = Math.max(0, ELO_DEFAULT + seeded.eloDelta);
+        const existing = previousByUsername.get(player.username);
+
+        const safeElo = Number.isFinite(existing?.elo) ? Math.max(0, existing.elo) : seededElo;
+        const safeWins = Number.isFinite(existing?.wins) ? Math.max(0, existing.wins) : seeded.wins;
+        const safeLosses = Number.isFinite(existing?.losses) ? Math.max(0, existing.losses) : seeded.losses;
+
+        return {
+            rank: index + 1,
+            previousRank: Number.isFinite(existing?.rank) ? existing.rank : index + 1,
+            rankChange: 0,
+            username: player.username,
+            faction: player.faction,
+            country: player.country,
+            addedOrder: index + 1,
+            isNew: index >= playerData.length - 8,
+            level: getLevelFromElo(safeElo),
+            elo: safeElo,
+            wins: safeWins,
+            losses: safeLosses,
+            trend: 'neutral'
+        };
+    });
+}
+
+// Initialize player rankings
+let playerRankings = buildRankingsFromPlayerData();
 
 // Sort by ELO
 resortRankings();
@@ -582,6 +602,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const bootLoader = createBootLoaderController();
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    applySavedAdminOrder();
     populateFilters();
     renderLeaderboard(playerRankings);
     updateQuickStats(playerRankings.length);
@@ -601,6 +622,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     initializePlayerModalFx();
+    initializeMovableEditor();
 
     setTimeout(() => {
         bootLoader.complete();
@@ -614,11 +636,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Populate filter dropdowns
 function populateFilters() {
-    const factions = [...new Set(playerData.map(p => p.faction))].sort();
-    const countries = [...new Set(playerData.map(p => p.country))].sort();
-    
     const factionFilter = document.getElementById('factionFilter');
     const countryFilter = document.getElementById('countryFilter');
+    if (!factionFilter || !countryFilter) return;
+
+    factionFilter.innerHTML = '<option value="">All Factions</option>';
+    countryFilter.innerHTML = '<option value="">All Countries</option>';
+
+    const factions = [...new Set(playerData.map(p => p.faction))].sort();
+    const countries = [...new Set(playerData.map(p => p.country))].sort();
     
     factions.forEach(faction => {
         const option = document.createElement('option');
@@ -712,9 +738,7 @@ function renderTopPodium(players) {
     const podium = document.getElementById('topPodium');
     if (!podium) return [];
 
-    const top = [...players]
-        .sort((a, b) => b.elo - a.elo)
-        .slice(0, 3);
+    const top = players.slice(0, 3);
 
     if (!top.length) {
         podium.innerHTML = '';
@@ -895,6 +919,515 @@ function resortRankings() {
         player.rank = newRank;
         player.rankChange = oldRank - newRank;
         player.trend = player.rankChange > 0 ? 'up' : player.rankChange < 0 ? 'down' : 'neutral';
+    });
+}
+
+function resetFiltersForFreshData() {
+    quickFilterMode = 'all';
+
+    const searchInput = document.getElementById('searchInput');
+    const factionFilter = document.getElementById('factionFilter');
+    const countryFilter = document.getElementById('countryFilter');
+
+    if (searchInput) searchInput.value = '';
+    if (factionFilter) factionFilter.value = '';
+    if (countryFilter) countryFilter.value = '';
+
+    document.querySelectorAll('.quick-chip').forEach((chip) => {
+        chip.classList.toggle('active', chip.dataset.chip === 'all');
+    });
+}
+
+function setEditorStatus(message, tone = 'neutral') {
+    const statusNode = document.getElementById('editorStatus');
+    if (!statusNode) return;
+
+    statusNode.textContent = message;
+    statusNode.classList.remove('success', 'error');
+    if (tone === 'success') statusNode.classList.add('success');
+    if (tone === 'error') statusNode.classList.add('error');
+}
+
+function createAdminOrderDraft() {
+    return playerRankings.map((player) => ({
+        username: player.username,
+        faction: player.faction,
+        country: player.country
+    }));
+}
+
+function getStoredAdminOrder() {
+    try {
+        const raw = localStorage.getItem(ADMIN_ORDER_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string' && item.trim()) : [];
+    } catch {
+        return [];
+    }
+}
+
+function storeAdminOrder(usernames) {
+    try {
+        localStorage.setItem(ADMIN_ORDER_STORAGE_KEY, JSON.stringify(usernames));
+    } catch {
+        // Ignore storage failures in private modes.
+    }
+}
+
+function applyManualPlayerOrder(usernames, { persist = true, refresh = true } = {}) {
+    const rankingByUsername = new Map(playerRankings.map((player) => [player.username, player]));
+    const dataByUsername = new Map(playerData.map((player) => [player.username, player]));
+    const availableUsernames = playerRankings.map((player) => player.username);
+    const availableSet = new Set(availableUsernames);
+    const seen = new Set();
+    const orderedUsernames = [];
+
+    usernames.forEach((username) => {
+        if (!availableSet.has(username) || seen.has(username)) return;
+        seen.add(username);
+        orderedUsernames.push(username);
+    });
+
+    availableUsernames.forEach((username) => {
+        if (seen.has(username)) return;
+        seen.add(username);
+        orderedUsernames.push(username);
+    });
+
+    playerRankings = orderedUsernames
+        .map((username) => rankingByUsername.get(username))
+        .filter(Boolean);
+
+    const reorderedPlayers = orderedUsernames
+        .map((username) => dataByUsername.get(username))
+        .filter(Boolean);
+    playerData.splice(0, playerData.length, ...reorderedPlayers);
+
+    playerRankings.forEach((player, index) => {
+        const rank = index + 1;
+        player.rank = rank;
+        player.previousRank = rank;
+        player.rankChange = 0;
+        player.trend = 'neutral';
+        player.addedOrder = rank;
+    });
+
+    if (persist) {
+        storeAdminOrder(orderedUsernames);
+    }
+
+    if (refresh) {
+        populateFilters();
+        resetFiltersForFreshData();
+        renderLeaderboard(playerRankings);
+        updateQuickStats(playerRankings.length);
+    }
+
+    return orderedUsernames;
+}
+
+function applySavedAdminOrder() {
+    const storedOrder = getStoredAdminOrder();
+    if (!storedOrder.length) return;
+    applyManualPlayerOrder(storedOrder, { persist: false, refresh: false });
+}
+
+function moveAdminDraftPlayer(fromIndex, toIndex) {
+    if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex)) return;
+    if (fromIndex < 0 || toIndex < 0 || fromIndex >= adminOrderDraft.length || toIndex >= adminOrderDraft.length) return;
+    if (fromIndex === toIndex) return;
+
+    const [entry] = adminOrderDraft.splice(fromIndex, 1);
+    adminOrderDraft.splice(toIndex, 0, entry);
+}
+
+function renderAdminPlayerList(listNode) {
+    if (!listNode) return;
+    listNode.innerHTML = '';
+
+    adminOrderDraft.forEach((player, index) => {
+        const item = document.createElement('li');
+        item.className = 'admin-player-item';
+        item.draggable = true;
+        item.dataset.index = String(index);
+
+        const main = document.createElement('div');
+        main.className = 'admin-player-main';
+
+        const rank = document.createElement('span');
+        rank.className = 'admin-player-rank';
+        rank.textContent = `#${index + 1}`;
+
+        const meta = document.createElement('div');
+        meta.className = 'admin-player-meta';
+
+        const username = document.createElement('strong');
+        username.textContent = player.username;
+
+        const details = document.createElement('small');
+        details.textContent = `${player.faction} | ${player.country}`;
+
+        meta.appendChild(username);
+        meta.appendChild(details);
+
+        main.appendChild(rank);
+        main.appendChild(meta);
+
+        const controls = document.createElement('div');
+        controls.className = 'admin-player-move';
+
+        const upButton = document.createElement('button');
+        upButton.type = 'button';
+        upButton.className = 'editor-action-btn';
+        upButton.textContent = 'Up';
+        upButton.dataset.move = 'up';
+        upButton.dataset.index = String(index);
+        upButton.disabled = index === 0;
+
+        const downButton = document.createElement('button');
+        downButton.type = 'button';
+        downButton.className = 'editor-action-btn';
+        downButton.textContent = 'Down';
+        downButton.dataset.move = 'down';
+        downButton.dataset.index = String(index);
+        downButton.disabled = index === adminOrderDraft.length - 1;
+
+        controls.appendChild(upButton);
+        controls.appendChild(downButton);
+
+        item.appendChild(main);
+        item.appendChild(controls);
+
+        item.addEventListener('dragstart', (event) => {
+            adminDragIndex = index;
+            event.dataTransfer.effectAllowed = 'move';
+            item.classList.add('dragging-item');
+        });
+
+        item.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            item.classList.add('drag-over');
+        });
+
+        item.addEventListener('dragleave', () => {
+            item.classList.remove('drag-over');
+        });
+
+        item.addEventListener('drop', (event) => {
+            event.preventDefault();
+            item.classList.remove('drag-over');
+
+            if (adminDragIndex === null) return;
+            moveAdminDraftPlayer(adminDragIndex, index);
+            adminDragIndex = null;
+            renderAdminPlayerList(listNode);
+        });
+
+        item.addEventListener('dragend', () => {
+            adminDragIndex = null;
+            listNode.querySelectorAll('.admin-player-item').forEach((node) => {
+                node.classList.remove('drag-over', 'dragging-item');
+            });
+        });
+
+        listNode.appendChild(item);
+    });
+}
+
+async function adminRequest(path, { method = 'GET', body } = {}) {
+    const options = {
+        method,
+        credentials: 'include',
+        headers: {},
+    };
+
+    if (body !== undefined) {
+        options.body = JSON.stringify(body);
+        options.headers['Content-Type'] = 'application/json';
+    }
+
+    try {
+        const response = await fetch(path, options);
+        let payload = {};
+        try {
+            payload = await response.json();
+        } catch {
+            payload = {};
+        }
+
+        return { ok: response.ok, status: response.status, payload };
+    } catch {
+        return { ok: false, status: 0, payload: { error: 'Network error' } };
+    }
+}
+
+function clampEditorPosition(panel, left, top) {
+    const margin = 8;
+    const maxLeft = Math.max(margin, window.innerWidth - panel.offsetWidth - margin);
+    const maxTop = Math.max(margin, window.innerHeight - panel.offsetHeight - margin);
+
+    return {
+        left: Math.min(Math.max(margin, left), maxLeft),
+        top: Math.min(Math.max(margin, top), maxTop)
+    };
+}
+
+function initializeMovableEditor() {
+    const panel = document.getElementById('movableEditor');
+    const handle = document.getElementById('movableEditorHandle');
+    const toggle = document.getElementById('editorToggle');
+    const close = document.getElementById('editorClose');
+    const authBlock = document.getElementById('adminAuthBlock');
+    const controls = document.getElementById('adminControls');
+    const passwordInput = document.getElementById('adminPasswordInput');
+    const loginButton = document.getElementById('adminLoginBtn');
+    const logoutButton = document.getElementById('adminLogout');
+    const applyOrderButton = document.getElementById('adminApplyOrder');
+    const resetOrderButton = document.getElementById('adminResetOrder');
+    const listNode = document.getElementById('adminPlayerList');
+    const logoImage = document.querySelector('.logo-image');
+    const SECRET_ADMIN_SEQUENCE = 'draxaradmin';
+    let typedSequence = '';
+    let logoTapCount = 0;
+    let logoTapTimer = null;
+
+    if (!panel || !handle || !toggle || !close || !authBlock || !controls || !passwordInput || !loginButton || !logoutButton || !applyOrderButton || !resetOrderButton || !listNode) return;
+
+    const setAuthView = (isAuthenticated) => {
+        adminSessionActive = isAuthenticated;
+        authBlock.hidden = isAuthenticated;
+        controls.hidden = !isAuthenticated;
+        logoutButton.hidden = !isAuthenticated;
+    };
+
+    const refreshDraftFromRankings = () => {
+        adminOrderDraft = createAdminOrderDraft();
+        renderAdminPlayerList(listNode);
+    };
+
+    const refreshAuthState = async () => {
+        const result = await adminRequest('/api/admin/session', { method: 'GET' });
+        const isAuthenticated = Boolean(result.ok && result.payload && result.payload.authenticated === true);
+        setAuthView(isAuthenticated);
+        return isAuthenticated;
+    };
+
+    const openPanel = async () => {
+        panel.classList.add('active');
+        panel.setAttribute('aria-hidden', 'false');
+        toggle.classList.add('active');
+
+        setEditorStatus('Checking admin session...');
+        const authenticated = await refreshAuthState();
+        if (authenticated) {
+            refreshDraftFromRankings();
+            setEditorStatus('Admin unlocked. Drag players to reorder.', 'success');
+        } else {
+            setEditorStatus('Locked: enter admin password.', 'error');
+            passwordInput.focus();
+        }
+    };
+
+    const closePanel = () => {
+        panel.classList.remove('active', 'dragging');
+        panel.setAttribute('aria-hidden', 'true');
+        toggle.classList.remove('active');
+    };
+
+    const togglePanel = async () => {
+        if (panel.classList.contains('active')) {
+            closePanel();
+        } else {
+            await openPanel();
+        }
+    };
+
+    const shouldIgnoreSecretKeyEvent = (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return false;
+
+        const tagName = target.tagName;
+        return target.isContentEditable
+            || tagName === 'INPUT'
+            || tagName === 'TEXTAREA'
+            || tagName === 'SELECT';
+    };
+
+    toggle.addEventListener('click', async () => {
+        await togglePanel();
+    });
+
+    close.addEventListener('click', closePanel);
+
+    loginButton.addEventListener('click', async () => {
+        const password = passwordInput.value;
+        if (!password) {
+            setEditorStatus('Password is required.', 'error');
+            return;
+        }
+
+        setEditorStatus('Signing in...');
+        const result = await adminRequest('/api/admin/login', {
+            method: 'POST',
+            body: { password }
+        });
+
+        if (!result.ok) {
+            const message = result.payload?.error || 'Access denied.';
+            setEditorStatus(message, 'error');
+            return;
+        }
+
+        passwordInput.value = '';
+        setAuthView(true);
+        refreshDraftFromRankings();
+        setEditorStatus('Admin unlocked. You can reorder players now.', 'success');
+    });
+
+    passwordInput.addEventListener('keydown', async (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        loginButton.click();
+    });
+
+    logoutButton.addEventListener('click', async () => {
+        await adminRequest('/api/admin/logout', { method: 'POST' });
+        setAuthView(false);
+        setEditorStatus('Logged out. Admin panel is locked.', 'error');
+    });
+
+    listNode.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+
+        const button = target.closest('button[data-move]');
+        if (!button) return;
+
+        const index = Number.parseInt(button.dataset.index || '-1', 10);
+        const direction = button.dataset.move;
+        if (direction === 'up') {
+            moveAdminDraftPlayer(index, index - 1);
+        } else if (direction === 'down') {
+            moveAdminDraftPlayer(index, index + 1);
+        }
+
+        renderAdminPlayerList(listNode);
+    });
+
+    applyOrderButton.addEventListener('click', () => {
+        if (!adminSessionActive) {
+            setEditorStatus('Login required before applying order.', 'error');
+            return;
+        }
+
+        const orderedUsernames = adminOrderDraft.map((entry) => entry.username);
+        applyManualPlayerOrder(orderedUsernames, { persist: true, refresh: true });
+        refreshDraftFromRankings();
+        setEditorStatus('New order applied and saved in this browser.', 'success');
+        showToast('Admin Update', 'Player order updated.', 'queue');
+    });
+
+    resetOrderButton.addEventListener('click', () => {
+        if (!adminSessionActive) return;
+        refreshDraftFromRankings();
+        setEditorStatus('List reset to current leaderboard order.', 'success');
+    });
+
+    document.addEventListener('keydown', async (event) => {
+        if (shouldIgnoreSecretKeyEvent(event)) return;
+
+        const key = String(event.key || '').toLowerCase();
+        if (event.ctrlKey && event.shiftKey && key === 'a') {
+            event.preventDefault();
+            await togglePanel();
+            return;
+        }
+
+        if (event.altKey || event.ctrlKey || event.metaKey || key.length !== 1) return;
+
+        typedSequence = (typedSequence + key).slice(-SECRET_ADMIN_SEQUENCE.length);
+        if (typedSequence === SECRET_ADMIN_SEQUENCE) {
+            typedSequence = '';
+            await togglePanel();
+        }
+    });
+
+    if (logoImage) {
+        logoImage.addEventListener('click', async () => {
+            logoTapCount += 1;
+
+            if (logoTapTimer) {
+                clearTimeout(logoTapTimer);
+            }
+
+            logoTapTimer = setTimeout(() => {
+                logoTapCount = 0;
+            }, 1800);
+
+            if (logoTapCount >= 5) {
+                logoTapCount = 0;
+                clearTimeout(logoTapTimer);
+                logoTapTimer = null;
+                await togglePanel();
+            }
+        });
+    }
+
+    handle.addEventListener('pointerdown', (event) => {
+        if (!panel.classList.contains('active')) return;
+        if (event.target instanceof HTMLElement && event.target.closest('button')) return;
+
+        editorDragState.active = true;
+        const rect = panel.getBoundingClientRect();
+        editorDragState.offsetX = event.clientX - rect.left;
+        editorDragState.offsetY = event.clientY - rect.top;
+        panel.classList.add('dragging');
+        panel.style.left = `${rect.left}px`;
+        panel.style.top = `${rect.top}px`;
+        panel.style.right = 'auto';
+
+        handle.setPointerCapture(event.pointerId);
+    });
+
+    handle.addEventListener('pointermove', (event) => {
+        if (!editorDragState.active) return;
+        const nextLeft = event.clientX - editorDragState.offsetX;
+        const nextTop = event.clientY - editorDragState.offsetY;
+        const clamped = clampEditorPosition(panel, nextLeft, nextTop);
+        panel.style.left = `${clamped.left}px`;
+        panel.style.top = `${clamped.top}px`;
+    });
+
+    handle.addEventListener('pointerup', (event) => {
+        if (!editorDragState.active) return;
+        editorDragState.active = false;
+        panel.classList.remove('dragging');
+        handle.releasePointerCapture(event.pointerId);
+    });
+
+    handle.addEventListener('pointercancel', () => {
+        editorDragState.active = false;
+        panel.classList.remove('dragging');
+    });
+
+    window.addEventListener('resize', () => {
+        if (!panel.classList.contains('active')) return;
+        if (!panel.style.left || !panel.style.top) return;
+
+        const left = Number.parseFloat(panel.style.left);
+        const top = Number.parseFloat(panel.style.top);
+        if (!Number.isFinite(left) || !Number.isFinite(top)) return;
+
+        const clamped = clampEditorPosition(panel, left, top);
+        panel.style.left = `${clamped.left}px`;
+        panel.style.top = `${clamped.top}px`;
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && panel.classList.contains('active')) {
+            closePanel();
+        }
     });
 }
 
