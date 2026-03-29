@@ -121,6 +121,43 @@ Works best in:
 - Discord webhook notifications
 - Database integration for persistent data
 
+## Discord Bot Website Sync
+
+This repo now includes a secure stats endpoint for Discord bots:
+
+- Endpoint: `/api/bot/stats`
+- Method: `GET`
+- Required header: `x-bot-token: <WEBSITE_API_TOKEN>`
+
+Response format (root-level stats):
+
+```json
+{
+   "players": 42,
+   "factions": 12,
+   "countries": 22,
+   "updatedAt": "2026-03-28T22:30:00.000Z"
+}
+```
+
+Set this variable in Vercel project settings:
+
+- `WEBSITE_API_TOKEN=your_secret_token_here`
+
+Suggested bot `.env` values:
+
+- `WEBSITE_API_URL=https://dxc-chi.vercel.app/api/bot/stats`
+- `WEBSITE_API_TOKEN=your_secret_token_here`
+- `WEBSITE_HOME_URL=https://dxc-chi.vercel.app/`
+- `WEBSITE_SYNC_ENABLED=true`
+- `WEBSITE_SYNC_INTERVAL_MINUTES=5`
+
+Local test example:
+
+```bash
+curl -H "x-bot-token: your_secret_token_here" http://localhost:3000/api/bot/stats
+```
+
 ## Support
 
 To modify or extend the website:
