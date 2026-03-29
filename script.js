@@ -41,7 +41,9 @@ const playerData = [
     { username: "ThatRandomPerson142", faction: "RKA", country: "USA" },
     { username: "Vespartan_alt", faction: "TWL", country: "Czechia" },
     { username: "vcfghcemil", faction: "CZSK", country: "Germany" },
-    { username: "xxninjaxx9065", faction: "TWL", country: "United Kingdom" }
+    { username: "xxninjaxx9065", faction: "TWL", country: "United Kingdom" },
+    { username: "kkevin789", faction: "AH", country: "USA" },
+    { username: "Soliplismm", faction: "RKA", country: "Vietnam" }
 ];
 
 // ELO system configuration (public rules)
