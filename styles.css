@@ -1181,6 +1181,38 @@ main {
     transform: translateY(-4px);
 }
 
+.match-card.featured-report {
+    border-color: rgba(209, 18, 31, 0.38);
+    background: linear-gradient(145deg, rgba(209, 18, 31, 0.12), rgba(10, 15, 34, 0.9));
+}
+
+.match-report-title {
+    margin: 0 0 0.85rem;
+    font-size: 1.25rem;
+    letter-spacing: 0.03em;
+    color: var(--text-primary);
+}
+
+.match-summary {
+    margin: 0 0 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    font-size: 0.92rem;
+}
+
+.match-highlights {
+    margin: 0 0 1rem;
+    padding-left: 1rem;
+    display: grid;
+    gap: 0.35rem;
+    color: var(--text-secondary);
+    font-size: 0.87rem;
+}
+
+.match-highlights li::marker {
+    color: var(--accent);
+}
+
 .match-header {
     display: flex;
     justify-content: space-between;
@@ -1208,6 +1240,11 @@ main {
 .match-result.loss {
     background: rgba(255, 51, 102, 0.2);
     color: var(--danger);
+}
+
+.match-result.draw {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffd86b;
 }
 
 .match-players {
@@ -1250,6 +1287,25 @@ main {
     color: var(--text-secondary);
     padding-top: 1rem;
     border-top: 1px solid var(--border);
+}
+
+.match-inline-link,
+.match-source a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.match-inline-link:hover,
+.match-source a:hover {
+    text-decoration: underline;
+}
+
+.match-source {
+    margin-top: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.86rem;
+    letter-spacing: 0.03em;
 }
 
 /* Player Profile */
