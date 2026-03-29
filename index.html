@@ -45,7 +45,6 @@
             </div>
             <nav class="nav">
                 <a href="#leaderboard" class="nav-link active" data-tip="Live ranking board" onclick="switchView('leaderboard', event)">Leaderboard</a>
-                <a href="#elo" class="nav-link" data-tip="Scoring rules" onclick="switchView('elo', event)">ELO System</a>
                 <a href="#matches" class="nav-link" data-tip="Recent matches" onclick="switchView('matches', event)">Match History</a>
             </nav>
         </div>
@@ -98,11 +97,10 @@
 
             <div class="leaderboard">
                 <div class="leaderboard-header">
-                    <div class="rank">#</div>
+                    <div class="rank">Lvl</div>
                     <div class="player-info">Player</div>
                     <div class="stats-header">
                         <div class="stat">Level</div>
-                        <div class="stat">ELO</div>
                         <div class="stat">W/L</div>
                         <div class="stat">Faction</div>
                         <div class="stat">Country</div>
@@ -110,62 +108,6 @@
                     <div class="trend">Trend</div>
                 </div>
                 <div id="leaderboardTable" class="leaderboard-body"></div>
-            </div>
-        </section>
-
-        <section id="elo-view" class="view">
-            <div class="page-header">
-                <h2>ELO System</h2>
-            </div>
-            <div class="elo-system" id="eloRules">
-                <div class="elo-system-header">
-                    <h3>ELO Rating System</h3>
-                    <p>All players start at <strong>1000 ELO</strong>. Fast climb for strong players, fast drop for poor performance.</p>
-                </div>
-
-                <div class="elo-grid">
-                    <article class="elo-card">
-                        <h4>1v1 Matches</h4>
-                        <p>High impact for fast ladder movement.</p>
-                        <ul class="elo-list">
-                            <li><span>Win vs same level</span><strong>+500</strong></li>
-                            <li><span>Win vs higher ELO</span><strong>+650</strong></li>
-                            <li><span>Win vs lower ELO</span><strong>+350</strong></li>
-                            <li><span>Loss vs same level</span><strong>-400</strong></li>
-                            <li><span>Loss vs higher ELO</span><strong>-250</strong></li>
-                            <li><span>Loss vs lower ELO</span><strong>-550</strong></li>
-                        </ul>
-                    </article>
-
-                    <article class="elo-card">
-                        <h4>Faction Battles</h4>
-                        <p>Scoreboard performance decides your ELO impact.</p>
-                        <ul class="elo-list">
-                            <li><span>Top performer on winning team</span><strong>+400</strong></li>
-                            <li><span>Average performance win</span><strong>+200</strong></li>
-                            <li><span>Low performance win</span><strong>+100</strong></li>
-                            <li><span>Top performer on losing team</span><strong>-100</strong></li>
-                            <li><span>Average performance loss</span><strong>-200</strong></li>
-                            <li><span>Low performance loss</span><strong>-305</strong></li>
-                        </ul>
-                    </article>
-                </div>
-
-                <article class="elo-card elo-levels">
-                    <h4>Level Thresholds</h4>
-                    <div class="levels-grid">
-                        <div class="level-chip"><span>Level 1</span><strong>450</strong></div>
-                        <div class="level-chip"><span>Level 2</span><strong>500</strong></div>
-                        <div class="level-chip"><span>Level 3</span><strong>600</strong></div>
-                        <div class="level-chip"><span>Level 4</span><strong>750</strong></div>
-                        <div class="level-chip"><span>Level 5</span><strong>1000</strong></div>
-                        <div class="level-chip"><span>Level 6</span><strong>1200</strong></div>
-                        <div class="level-chip"><span>Level 7</span><strong>1400</strong></div>
-                        <div class="level-chip"><span>Level 8</span><strong>1800</strong></div>
-                        <div class="level-chip"><span>Level 9</span><strong>2000</strong></div>
-                        <div class="level-chip"><span>Level 10</span><strong>2400+</strong></div>
-                    </div>
-                </article>
             </div>
         </section>
 
@@ -210,10 +152,6 @@
                     <div class="stat-box">
                         <div class="stat-label">Rank</div>
                         <div class="stat-value" id="playerRank">-</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">ELO</div>
-                        <div class="stat-value elo" id="playerELO">-</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">Win/Loss</div>
@@ -267,10 +205,10 @@
         </div>
 
         <div id="adminControls" class="admin-controls" hidden>
-            <p class="movable-editor-help">Drag players to move them up or down, then press Apply Order.</p>
+            <p class="movable-editor-help">Drag players to reorder. Top 10 players can have levels assigned before you apply.</p>
             <ul id="adminPlayerList" class="admin-player-list"></ul>
             <div class="movable-editor-actions">
-                <button type="button" id="adminApplyOrder" class="editor-action-btn primary">Apply Order</button>
+                <button type="button" id="adminApplyOrder" class="editor-action-btn primary">Apply Ranking</button>
                 <button type="button" id="adminResetOrder" class="editor-action-btn">Reset List</button>
             </div>
         </div>
@@ -281,6 +219,6 @@
     <div id="matchResultStack" class="match-popup-stack" aria-live="polite" aria-atomic="false"></div>
     <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
-    <script src="script.js?v=20260329-sync1"></script>
+    <script src="script.js?v=20260329-levelsync2"></script>
 </body>
 </html>

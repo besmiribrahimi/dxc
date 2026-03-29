@@ -103,6 +103,7 @@ function getRelativeTierByLevel(playerElo, opponentElo) {
 let quickFilterMode = 'all';
 let searchDebounceTimer = null;
 const ADMIN_ORDER_STORAGE_KEY = 'draxar_admin_order_v1';
+const ADMIN_LEVEL_STORAGE_KEY = 'draxar_admin_levels_v1';
 const GLOBAL_ORDER_ENDPOINT = '/api/rankings/order';
 let adminOrderDraft = [];
 let adminDragIndex = null;
@@ -127,7 +128,7 @@ function createBootLoaderController() {
     const steps = [
         { at: 0, text: 'Syncing ranked telemetry...' },
         { at: 20, text: 'Loading faction banners...' },
-        { at: 45, text: 'Calibrating ELO systems...' },
+        { at: 45, text: 'Calibrating ranking systems...' },
         { at: 70, text: 'Preparing match overlays...' },
         { at: 90, text: 'Finalizing competitive feed...' }
     ];
@@ -501,6 +502,17 @@ const seededPerformanceOverrides = {
     '20SovietSO21': { eloDelta: 1000, wins: 2, losses: 0 }
 };
 
+function normalizeLevelValue(value) {
+    const parsed = Number.parseInt(String(value ?? ''), 10);
+    if (!Number.isFinite(parsed)) return 0;
+    return Math.max(0, Math.min(10, parsed));
+}
+
+function defaultLevelForRank(rank) {
+    if (rank < 1 || rank > 10) return 0;
+    return Math.max(1, 11 - rank);
+}
+
 function buildRankingsFromPlayerData(previousRankings = []) {
     const previousByUsername = new Map((previousRankings || []).map((player) => [player.username, player]));
 
@@ -508,21 +520,28 @@ function buildRankingsFromPlayerData(previousRankings = []) {
         const seeded = seededPerformanceOverrides[player.username] || { eloDelta: 0, wins: 0, losses: 0 };
         const seededElo = Math.max(0, ELO_DEFAULT + seeded.eloDelta);
         const existing = previousByUsername.get(player.username);
+        const rank = index + 1;
 
         const safeElo = Number.isFinite(existing?.elo) ? Math.max(0, existing.elo) : seededElo;
         const safeWins = Number.isFinite(existing?.wins) ? Math.max(0, existing.wins) : seeded.wins;
         const safeLosses = Number.isFinite(existing?.losses) ? Math.max(0, existing.losses) : seeded.losses;
+        const storedPlayerLevel = normalizeLevelValue(player?.level);
+        const existingLevel = normalizeLevelValue(existing?.level);
+        const levelCandidate = existingLevel || storedPlayerLevel || defaultLevelForRank(rank);
+        const safeLevel = rank <= 10 ? levelCandidate : 0;
+
+        player.level = safeLevel;
 
         return {
-            rank: index + 1,
-            previousRank: Number.isFinite(existing?.rank) ? existing.rank : index + 1,
+            rank,
+            previousRank: Number.isFinite(existing?.rank) ? existing.rank : rank,
             rankChange: 0,
             username: player.username,
             faction: player.faction,
             country: player.country,
-            addedOrder: index + 1,
+            addedOrder: rank,
             isNew: index >= playerData.length - 8,
-            level: getLevelFromElo(safeElo),
+            level: safeLevel,
             elo: safeElo,
             wins: safeWins,
             losses: safeLosses,
@@ -534,7 +553,7 @@ function buildRankingsFromPlayerData(previousRankings = []) {
 // Initialize player rankings
 let playerRankings = buildRankingsFromPlayerData();
 
-// Sort by ELO
+// Normalize initial ranking metadata
 resortRankings();
 
 // Country to Emoji mapping
@@ -631,6 +650,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         setTimeout(() => {
             runCinematicSectionReveal('leaderboard');
             notifyWithProfile('queueStatus', 'Ranked Queue', 'Status: Open and matching players', { status: 'open' });
+            notifyWithProfile(
+                'systemNotice',
+                'Ranking Update',
+                'ELO has been removed because the ratio between active and offline players is too high. Staff will now judge players.'
+            );
         }, reducedMotion ? 0 : 210);
     }, reducedMotion ? 160 : 900);
 });
@@ -702,9 +726,19 @@ function renderLeaderboard(players) {
         
         const factionImg = getFactionFlag(player.faction);
         const factionDisplay = factionImg ? `<img src="${factionImg}" alt="${player.faction}" class="faction-flag">` : '';
+        const hasLevel = player.rank <= 10 && player.level > 0;
+        const leftColumnLevel = hasLevel ? player.level : 0;
+        const levelMarkup = hasLevel
+            ? `
+                <span class="level-badge">
+                    <img src="${player.level}.png" alt="Level ${player.level}" class="level-img" onerror="this.style.display='none'">
+                    Lvl ${player.level}
+                </span>
+            `
+            : '<span class="level-badge level-empty">Unrated</span>';
         
         row.innerHTML = `
-            <div class="rank">${player.rank}</div>
+            <div class="rank">${leftColumnLevel}</div>
             <div class="player-info">
                 <div class="player-avatar">${player.username.charAt(0).toUpperCase()}</div>
                 <div class="player-name">
@@ -714,13 +748,7 @@ function renderLeaderboard(players) {
                 </div>
             </div>
             <div class="stats-row">
-                <div class="stat">
-                    <span class="level-badge">
-                        <img src="${player.level}.png" alt="Level ${player.level}" class="level-img" onerror="this.style.display='none'">
-                        Lvl ${player.level}
-                    </span>
-                </div>
-                <div class="stat elo">${player.elo.toFixed(0)}</div>
+                <div class="stat">${levelMarkup}</div>
                 <div class="stat win-loss ${wlClass}">${player.wins}W-${player.losses}L</div>
                 <div class="stat faction-tag">${factionDisplay}${factionDisplay ? ' ' : ''}${player.faction}</div>
                 <div class="stat country-tag">${getCountryEmoji(player.country)} ${player.country}</div>
@@ -775,6 +803,7 @@ function renderTopPodium(players) {
                 ? `${player.rankChange}`
                 : '0';
         const rankShiftClass = player.rankChange > 0 ? 'up' : player.rankChange < 0 ? 'down' : 'steady';
+        const podiumLevel = normalizeLevelValue(player.level) || defaultLevelForRank(place);
         const badges = getPlayerBadges(player).slice(0, 1)
             .map((badge) => `<span class="player-badge badge-${badge.toLowerCase().replace(/\s+/g, '-')}">${badge}</span>`)
             .join('');
@@ -787,14 +816,14 @@ function renderTopPodium(players) {
                     <small>${factionDisplay}${factionDisplay ? ' ' : ''}${player.faction}</small>
                     <span>${getCountryEmoji(player.country)} ${player.country}</span>
                     <div class="podium-meta-row">
-                        <span class="podium-level">Lvl ${player.level}</span>
+                        <span class="podium-level">Lvl ${podiumLevel}</span>
                         <span class="podium-record">${player.wins}W-${player.losses}L</span>
                     </div>
                     ${badges}
                 </div>
                 <div class="podium-step step-${place}">
                     <div class="podium-place">#${place}</div>
-                    <div class="podium-elo">${player.elo.toFixed(0)} ELO</div>
+                    <div class="podium-elo">Lvl ${podiumLevel}</div>
                     <div class="podium-rank-delta ${rankShiftClass}">${rankShift}</div>
                 </div>
             </div>
@@ -910,8 +939,6 @@ function updateQuickStats(shownCount) {
 
 function resortRankings() {
     const previousRanks = new Map(playerRankings.map((player) => [player.username, player.rank || 0]));
-
-    playerRankings.sort((a, b) => b.elo - a.elo);
     
     playerRankings.forEach((player, index) => {
         const newRank = index + 1;
@@ -920,6 +947,15 @@ function resortRankings() {
         player.rank = newRank;
         player.rankChange = oldRank - newRank;
         player.trend = player.rankChange > 0 ? 'up' : player.rankChange < 0 ? 'down' : 'neutral';
+        player.level = newRank <= 10 ? (normalizeLevelValue(player.level) || defaultLevelForRank(newRank)) : 0;
+    });
+
+    const rankingByUsername = new Map(playerRankings.map((player) => [player.username, player]));
+    playerData.forEach((player) => {
+        const ranking = rankingByUsername.get(player.username);
+        if (ranking) {
+            player.level = ranking.level;
+        }
     });
 }
 
@@ -953,7 +989,10 @@ function createAdminOrderDraft() {
     return playerRankings.map((player) => ({
         username: player.username,
         faction: player.faction,
-        country: player.country
+        country: player.country,
+        level: player.rank <= 10
+            ? (normalizeLevelValue(player.level) || defaultLevelForRank(player.rank))
+            : 0
     }));
 }
 
@@ -976,7 +1015,94 @@ function storeAdminOrder(usernames) {
     }
 }
 
-function applyManualPlayerOrder(usernames, { persist = true, refresh = true } = {}) {
+function getStoredAdminLevels() {
+    try {
+        const raw = localStorage.getItem(ADMIN_LEVEL_STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+
+        const sanitized = {};
+        Object.entries(parsed).forEach(([username, value]) => {
+            const safeName = String(username || '').trim();
+            if (!safeName) return;
+            const safeLevel = normalizeLevelValue(value);
+            if (safeLevel > 0) {
+                sanitized[safeName] = safeLevel;
+            }
+        });
+
+        return sanitized;
+    } catch {
+        return {};
+    }
+}
+
+function storeAdminLevels(levelsByUsername) {
+    const safeLevels = {};
+    if (levelsByUsername && typeof levelsByUsername === 'object' && !Array.isArray(levelsByUsername)) {
+        Object.entries(levelsByUsername).forEach(([username, value]) => {
+            const safeName = String(username || '').trim();
+            if (!safeName) return;
+            const safeLevel = normalizeLevelValue(value);
+            if (safeLevel > 0) {
+                safeLevels[safeName] = safeLevel;
+            }
+        });
+    }
+
+    try {
+        localStorage.setItem(ADMIN_LEVEL_STORAGE_KEY, JSON.stringify(safeLevels));
+    } catch {
+        // Ignore storage failures in private modes.
+    }
+}
+
+function sanitizeLevelMap(levelsByUsername) {
+    const safeLevels = {};
+    if (!levelsByUsername || typeof levelsByUsername !== 'object' || Array.isArray(levelsByUsername)) {
+        return safeLevels;
+    }
+
+    Object.entries(levelsByUsername).forEach(([username, value]) => {
+        const safeName = String(username || '').trim();
+        if (!safeName) return;
+        const safeLevel = normalizeLevelValue(value);
+        if (safeLevel > 0) {
+            safeLevels[safeName] = safeLevel;
+        }
+    });
+
+    return safeLevels;
+}
+
+function createLevelMapFromAdminDraft() {
+    const levels = {};
+
+    adminOrderDraft.forEach((entry, index) => {
+        if (index >= 10) return;
+
+        const fallbackLevel = defaultLevelForRank(index + 1);
+        const safeLevel = normalizeLevelValue(entry.level) || fallbackLevel;
+        levels[entry.username] = safeLevel;
+    });
+
+    return levels;
+}
+
+function normalizeAdminDraftLevels() {
+    adminOrderDraft.forEach((entry, index) => {
+        if (index >= 10) {
+            entry.level = 0;
+            return;
+        }
+
+        const fallbackLevel = defaultLevelForRank(index + 1);
+        entry.level = normalizeLevelValue(entry.level) || fallbackLevel;
+    });
+}
+
+function applyManualPlayerOrder(usernames, { persist = true, refresh = true, levelsByUsername = {} } = {}) {
     const rankingByUsername = new Map(playerRankings.map((player) => [player.username, player]));
     const dataByUsername = new Map(playerData.map((player) => [player.username, player]));
     const availableUsernames = playerRankings.map((player) => player.username);
@@ -1005,6 +1131,8 @@ function applyManualPlayerOrder(usernames, { persist = true, refresh = true } = 
         .filter(Boolean);
     playerData.splice(0, playerData.length, ...reorderedPlayers);
 
+    const safeLevels = sanitizeLevelMap(levelsByUsername);
+
     playerRankings.forEach((player, index) => {
         const rank = index + 1;
         player.rank = rank;
@@ -1012,10 +1140,29 @@ function applyManualPlayerOrder(usernames, { persist = true, refresh = true } = 
         player.rankChange = 0;
         player.trend = 'neutral';
         player.addedOrder = rank;
+
+        const fallbackLevel = defaultLevelForRank(rank);
+        const existingLevel = normalizeLevelValue(player.level);
+        const selectedLevel = normalizeLevelValue(safeLevels[player.username]);
+        const nextLevel = rank <= 10
+            ? (selectedLevel || existingLevel || fallbackLevel)
+            : 0;
+
+        player.level = nextLevel;
+        const source = dataByUsername.get(player.username);
+        if (source) source.level = nextLevel;
     });
 
     if (persist) {
         storeAdminOrder(orderedUsernames);
+        const levelsToStore = {};
+        playerRankings.slice(0, 10).forEach((player) => {
+            const safeLevel = normalizeLevelValue(player.level);
+            if (safeLevel > 0) {
+                levelsToStore[player.username] = safeLevel;
+            }
+        });
+        storeAdminLevels(levelsToStore);
     }
 
     if (refresh) {
@@ -1031,15 +1178,17 @@ function applyManualPlayerOrder(usernames, { persist = true, refresh = true } = 
 async function applyInitialRankingOrder() {
     const globalResult = await adminRequest(GLOBAL_ORDER_ENDPOINT, { method: 'GET' });
     const globalOrder = Array.isArray(globalResult?.payload?.order) ? globalResult.payload.order : [];
+    const globalLevels = sanitizeLevelMap(globalResult?.payload?.levels);
 
     if (globalResult.ok && globalOrder.length) {
-        applyManualPlayerOrder(globalOrder, { persist: true, refresh: false });
+        applyManualPlayerOrder(globalOrder, { persist: true, refresh: false, levelsByUsername: globalLevels });
         return;
     }
 
     const storedOrder = getStoredAdminOrder();
+    const storedLevels = getStoredAdminLevels();
     if (!storedOrder.length) return;
-    applyManualPlayerOrder(storedOrder, { persist: false, refresh: false });
+    applyManualPlayerOrder(storedOrder, { persist: false, refresh: false, levelsByUsername: storedLevels });
 }
 
 function moveAdminDraftPlayer(fromIndex, toIndex) {
@@ -1053,6 +1202,7 @@ function moveAdminDraftPlayer(fromIndex, toIndex) {
 
 function renderAdminPlayerList(listNode) {
     if (!listNode) return;
+    normalizeAdminDraftLevels();
     listNode.innerHTML = '';
 
     adminOrderDraft.forEach((player, index) => {
@@ -1085,6 +1235,30 @@ function renderAdminPlayerList(listNode) {
 
         const controls = document.createElement('div');
         controls.className = 'admin-player-move';
+
+        const levelSelect = document.createElement('select');
+        levelSelect.className = 'admin-level-select';
+        levelSelect.dataset.levelIndex = String(index);
+
+        if (index < 10) {
+            for (let level = 1; level <= 10; level += 1) {
+                const option = document.createElement('option');
+                option.value = String(level);
+                option.textContent = `Lvl ${level}`;
+                levelSelect.appendChild(option);
+            }
+
+            levelSelect.value = String(normalizeLevelValue(player.level) || defaultLevelForRank(index + 1));
+        } else {
+            const option = document.createElement('option');
+            option.value = '0';
+            option.textContent = 'Unrated';
+            levelSelect.appendChild(option);
+            levelSelect.value = '0';
+            levelSelect.disabled = true;
+        }
+
+        controls.appendChild(levelSelect);
 
         const upButton = document.createElement('button');
         upButton.type = 'button';
@@ -1245,7 +1419,7 @@ function initializeMovableEditor() {
         const authenticated = await refreshAuthState();
         if (authenticated) {
             refreshDraftFromRankings();
-            setEditorStatus('Admin unlocked. Drag players to reorder.', 'success');
+            setEditorStatus('Admin unlocked. Reorder players and set top-10 levels.', 'success');
         } else {
             setEditorStatus('Locked: enter admin password.', 'error');
             passwordInput.focus();
@@ -1305,7 +1479,7 @@ function initializeMovableEditor() {
         passwordInput.value = '';
         setAuthView(true);
         refreshDraftFromRankings();
-        setEditorStatus('Admin unlocked. You can reorder players now.', 'success');
+        setEditorStatus('Admin unlocked. You can reorder players and edit top-10 levels.', 'success');
     });
 
     passwordInput.addEventListener('keydown', async (event) => {
@@ -1338,25 +1512,38 @@ function initializeMovableEditor() {
         renderAdminPlayerList(listNode);
     });
 
+    listNode.addEventListener('change', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLSelectElement)) return;
+
+        const index = Number.parseInt(target.dataset.levelIndex || '-1', 10);
+        if (!Number.isInteger(index) || index < 0 || index >= adminOrderDraft.length) return;
+        if (index >= 10) return;
+
+        adminOrderDraft[index].level = normalizeLevelValue(target.value) || defaultLevelForRank(index + 1);
+    });
+
     applyOrderButton.addEventListener('click', async () => {
         if (!adminSessionActive) {
             setEditorStatus('Login required before applying order.', 'error');
             return;
         }
 
+        normalizeAdminDraftLevels();
         const orderedUsernames = adminOrderDraft.map((entry) => entry.username);
-        setEditorStatus('Saving global ranking order...');
+        const levelMap = createLevelMapFromAdminDraft();
+        setEditorStatus('Saving global ranking...');
 
         const saveResult = await adminRequest('/api/admin/ranking-order', {
             method: 'PUT',
-            body: { order: orderedUsernames }
+            body: { order: orderedUsernames, levels: levelMap }
         });
 
         if (!saveResult.ok) {
             const canFallbackLocal = saveResult.status === 0 || saveResult.status === 404;
 
             if (canFallbackLocal) {
-                applyManualPlayerOrder(orderedUsernames, { persist: true, refresh: true });
+                applyManualPlayerOrder(orderedUsernames, { persist: true, refresh: true, levelsByUsername: levelMap });
                 refreshDraftFromRankings();
                 setEditorStatus('Global sync unavailable. Saved locally only on this device.', 'error');
                 showToast('Admin Update', 'Saved locally only.', 'loss');
@@ -1368,9 +1555,9 @@ function initializeMovableEditor() {
             return;
         }
 
-        applyManualPlayerOrder(orderedUsernames, { persist: true, refresh: true });
+        applyManualPlayerOrder(orderedUsernames, { persist: true, refresh: true, levelsByUsername: levelMap });
         refreshDraftFromRankings();
-        setEditorStatus('Global order saved. It will sync across devices.', 'success');
+        setEditorStatus('Global order and levels saved. It will sync across devices.', 'success');
         showToast('Admin Update', 'Global ranking updated.', 'queue');
     });
 
@@ -1631,9 +1818,10 @@ function getPlayerTierLabel(player) {
     if (player.rank === 1) return 'Champion';
     if (player.rank <= 3) return 'Podium';
     if (player.rank <= 10) return 'Contender';
-    if (player.elo >= 1800) return 'Elite';
-    if (player.elo >= 1200) return 'Veteran';
-    return 'Rookie';
+    const level = normalizeLevelValue(player.level);
+    if (level >= 7) return 'Elite';
+    if (level >= 4) return 'Veteran';
+    return 'Unrated';
 }
 
 function getPlayerModalMoodClass(player) {
@@ -1721,9 +1909,12 @@ function openPlayerModal(username) {
     // Set player info
     document.getElementById('playerModalName').textContent = player.username;
     animateModalNumber(document.getElementById('playerRank'), player.rank, { prefix: '#', duration: 320 });
-    animateModalNumber(document.getElementById('playerELO'), player.elo, { duration: 520 });
     document.getElementById('playerWL').textContent = `${player.wins}W - ${player.losses}L`;
-    animateModalNumber(document.getElementById('playerLevel'), player.level, { prefix: 'Level ', duration: 360 });
+    const levelNode = document.getElementById('playerLevel');
+    if (levelNode) {
+        const safeLevel = normalizeLevelValue(player.level);
+        levelNode.textContent = player.rank <= 10 && safeLevel > 0 ? `Level ${safeLevel}` : 'Unrated';
+    }
     
     const factionImg = getFactionFlag(player.faction);
     const factionDisplay = factionImg ? `<img src="${factionImg}" alt="${player.faction}" class="faction-flag"> ${player.faction}` : player.faction;

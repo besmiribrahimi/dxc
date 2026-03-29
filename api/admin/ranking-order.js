@@ -36,16 +36,20 @@ module.exports = async function handler(req, res) {
     }
 
     const order = Array.isArray(body.order) ? body.order : [];
+    const levels = body && typeof body === 'object' && !Array.isArray(body.levels)
+        ? body.levels
+        : {};
     if (!order.length) {
         return toJson(res, 400, { error: 'order must be a non-empty array' });
     }
 
     try {
-        const savedOrder = await setGlobalRankingOrder(order);
+        const savedState = await setGlobalRankingOrder(order, levels);
         return toJson(res, 200, {
             ok: true,
-            count: savedOrder.length,
-            order: savedOrder
+            count: savedState.order.length,
+            order: savedState.order,
+            levels: savedState.levels
         });
     } catch (error) {
         return toJson(res, 500, {

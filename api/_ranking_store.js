@@ -95,27 +95,63 @@ async function runKvCommand(command, args = []) {
 
 async function getGlobalRankingOrder() {
     if (!isGlobalOrderStoreConfigured()) {
-        return [];
+        return { order: [], levels: {} };
     }
 
     const rawValue = await runKvCommand('get', [GLOBAL_RANKING_ORDER_KEY]);
     if (typeof rawValue !== 'string' || !rawValue.trim()) {
-        return [];
+        return { order: [], levels: {} };
     }
 
     try {
         const parsed = JSON.parse(rawValue);
-        if (!Array.isArray(parsed)) return [];
+        const sanitizeOrder = (value) => Array.from(new Set(
+            (Array.isArray(value) ? value : [])
+                .map((entry) => String(entry || '').trim())
+                .filter(Boolean)
+        ));
 
-        return parsed
-            .map((value) => String(value || '').trim())
-            .filter(Boolean);
+        const sanitizeLevels = (value, allowedUsernames) => {
+            if (!value || typeof value !== 'object' || Array.isArray(value)) {
+                return {};
+            }
+
+            const allowedSet = new Set(allowedUsernames);
+            const entries = Object.entries(value)
+                .map(([username, level]) => {
+                    const safeUsername = String(username || '').trim();
+                    const parsedLevel = Number.parseInt(String(level ?? ''), 10);
+                    const safeLevel = Number.isFinite(parsedLevel)
+                        ? Math.max(1, Math.min(10, parsedLevel))
+                        : 0;
+                    return [safeUsername, safeLevel];
+                })
+                .filter(([username, level]) => Boolean(username) && level > 0 && allowedSet.has(username));
+
+            return Object.fromEntries(entries);
+        };
+
+        if (Array.isArray(parsed)) {
+            return {
+                order: sanitizeOrder(parsed),
+                levels: {}
+            };
+        }
+
+        if (!parsed || typeof parsed !== 'object') {
+            return { order: [], levels: {} };
+        }
+
+        const order = sanitizeOrder(parsed.order);
+        const levels = sanitizeLevels(parsed.levels, order);
+
+        return { order, levels };
     } catch {
-        return [];
+        return { order: [], levels: {} };
     }
 }
 
-async function setGlobalRankingOrder(orderUsernames) {
+async function setGlobalRankingOrder(orderUsernames, levelMap = {}) {
     if (!isGlobalOrderStoreConfigured()) {
         throw new Error('KV/Redis REST is not configured');
     }
@@ -126,9 +162,29 @@ async function setGlobalRankingOrder(orderUsernames) {
             .filter(Boolean)
     ));
 
-    const payload = JSON.stringify(sanitizedOrder);
+    const allowedSet = new Set(sanitizedOrder);
+    const sanitizedLevels = Object.fromEntries(
+        Object.entries(levelMap && typeof levelMap === 'object' && !Array.isArray(levelMap) ? levelMap : {})
+            .map(([username, level]) => {
+                const safeUsername = String(username || '').trim();
+                const parsedLevel = Number.parseInt(String(level ?? ''), 10);
+                const safeLevel = Number.isFinite(parsedLevel)
+                    ? Math.max(1, Math.min(10, parsedLevel))
+                    : 0;
+                return [safeUsername, safeLevel];
+            })
+            .filter(([username, level]) => Boolean(username) && level > 0 && allowedSet.has(username))
+    );
+
+    const payload = JSON.stringify({
+        order: sanitizedOrder,
+        levels: sanitizedLevels
+    });
     await runKvCommand('set', [GLOBAL_RANKING_ORDER_KEY, payload]);
-    return sanitizedOrder;
+    return {
+        order: sanitizedOrder,
+        levels: sanitizedLevels
+    };
 }
 
 module.exports = {

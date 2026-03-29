@@ -25,9 +25,10 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-        const order = await getGlobalRankingOrder();
+        const state = await getGlobalRankingOrder();
         return toJson(res, 200, {
-            order,
+            order: Array.isArray(state?.order) ? state.order : [],
+            levels: state?.levels && typeof state.levels === 'object' ? state.levels : {},
             globalSync: true
         });
     } catch (error) {
