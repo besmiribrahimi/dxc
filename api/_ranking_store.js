@@ -4,13 +4,51 @@ function normalizeEnvValue(value) {
     return String(value || '').trim();
 }
 
+function pickFirstEnvValue(keys) {
+    for (const key of keys) {
+        const value = normalizeEnvValue(process.env[key]);
+        if (value) return value;
+    }
+    return '';
+}
+
+function findBySuffix(suffixes) {
+    const entries = Object.entries(process.env || {});
+    for (const [key, rawValue] of entries) {
+        const upperKey = String(key || '').toUpperCase();
+        if (!suffixes.some((suffix) => upperKey.endsWith(suffix))) continue;
+
+        const value = normalizeEnvValue(rawValue);
+        if (value) return value;
+    }
+    return '';
+}
+
 function getKvConfig() {
-    const baseUrl = normalizeEnvValue(
-        process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL
-    );
-    const token = normalizeEnvValue(
-        process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN
-    );
+    const baseUrl = pickFirstEnvValue([
+        'KV_REST_API_URL',
+        'UPSTASH_REDIS_REST_URL',
+        'UPSTASH_REDIS_REST_KV_REST_API_URL',
+        'UPSTASH_REDIS_REST_REDIS_URL',
+        'UPSTASH_REDIS_REST_KV_URL'
+    ]) || findBySuffix([
+        'KV_REST_API_URL',
+        'UPSTASH_REDIS_REST_URL',
+        'REDIS_URL',
+        'KV_URL'
+    ]);
+
+    const token = pickFirstEnvValue([
+        'KV_REST_API_TOKEN',
+        'UPSTASH_REDIS_REST_TOKEN',
+        'UPSTASH_REDIS_REST_KV_REST_API_TOKEN',
+        'UPSTASH_REDIS_REST_KV_REST_API_READ_ONLY_TOKEN'
+    ]) || findBySuffix([
+        'KV_REST_API_TOKEN',
+        'UPSTASH_REDIS_REST_TOKEN',
+        'KV_REST_API_READ_ONLY_TOKEN',
+        'READ_ONLY_TOKEN'
+    ]);
 
     return {
         baseUrl,
