@@ -170,16 +170,20 @@ The website now includes a movable admin panel for reordering players.
    - On phone: touch and hold the top logo for about 1 second
 - Requires password login
 - Uses server-side auth endpoints (`/api/admin/login`, `/api/admin/session`, `/api/admin/logout`)
+- Saves order globally via (`/api/admin/ranking-order`) and reads it from (`/api/rankings/order`)
 
 Set these variables in Vercel Environment Variables:
 
 - `ADMIN_PANEL_PASSWORD=FREE_168aff8f8d58eee686ad23f4dd192e2f`
 - `ADMIN_PANEL_SECRET=FREE_168aff8f8d58eee686ad23f4dd192e2f`
+- `KV_REST_API_URL=your_vercel_kv_rest_url`
+- `KV_REST_API_TOKEN=your_vercel_kv_rest_token`
 
 Notes:
 
 - Auth session is stored in an HTTP-only cookie
-- Player order changes apply live in the current browser session and are also saved in local storage
+- With KV configured, player order syncs across devices and users
+- If KV is not configured, the panel falls back to local browser storage only
 
 ## Support
 

@@ -103,6 +103,7 @@ function getRelativeTierByLevel(playerElo, opponentElo) {
 let quickFilterMode = 'all';
 let searchDebounceTimer = null;
 const ADMIN_ORDER_STORAGE_KEY = 'draxar_admin_order_v1';
+const GLOBAL_ORDER_ENDPOINT = '/api/rankings/order';
 let adminOrderDraft = [];
 let adminDragIndex = null;
 let adminSessionActive = false;
@@ -598,11 +599,11 @@ function getFactionFlag(faction) {
 }
 
 // Initialize page
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const bootLoader = createBootLoaderController();
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    applySavedAdminOrder();
+    await applyInitialRankingOrder();
     populateFilters();
     renderLeaderboard(playerRankings);
     updateQuickStats(playerRankings.length);
@@ -1027,7 +1028,15 @@ function applyManualPlayerOrder(usernames, { persist = true, refresh = true } = 
     return orderedUsernames;
 }
 
-function applySavedAdminOrder() {
+async function applyInitialRankingOrder() {
+    const globalResult = await adminRequest(GLOBAL_ORDER_ENDPOINT, { method: 'GET' });
+    const globalOrder = Array.isArray(globalResult?.payload?.order) ? globalResult.payload.order : [];
+
+    if (globalResult.ok && globalOrder.length) {
+        applyManualPlayerOrder(globalOrder, { persist: true, refresh: false });
+        return;
+    }
+
     const storedOrder = getStoredAdminOrder();
     if (!storedOrder.length) return;
     applyManualPlayerOrder(storedOrder, { persist: false, refresh: false });
@@ -1329,17 +1338,40 @@ function initializeMovableEditor() {
         renderAdminPlayerList(listNode);
     });
 
-    applyOrderButton.addEventListener('click', () => {
+    applyOrderButton.addEventListener('click', async () => {
         if (!adminSessionActive) {
             setEditorStatus('Login required before applying order.', 'error');
             return;
         }
 
         const orderedUsernames = adminOrderDraft.map((entry) => entry.username);
+        setEditorStatus('Saving global ranking order...');
+
+        const saveResult = await adminRequest('/api/admin/ranking-order', {
+            method: 'PUT',
+            body: { order: orderedUsernames }
+        });
+
+        if (!saveResult.ok) {
+            const canFallbackLocal = saveResult.status === 0 || saveResult.status === 404;
+
+            if (canFallbackLocal) {
+                applyManualPlayerOrder(orderedUsernames, { persist: true, refresh: true });
+                refreshDraftFromRankings();
+                setEditorStatus('Global sync unavailable. Saved locally only on this device.', 'error');
+                showToast('Admin Update', 'Saved locally only.', 'loss');
+                return;
+            }
+
+            const errorMessage = saveResult.payload?.error || 'Failed to save global ranking order.';
+            setEditorStatus(errorMessage, 'error');
+            return;
+        }
+
         applyManualPlayerOrder(orderedUsernames, { persist: true, refresh: true });
         refreshDraftFromRankings();
-        setEditorStatus('New order applied and saved in this browser.', 'success');
-        showToast('Admin Update', 'Player order updated.', 'queue');
+        setEditorStatus('Global order saved. It will sync across devices.', 'success');
+        showToast('Admin Update', 'Global ranking updated.', 'queue');
     });
 
     resetOrderButton.addEventListener('click', () => {
