@@ -1965,6 +1965,22 @@ main {
     animation: editorPopIn 0.24s var(--ease-smooth);
 }
 
+.movable-editor.mobile-open {
+    left: 0.6rem !important;
+    right: 0.6rem !important;
+    top: 0.6rem !important;
+    width: auto !important;
+    max-height: calc(100vh - 1.2rem) !important;
+}
+
+.movable-editor.mobile-open .movable-editor-header {
+    cursor: default;
+}
+
+.movable-editor.mobile-open .admin-player-list {
+    max-height: min(44vh, 420px);
+}
+
 .movable-editor.dragging {
     user-select: none;
     box-shadow: 0 30px 52px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(123, 189, 255, 0.55);
@@ -2642,6 +2658,7 @@ main {
         right: 0.6rem;
         top: 5.3rem;
         width: min(520px, calc(100vw - 1rem));
+        max-height: calc(100vh - 1.2rem);
     }
 
     .admin-player-list {
@@ -2974,8 +2991,15 @@ main {
         right: 0.5rem;
         left: 0.5rem;
         width: auto;
-        max-height: min(76vh, 680px);
+        max-height: calc(100vh - 1rem);
         top: 5rem;
+    }
+
+    .movable-editor.mobile-open {
+        left: 0.5rem !important;
+        right: 0.5rem !important;
+        top: 0.5rem !important;
+        max-height: calc(100vh - 1rem) !important;
     }
 
     .admin-auth-row {

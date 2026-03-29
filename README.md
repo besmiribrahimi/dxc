@@ -166,7 +166,8 @@ The website now includes a movable admin panel for reordering players.
 - Open with one of these secret triggers:
    - `Ctrl+Shift+A`
    - Type `draxaradmin` on the page
-   - Click the top logo 5 times quickly
+   - Click/tap the top logo 5 times quickly
+   - On phone: touch and hold the top logo for about 1 second
 - Requires password login
 - Uses server-side auth endpoints (`/api/admin/login`, `/api/admin/session`, `/api/admin/logout`)
 

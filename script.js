@@ -1191,6 +1191,8 @@ function initializeMovableEditor() {
     let typedSequence = '';
     let logoTapCount = 0;
     let logoTapTimer = null;
+    let logoLongPressTimer = null;
+    let logoLongPressTriggered = false;
 
     if (!panel || !handle || !toggle || !close || !authBlock || !controls || !passwordInput || !loginButton || !logoutButton || !applyOrderButton || !resetOrderButton || !listNode) return;
 
@@ -1213,7 +1215,19 @@ function initializeMovableEditor() {
         return isAuthenticated;
     };
 
+    const syncPanelViewportMode = () => {
+        const isMobileViewport = window.matchMedia('(max-width: 768px)').matches;
+        panel.classList.toggle('mobile-open', isMobileViewport);
+
+        if (isMobileViewport) {
+            panel.style.left = '';
+            panel.style.top = '';
+            panel.style.right = '';
+        }
+    };
+
     const openPanel = async () => {
+        syncPanelViewportMode();
         panel.classList.add('active');
         panel.setAttribute('aria-hidden', 'false');
         toggle.classList.add('active');
@@ -1354,12 +1368,17 @@ function initializeMovableEditor() {
     });
 
     if (logoImage) {
-        logoImage.addEventListener('click', async () => {
-            logoTapCount += 1;
-
+        const resetLogoTapTimer = () => {
             if (logoTapTimer) {
                 clearTimeout(logoTapTimer);
+                logoTapTimer = null;
             }
+        };
+
+        const registerLogoTap = async () => {
+            logoTapCount += 1;
+
+            resetLogoTapTimer();
 
             logoTapTimer = setTimeout(() => {
                 logoTapCount = 0;
@@ -1367,15 +1386,54 @@ function initializeMovableEditor() {
 
             if (logoTapCount >= 5) {
                 logoTapCount = 0;
-                clearTimeout(logoTapTimer);
-                logoTapTimer = null;
+                resetLogoTapTimer();
                 await togglePanel();
             }
+        };
+
+        const clearLogoLongPressTimer = () => {
+            if (!logoLongPressTimer) return;
+            clearTimeout(logoLongPressTimer);
+            logoLongPressTimer = null;
+        };
+
+        logoImage.addEventListener('pointerdown', (event) => {
+            if (event.pointerType !== 'touch') return;
+            logoLongPressTriggered = false;
+            clearLogoLongPressTimer();
+            logoLongPressTimer = setTimeout(async () => {
+                logoLongPressTriggered = true;
+                logoTapCount = 0;
+                resetLogoTapTimer();
+                await togglePanel();
+            }, 800);
+        });
+
+        logoImage.addEventListener('pointerup', async (event) => {
+            if (event.pointerType === 'touch') {
+                clearLogoLongPressTimer();
+                if (logoLongPressTriggered) {
+                    logoLongPressTriggered = false;
+                    return;
+                }
+            }
+
+            await registerLogoTap();
+        });
+
+        logoImage.addEventListener('pointercancel', () => {
+            clearLogoLongPressTimer();
+            logoLongPressTriggered = false;
+        });
+
+        logoImage.addEventListener('pointerleave', () => {
+            clearLogoLongPressTimer();
         });
     }
 
     handle.addEventListener('pointerdown', (event) => {
         if (!panel.classList.contains('active')) return;
+        if (panel.classList.contains('mobile-open')) return;
         if (event.target instanceof HTMLElement && event.target.closest('button')) return;
 
         editorDragState.active = true;
@@ -1412,7 +1470,9 @@ function initializeMovableEditor() {
     });
 
     window.addEventListener('resize', () => {
+        syncPanelViewportMode();
         if (!panel.classList.contains('active')) return;
+        if (panel.classList.contains('mobile-open')) return;
         if (!panel.style.left || !panel.style.top) return;
 
         const left = Number.parseFloat(panel.style.left);
@@ -1429,6 +1489,8 @@ function initializeMovableEditor() {
             closePanel();
         }
     });
+
+    syncPanelViewportMode();
 }
 
 function applyEloChange(player, delta) {
