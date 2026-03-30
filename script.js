@@ -430,7 +430,7 @@ function getRevealTargetsForView(viewName, viewEl) {
     const selectors = {
         leaderboard: ['.page-header', '.podium-wrap', '.leaderboard'],
         elo: ['.page-header', '.elo-system-header', '.elo-card'],
-        matches: ['.page-header', '.match-card']
+        matches: ['.page-header', '.faction-ranking-board', '.match-card']
     };
 
     const configured = selectors[viewName] || [];
@@ -625,11 +625,13 @@ function getFactionFlag(faction) {
 document.addEventListener('DOMContentLoaded', async function() {
     const bootLoader = createBootLoaderController();
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const startupView = window.location.hash === '#matches' ? 'matches' : 'leaderboard';
 
     await applyInitialRankingOrder();
     populateFilters();
     renderLeaderboard(playerRankings);
     updateQuickStats(playerRankings.length);
+    switchView(startupView);
     
     // Event listeners
     document.getElementById('searchInput').addEventListener('input', debounceFilterLeaderboard);
@@ -652,7 +654,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         bootLoader.complete();
 
         setTimeout(() => {
-            runCinematicSectionReveal('leaderboard');
+            runCinematicSectionReveal(startupView);
             notifyWithProfile('queueStatus', 'Ranked Queue', 'Status: Open and matching players', { status: 'open' });
             notifyWithProfile(
                 'systemNotice',
@@ -1795,6 +1797,12 @@ function switchView(viewName, event) {
     
     if (event && event.target && event.target.classList) {
         event.target.classList.add('active');
+        return;
+    }
+
+    const matchingLink = document.querySelector(`.nav-link[href="#${viewName}"]`);
+    if (matchingLink) {
+        matchingLink.classList.add('active');
     }
 }
 

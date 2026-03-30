@@ -46,6 +46,7 @@
             <nav class="nav">
                 <a href="#leaderboard" class="nav-link active" data-tip="Live ranking board" onclick="switchView('leaderboard', event)">Leaderboard</a>
                 <a href="#matches" class="nav-link" data-tip="Recent matches" onclick="switchView('matches', event)">Match History</a>
+                <a href="faction-rankings.html" class="nav-link" data-tip="Official faction tiers">Faction Rankings</a>
                 <a href="https://discord.gg/ZbKT946X" class="nav-link discord-link" data-tip="Official Draxar Discord" target="_blank" rel="noopener noreferrer">Join Discord</a>
             </nav>
         </div>
@@ -123,6 +124,39 @@
             <div class="page-header">
                 <h2>Match History</h2>
             </div>
+
+            <section class="faction-ranking-board" aria-label="Official faction rankings for March 2026">
+                <div class="faction-ranking-head">
+                    <p class="faction-ranking-kicker">The Entrenched Times</p>
+                    <h3>Official Faction Rankings</h3>
+                    <span class="faction-ranking-date">March 2026</span>
+                </div>
+
+                <div class="faction-ranking-grid">
+                    <article class="faction-tier faction-tier-elite">
+                        <h4>Elite</h4>
+                        <p>DK, AH and TTI2</p>
+                    </article>
+
+                    <article class="faction-tier faction-tier-top-mid">
+                        <h4>Top Mid</h4>
+                        <p>SWL, IA, 271ST and CZSK</p>
+                    </article>
+
+                    <article class="faction-tier faction-tier-mid">
+                        <h4>Mid</h4>
+                        <p>TWA, RRF, INS and RKA 2</p>
+                    </article>
+
+                    <article class="faction-tier faction-tier-low-mid">
+                        <h4>Low Mid</h4>
+                        <p>URF, TAE, AEF, NDV, KOC and everybody else</p>
+                    </article>
+                </div>
+
+                <p class="faction-ranking-note">Placement inside a category does not indicate hierarchy. Factions in the same category are considered roughly equal.</p>
+            </section>
+
             <div class="match-history">
                 <div class="match-card featured-report">
                     <div class="match-header">
