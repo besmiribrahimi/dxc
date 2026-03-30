@@ -315,6 +315,27 @@ body::after {
     box-shadow: 0 0 16px rgba(209, 18, 31, 0.22);
 }
 
+.nav-link.discord-link {
+    color: #fff4f4;
+    font-weight: 800;
+    border: 1px solid rgba(255, 96, 106, 0.45);
+    background: linear-gradient(120deg, rgba(209, 18, 31, 0.35), rgba(255, 61, 75, 0.14));
+    box-shadow: 0 8px 18px rgba(209, 18, 31, 0.2);
+}
+
+.nav-link.discord-link:hover {
+    color: #ffffff;
+    border-color: rgba(255, 130, 138, 0.75);
+    background: linear-gradient(120deg, rgba(255, 46, 62, 0.44), rgba(255, 90, 66, 0.2));
+    transform: translateY(-1px);
+    box-shadow: 0 11px 24px rgba(255, 54, 69, 0.28);
+}
+
+.nav-link.discord-link::before {
+    border-color: transparent;
+    box-shadow: none;
+}
+
 /* Container */
 .container {
     max-width: 1400px;
@@ -443,6 +464,97 @@ main {
     background: rgba(209, 18, 31, 0.18);
     transform: translateY(-1px) scale(1.03);
     box-shadow: 0 0 18px rgba(209, 18, 31, 0.22);
+}
+
+.discord-cta-banner {
+    margin-top: 1rem;
+    border: 1px solid rgba(255, 84, 96, 0.4);
+    border-radius: 12px;
+    background:
+        linear-gradient(120deg, rgba(255, 61, 75, 0.18), rgba(14, 20, 31, 0.9) 55%),
+        radial-gradient(circle at 85% 20%, rgba(255, 109, 72, 0.28), transparent 38%);
+    padding: 0.95rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+.discord-cta-banner::before {
+    content: "";
+    position: absolute;
+    inset: -80% auto -80% -40%;
+    width: 33%;
+    background: linear-gradient(102deg, transparent 0%, rgba(255, 255, 255, 0.22) 46%, transparent 100%);
+    transform: rotate(10deg);
+    animation: discordSweep 4.8s var(--ease-smooth) infinite;
+    pointer-events: none;
+}
+
+.discord-cta-copy {
+    display: grid;
+    gap: 0.2rem;
+    position: relative;
+    z-index: 1;
+}
+
+.discord-cta-kicker {
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 180, 180, 0.9);
+    font-weight: 700;
+}
+
+.discord-cta-copy p {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.discord-cta-button {
+    position: relative;
+    z-index: 1;
+    text-decoration: none;
+    color: #fff7f7;
+    font-weight: 800;
+    font-size: 0.82rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 1px solid rgba(255, 131, 141, 0.7);
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    background: linear-gradient(120deg, rgba(209, 18, 31, 0.82), rgba(255, 90, 66, 0.65));
+    box-shadow: 0 9px 20px rgba(209, 18, 31, 0.3);
+    transition: transform var(--fast) var(--ease-smooth), box-shadow var(--fast) var(--ease-smooth), filter var(--fast) var(--ease-smooth);
+    white-space: nowrap;
+}
+
+.discord-cta-button:hover {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 12px 25px rgba(255, 71, 85, 0.45);
+    filter: saturate(1.08);
+}
+
+@keyframes discordSweep {
+    0% {
+        transform: translateX(-130%) rotate(10deg);
+        opacity: 0;
+    }
+    22% {
+        opacity: 0.85;
+    }
+    58% {
+        opacity: 0.2;
+    }
+    100% {
+        transform: translateX(360%) rotate(10deg);
+        opacity: 0;
+    }
 }
 
 .podium-wrap {
@@ -2711,6 +2823,27 @@ main {
         flex-direction: column;
         gap: 0.85rem;
         align-items: stretch;
+    }
+
+    .nav {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+
+    .nav-link {
+        text-align: center;
+    }
+
+    .discord-cta-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .discord-cta-button {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
     }
 
     .logo {
