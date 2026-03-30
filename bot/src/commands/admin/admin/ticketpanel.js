@@ -1,4 +1,5 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
+const { createStyledEmbed } = require('../../utils/embedStyle');
 
 module.exports = {
  data: new SlashCommandBuilder()
@@ -6,23 +7,27 @@ module.exports = {
  .setDescription('Set up a ticket panel for members to create support tickets')
  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
  async execute(interaction, client) {
- const embed = new EmbedBuilder()
- .setColor('#B00000')
- .setTitle(' . Draxar\'s Disc Support ')
- .setDescription(` \n\n Need Help? \n\nClick the button below to create a support ticket!\nDraxar's staff will assist you as soon as possible. `)
+ const embed = createStyledEmbed({
+ interaction,
+ icon: '📢',
+ title: 'Support Ticket Center',
+ theme: 'support',
+ summary: 'Need support? Open a private ticket and staff will respond as soon as possible.',
+ cta: 'Click CREATE TICKET below to open a private channel',
+ })
  .addFields(
  { 
- name: ' Before Opening a Ticket ', 
- value: ' Check existing help channels first\n Be patient while waiting for a response\n Provide as much detail as possible\n One ticket at a time please!', 
+ name: 'Before You Open', 
+ value: 'Check pinned info first\nDescribe your issue clearly\nOne open ticket per user\nBe respectful to staff', 
  inline: false 
  },
  { 
- name: ' What We Can Help With ', 
- value: ' General questions\n Technical support\n Reports & issues\n Partnership inquiries', 
+ name: 'Support Topics', 
+ value: 'General questions\nTechnical issues\nReports and moderation\nPartnership/contact', 
  inline: false 
  }
  )
- .setFooter({ text: ' . Draxar\'s Disc Click the button below to get started!' })
+ .setFooter({ text: 'Press Create Ticket to get started' })
  .setTimestamp();
 
  const row = new ActionRowBuilder()
@@ -30,13 +35,21 @@ module.exports = {
  new ButtonBuilder()
  .setCustomId('create_ticket')
  .setLabel('Create Ticket')
- .setStyle(ButtonStyle.Secondary)
+ .setStyle(ButtonStyle.Danger)
  );
 
  // Send as a regular message (not a reply) so it stays as a permanent panel
  try {
  await interaction.channel.send({ embeds: [embed], components: [row] });
- await interaction.reply({ content: ' Ticket panel has been set up! ', ephemeral: true });
+ const postedEmbed = createStyledEmbed({
+ interaction,
+ icon: '✅',
+ title: 'Ticket Panel Posted',
+ theme: 'support',
+ description: 'Support ticket panel is now live in this channel.',
+ color: 'success',
+ });
+ await interaction.reply({ embeds: [postedEmbed], flags: 64 });
  } catch (error) {
  console.error('TicketPanel Error:', error);
  const errMsg = typeof error === 'string' ? error : (error.message || 'Unknown error');

@@ -13,6 +13,7 @@ module.exports = {
  { name: '`/resources`', value: ' Access free resources and useful tools', inline: false },
  { name: '`/commissions`', value: ' Browse the shop and commission services', inline: false },
  { name: '`/webstats`', value: ' Fetch live statistics from the DXC website', inline: false },
+ { name: '`/webleaderboard`', value: ' Show top website players, factions, and countries', inline: false },
  { name: '`/leaderboard`', value: ' View the message activity leaderboard', inline: false },
  { name: '`/rank`', value: ' View your message rank and stats', inline: false },
  { name: '`/help`', value: ' Quick overview of server features and commands', inline: false },

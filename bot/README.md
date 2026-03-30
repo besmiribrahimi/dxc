@@ -21,10 +21,13 @@ This gives you a clean base to add new commands next.
    - `DISCORD_TOKEN`
    - `CLIENT_ID`
    - `GUILD_ID`
+   - `COMMAND_PROFILE=leaderboard` (default; only leaderboard-related commands)
 5. Install dependencies:
    - `npm install`
 6. Run the bot:
    - `npm start`
+
+To load every legacy command again, set `COMMAND_PROFILE=all`.
 
 ## Website Integration
 
@@ -33,6 +36,7 @@ This bot supports website-backed stats sync.
 Member command:
 
 - `/webstats`
+- `/webleaderboard`
 
 Admin command:
 

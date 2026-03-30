@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const { getUserRank, getUserStats, getLeaderboard } = require('../../utils/messageStats');
+const { createStyledEmbed, makeProgressBar } = require('../../utils/embedStyle');
 
 module.exports = {
  data: new SlashCommandBuilder()
@@ -15,35 +16,57 @@ module.exports = {
  const userMessages = userStats?.messages || 0;
 
  // Get total users on leaderboard
- const totalUsers = getLeaderboard(guildId, 1000).length;
+ const fullLeaderboard = getLeaderboard(guildId, 1000);
+ const totalUsers = fullLeaderboard.length;
 
  if (userMessages === 0) {
- return interaction.reply({ 
- content: ' You haven\'t sent any messages yet! Start chatting to get ranked.', 
- ephemeral: true 
+ const emptyEmbed = createStyledEmbed({
+ interaction,
+ icon: '📭',
+ title: 'No Rank Yet',
+ theme: 'leaderboard',
+ description: 'You have not sent messages yet. Start chatting to enter the ladder.',
+ color: 'warning',
  });
+
+ return interaction.reply({ embeds: [emptyEmbed], ephemeral: true });
  }
 
- // Determine rank display
- let rankEmoji = '';
- if (userRank === 1) rankEmoji = '';
- else if (userRank === 2) rankEmoji = '';
- else if (userRank === 3) rankEmoji = '';
- else if (userRank <= 10) rankEmoji = '';
+ const placement = totalUsers > 0
+ ? `${Math.max(1, Math.round((1 - ((userRank - 1) / totalUsers)) * 100))}%`
+ : 'N/A';
 
- const embed = new EmbedBuilder()
- .setColor('#B00000')
- .setTitle(' . Your Rank ')
- .setDescription(` `)
+ const topMessages = Math.max(1, fullLeaderboard[0]?.messages || 1);
+ const nextEntry = userRank > 1 ? fullLeaderboard[userRank - 2] : null;
+ const messagesToNext = nextEntry ? Math.max(0, (nextEntry.messages - userMessages) + 1) : 0;
+
+ const embed = createStyledEmbed({
+ interaction,
+ icon: '🔥',
+ title: 'Rank Card',
+ theme: 'leaderboard',
+ summary: 'Current message performance in this server.',
+ sections: [
+ {
+ label: 'Power Gauge',
+ content: `${makeProgressBar(userMessages, topMessages, 14)}\n${userMessages.toLocaleString()} / ${topMessages.toLocaleString()} messages`,
+ },
+ ],
+ cta: userRank > 1 ? `Send ${messagesToNext.toLocaleString()} more message(s) to reach #${userRank - 1}` : 'You are rank #1. Defend your lead.',
+ })
  .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
  .addFields(
  { 
- name: ' Stats ', 
- value: `\n${rankEmoji} **Rank:** #${userRank} of ${totalUsers}\n\n **Messages:** ${userMessages.toLocaleString()}\n\n **User:** ${interaction.user.username}`,
- inline: false 
+ name: '📊 Stats', 
+ value: `Rank: **#${userRank}** of **${totalUsers}**\nMessages: **${userMessages.toLocaleString()}**\nPlacement: **Top ${placement}**`,
+ inline: true 
+ },
+ {
+ name: '🎮 Player',
+ value: `User: **${interaction.user.username}**\nTarget: **${userRank > 1 ? `#${userRank - 1}` : 'Champion'}**\nNeeded: **${messagesToNext.toLocaleString()}**`,
+ inline: true,
  }
  )
- .setFooter({ text: ' . Draxar\'s Disc Keep chatting to climb the ranks!' })
  .setTimestamp();
 
  await interaction.reply({ embeds: [embed] });

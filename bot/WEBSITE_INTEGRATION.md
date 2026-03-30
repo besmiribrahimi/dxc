@@ -9,6 +9,7 @@ Add these values to `.env`:
 - `WEBSITE_API_URL=https://dxc-chi.vercel.app/api/bot/stats`
 - `WEBSITE_API_TOKEN=your_secret_token_here`
 - `WEBSITE_HOME_URL=https://dxc-chi.vercel.app/`
+- `WEBSITE_LOCAL_SCRIPT_PATH=../draxar/script.js` (optional, for local workspace sync)
 - `WEBSITE_SYNC_ENABLED=true`
 - `WEBSITE_SYNC_INTERVAL_MINUTES=5`
 
@@ -70,9 +71,11 @@ Also set `WEBSITE_API_TOKEN` in your website hosting environment.
 ## 4) Bot Commands
 
 - `/webstats` - fetches and shows website stats
+- `/webleaderboard` - shows top website players, top factions, and top countries
 - `/websyncstatus` - admin-only sync health and cache status (optional `refresh=true`)
 
 ## 5) Sync Behavior
 
 - Bot auto-syncs in background every `WEBSITE_SYNC_INTERVAL_MINUTES`.
-- If API endpoint is not configured, bot falls back to parsing homepage metrics.
+- Sync priority order is: API endpoint -> local website script (`WEBSITE_LOCAL_SCRIPT_PATH`) -> homepage parsing.
+- Local script fallback lets the `draxar bot` folder read `draxar/script.js` directly when both folders are side-by-side.

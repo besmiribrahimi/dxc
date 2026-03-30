@@ -16,11 +16,35 @@ const { getWelcomeChannel, getLeaveChannel } = require("./commands/utils/welcome
 const giveawayManager = require("./commands/utils/giveawayMenager");
 const helpSetCommand = require("./commands/admin/admin/helpset");
 const privateVcCommand = require("./commands/admin/member/join-to-create");
+const { ensureQueueRole, QUEUE_ROLE_NAME } = require("./commands/utils/oneVOneQueue");
+const { createStyledEmbed } = require("./commands/utils/embedStyle");
 const { startWebsiteAutoSync } = require("./services/websiteSync");
 
 const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.CLIENT_ID;
 const guildId = process.env.GUILD_ID;
+const COMMAND_PROFILE = String(process.env.COMMAND_PROFILE || "leaderboard").toLowerCase();
+
+const LEADERBOARD_COMMANDS = new Set([
+  "help",
+  "leaderboard",
+  "rank",
+  "webstats",
+  "webleaderboard",
+  "websyncstatus",
+  "botstatus",
+  "set1v1",
+  "look1v1",
+  "mute",
+  "unmute",
+  "kick",
+  "ban",
+  "ticketpanel",
+]);
+
+const LEADERBOARD_ONLY_MODE = COMMAND_PROFILE !== "all";
+let websiteSyncTimer = null;
+let shuttingDown = false;
 
 if (!token || !clientId || !guildId) {
   console.error("Missing environment variables. Check DISCORD_TOKEN, CLIENT_ID, and GUILD_ID.");
@@ -90,7 +114,20 @@ function loadAllCommands() {
 
   // De-duplicate command names when commands exist in multiple import paths.
   const byName = new Map(all.map((command) => [command.data.name, command]));
-  return [...byName.values()];
+  const deduped = [...byName.values()];
+
+  if (!LEADERBOARD_ONLY_MODE) {
+    return deduped;
+  }
+
+  const filtered = deduped.filter((command) => LEADERBOARD_COMMANDS.has(command.data.name));
+  const removedCount = deduped.length - filtered.length;
+
+  if (removedCount > 0) {
+    console.log(`Leaderboard profile active: filtered out ${removedCount} legacy command(s).`);
+  }
+
+  return filtered;
 }
 
 const commandDefinitions = loadAllCommands();
@@ -163,14 +200,57 @@ client.once("clientReady", async () => {
     console.error("Failed to register slash commands:", error);
   }
 
-  startWebsiteAutoSync(console);
+  websiteSyncTimer = startWebsiteAutoSync(console);
 });
 
 client.on("error", (error) => {
   console.error("Discord client error:", error);
 });
 
+async function shutdown(signal, exitCode = 0) {
+  if (shuttingDown) {
+    return;
+  }
+
+  shuttingDown = true;
+  console.log(`Shutdown signal received: ${signal}`);
+
+  if (websiteSyncTimer) {
+    clearInterval(websiteSyncTimer);
+    websiteSyncTimer = null;
+  }
+
+  try {
+    await client.destroy();
+  } catch {
+    // Ignore destroy failures during shutdown.
+  }
+
+  process.exit(exitCode);
+}
+
+process.on("SIGINT", () => {
+  shutdown("SIGINT", 0).catch(() => process.exit(0));
+});
+
+process.on("SIGTERM", () => {
+  shutdown("SIGTERM", 0).catch(() => process.exit(0));
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
+  shutdown("uncaughtException", 1).catch(() => process.exit(1));
+});
+
 client.on("interactionCreate", async (interaction) => {
+  if (LEADERBOARD_ONLY_MODE && interaction.isModalSubmit()) {
+    return;
+  }
+
   if (interaction.isModalSubmit()) {
     if (interaction.customId !== "helpRequestModal") {
       return;
@@ -230,6 +310,78 @@ client.on("interactionCreate", async (interaction) => {
   }
 
   if (interaction.isButton()) {
+    if (interaction.customId === "queue_1v1_toggle") {
+      const guildMember = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
+      if (!guildMember) {
+        await safeInteractionReply(interaction, {
+          content: "Could not resolve your member data in this server.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+
+      let queueRole = null;
+      try {
+        queueRole = await ensureQueueRole(interaction.guild);
+      } catch {
+        await safeInteractionReply(interaction, {
+          content: `Could not create/find ${QUEUE_ROLE_NAME}. Check bot Manage Roles permission.`,
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+
+      const hasRole = guildMember.roles.cache.has(queueRole.id);
+
+      try {
+        if (hasRole) {
+          await guildMember.roles.remove(queueRole, "Left 1v1 queue via panel button");
+          const leftEmbed = createStyledEmbed({
+            interaction,
+            icon: "📤",
+            title: "Queue Updated",
+            theme: "matchmaking",
+            description: `You left the **${QUEUE_ROLE_NAME}** queue.`,
+            color: "warning",
+          });
+          await safeInteractionReply(interaction, {
+            embeds: [leftEmbed],
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
+
+        await guildMember.roles.add(queueRole, "Joined 1v1 queue via panel button");
+        const joinedEmbed = createStyledEmbed({
+          interaction,
+          icon: "⚔️",
+          title: "Queue Updated",
+          theme: "matchmaking",
+          description: `You joined the **${QUEUE_ROLE_NAME}** queue.`,
+          color: "success",
+        });
+        await safeInteractionReply(interaction, {
+          embeds: [joinedEmbed],
+          flags: MessageFlags.Ephemeral,
+        });
+      } catch {
+        const failedEmbed = createStyledEmbed({
+          interaction,
+          icon: "🚫",
+          title: "Queue Update Failed",
+          theme: "matchmaking",
+          description: "Could not update your queue role. Check role hierarchy and permissions.",
+          color: "danger",
+        });
+        await safeInteractionReply(interaction, {
+          embeds: [failedEmbed],
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+      return;
+    }
+
     if (interaction.customId === "create_ticket") {
       const ticketOwnerTag = interaction.user.username.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 16) || "member";
       const ticketTopic = `ticket-owner:${interaction.user.id}`;
@@ -280,8 +432,16 @@ client.on("interactionCreate", async (interaction) => {
         ],
       });
 
+      const createdEmbed = createStyledEmbed({
+        interaction,
+        icon: "🎫",
+        title: "Ticket Created",
+        theme: "support",
+        description: `Your ticket is now open in ${ticketChannel}.`,
+        color: "success",
+      });
       await safeInteractionReply(interaction, {
-        content: `Ticket created: ${ticketChannel}`,
+        embeds: [createdEmbed],
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -311,7 +471,14 @@ client.on("interactionCreate", async (interaction) => {
       }
 
       await safeInteractionReply(interaction, {
-        content: "Closing ticket...",
+        embeds: [createStyledEmbed({
+          interaction,
+          icon: "🔒",
+          title: "Closing Ticket",
+          theme: "support",
+          description: "Ticket is being closed now.",
+          color: "warning",
+        })],
         flags: MessageFlags.Ephemeral,
       });
 
@@ -422,6 +589,10 @@ client.on("messageCreate", (message) => {
 
   addMessage(message.guild.id, message.author.id);
 
+  if (LEADERBOARD_ONLY_MODE) {
+    return;
+  }
+
   const trigger = findMatchingTrigger(message.guild.id, message.content);
   if (!trigger) {
     return;
@@ -441,6 +612,10 @@ client.on("messageCreate", (message) => {
 });
 
 client.on("guildMemberAdd", async (member) => {
+  if (LEADERBOARD_ONLY_MODE) {
+    return;
+  }
+
   const channelId = getWelcomeChannel(member.guild.id);
   if (!channelId) {
     return;
@@ -455,6 +630,10 @@ client.on("guildMemberAdd", async (member) => {
 });
 
 client.on("guildMemberRemove", async (member) => {
+  if (LEADERBOARD_ONLY_MODE) {
+    return;
+  }
+
   const channelId = getLeaveChannel(member.guild.id);
   if (!channelId) {
     return;
@@ -469,6 +648,10 @@ client.on("guildMemberRemove", async (member) => {
 });
 
 client.on("voiceStateUpdate", async (oldState, newState) => {
+  if (LEADERBOARD_ONLY_MODE) {
+    return;
+  }
+
   if (typeof privateVcCommand.handleVoiceStateUpdate !== "function") {
     return;
   }

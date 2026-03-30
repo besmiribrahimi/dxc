@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const { getWebsiteSyncState, syncWebsiteStats } = require("../../../services/websiteSync");
+const { createStyledEmbed } = require('../../utils/embedStyle');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -26,21 +27,38 @@ module.exports = {
     const lastAttempt = syncState.lastAttemptAt ? `<t:${Math.floor(syncState.lastAttemptAt / 1000)}:R>` : "Never";
     const lastSuccess = syncState.lastSuccessAt ? `<t:${Math.floor(syncState.lastSuccessAt / 1000)}:R>` : "Never";
 
-    const embed = new EmbedBuilder()
-      .setColor("#B00000")
-      .setTitle("Website Sync Status")
+    const healthy = !syncState.lastError;
+    const embed = createStyledEmbed({
+      interaction,
+      icon: '🛰️',
+      title: 'Website Sync Status',
+      theme: 'system',
+      summary: healthy ? 'Sync service is healthy.' : 'Sync service has recent issues.',
+      sections: [
+        {
+          label: 'Health',
+          content: [
+            `Current: ${healthy ? '✅ HEALTHY' : '⚠️ WARNING'}`,
+            `Refresh: ${shouldRefresh ? 'MANUAL RUN EXECUTED' : 'AUTO MODE'}`,
+          ].join('\n'),
+        },
+      ],
+      color: healthy ? 'success' : 'warning',
+      cta: shouldRefresh ? 'Manual refresh executed' : 'Use /websyncstatus refresh:true to force sync',
+    })
       .addFields(
         {
-          name: "Sync Config",
+          name: "⚙️ Configuration",
           value: [
             `Enabled: ${syncState.enabled ? "Yes" : "No"}`,
             `API Configured: ${syncState.apiConfigured ? "Yes" : "No"}`,
+            `Local Script: ${syncState.localScriptPath ? "Found" : "Not found"}`,
             `Interval: ${syncState.intervalMinutes} minute(s)`,
           ].join("\n"),
           inline: true,
         },
         {
-          name: "Last Activity",
+          name: "🕒 Last Activity",
           value: [
             `Last Attempt: ${lastAttempt}`,
             `Last Success: ${lastSuccess}`,
@@ -49,10 +67,10 @@ module.exports = {
           inline: true,
         },
         {
-          name: "Cached Stats",
+          name: "📦 Cached Snapshot",
           value: syncState.lastStats
             ? [
-                `Source: ${syncState.lastStats.source || "unknown"}`,
+                `Source: **${syncState.lastStats.source || "unknown"}**`,
                 `Players: ${syncState.lastStats.players ?? "N/A"}`,
                 `Factions: ${syncState.lastStats.factions ?? "N/A"}`,
                 `Countries: ${syncState.lastStats.countries ?? "N/A"}`,

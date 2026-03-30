@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const { getLeaderboard, getUserRank, getUserStats } = require('../../utils/messageStats');
+const { createStyledEmbed, getPlacementBadge, makeProgressBar } = require('../../utils/embedStyle');
 
 module.exports = {
  data: new SlashCommandBuilder()
@@ -11,12 +12,19 @@ module.exports = {
  
  // Get top 20 users
  const leaderboard = getLeaderboard(guildId, 20);
+ const topMessages = Math.max(1, leaderboard[0]?.messages || 1);
  
  if (leaderboard.length === 0) {
- return interaction.reply({ 
- content: ' No message data yet! Start chatting to appear on the leaderboard.', 
- ephemeral: true 
+ const emptyEmbed = createStyledEmbed({
+ interaction,
+ icon: '📭',
+ title: 'Leaderboard Empty',
+ theme: 'leaderboard',
+ description: 'No message data yet. Start chatting to claim the first spot.',
+ color: 'warning',
  });
+
+ return interaction.reply({ embeds: [emptyEmbed], ephemeral: true });
  }
 
  // Build leaderboard entries
@@ -29,10 +37,11 @@ module.exports = {
  user = { username: 'Unknown User' };
  }
  
- const medal = index === 0 ? '' : index === 1 ? '' : index === 2 ? '' : `**${index + 1}.**`;
- const highlight = entry.userId === userId ? ' ' : '';
+ const badge = getPlacementBadge(index);
+ const highlight = entry.userId === userId ? '  •  **YOU**' : '';
+ const scoreBar = makeProgressBar(entry.messages, topMessages, 12);
  
- return `${medal} ${user.username}${highlight}\n \`${entry.messages.toLocaleString()}\` messages`;
+ return `${badge} **${user.username}**${highlight}\n${scoreBar}  \`${entry.messages.toLocaleString()}\` messages`;
  })
  );
 
@@ -41,16 +50,25 @@ module.exports = {
  const userStats = getUserStats(userId, guildId);
  const userMessages = userStats?.messages || 0;
 
- const embed = new EmbedBuilder()
- .setColor('#B00000')
- .setTitle(' . Message Leaderboard ')
- .setDescription(` \n\n${leaderboardEntries.join('\n\n')}`)
+ const embed = createStyledEmbed({
+ interaction,
+ icon: '🏁',
+ title: 'Message Leaderboard',
+ theme: 'leaderboard',
+ summary: 'Live activity ladder for this server.',
+ sections: [
+ {
+ label: 'Top 20 Activity',
+ content: leaderboardEntries.join('\n\n'),
+ },
+ ],
+ cta: 'Run /rank to view your personal card',
+ })
  .addFields({
- name: ' ',
- value: ` Your Stats \n\n **Rank:** #${userRank || 'N/A'}\n **Messages:** ${userMessages.toLocaleString()}`,
+ name: '🎯 Your Position',
+ value: `Rank: **#${userRank || 'N/A'}**\nMessages: **${userMessages.toLocaleString()}**\nPace: **${makeProgressBar(userMessages, topMessages, 10)}**`,
  inline: false
  })
- .setFooter({ text: ' . Draxar\'s Disc Keep chatting to climb the ranks!' })
  .setTimestamp();
 
  await interaction.reply({ embeds: [embed] });

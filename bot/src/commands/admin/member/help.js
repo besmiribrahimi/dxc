@@ -1,33 +1,50 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
+const { createStyledEmbed, SEPARATOR } = require('../../utils/embedStyle');
 
 module.exports = {
  data: new SlashCommandBuilder()
  .setName('help')
- .setDescription('Get help or view member commands'),
+ .setDescription('Show matchmaking, leaderboard, and admin commands'),
  async execute(interaction) {
- const embed = new EmbedBuilder()
- .setColor('#B00000')
- .setTitle(' . Quick Server Guide! ')
- .setDescription(` \n\n In this server `)
+ const embed = createStyledEmbed({
+ interaction,
+ icon: '🧭',
+ title: 'Command Hub',
+theme: 'leaderboard',
+ summary: 'Elite control center for matchmaking, rankings, and admin operations.',
+ sections: [
+ {
+ label: 'Fast Start',
+ content: [
+ '1) Run **/set1v1**',
+ '2) Hit **JOIN 1V1 QUEUE**',
+ '3) Run **/look1v1** to ping queued players',
+ ].join('\n'),
+ },
+ {
+ label: 'Identity',
+ content: 'High tempo • Competitive voice • Clean match flow',
+ },
+ ],
+ cta: 'Run /set1v1 to open the queue panel',
+ })
  .addFields(
- { name: ' FAQ Forum ', value: 'Browse tutorials and guides.', inline: false },
- { name: ' webhooks ', value: 'Aes. and easy to copy & paste webhooks.', inline: false },
- { name: ' shop ', value: 'Browse ready-made, premium server templates.', inline: false },
- { name: ' questions ', value: 'Ask questions and get answers.', inline: false },
- { name: ' ask 4 help ', value: 'Ask other members for assistance.', inline: false },
- { name: ' taking requests ', value: 'Browse services members are offering RIGHT NOW.', inline: false },
- { name: ' hire staff ', value: 'Search through staff applications and recruit someone.', inline: false },
- { name: ' support tickets ', value: 'Have any questions or concerns? Let us know by opening a ticket.', inline: false }
+ { name: `${SEPARATOR}\n⚔️ MATCHMAKING`, value: '`/set1v1` Open queue panel\n`/look1v1` DM all queued fighters', inline: false },
+ { name: '🏆 LEADERBOARD', value: '`/webleaderboard` Website top players/factions/countries\n`/webstats` Live totals and sync source\n`/leaderboard` Server message ladder\n`/rank` Personal rank card', inline: false }
  )
  .addFields({
- name: ' ',
- value: ' Member Commands \n\n`/resources` Free resources\n`/commissions` Shop & commissions\n`/webstats` Live website stats\n`/help` You\'re here!\n`/support` Support us\n`/about` About the server\n`/request` Request help',
+ name: '🛡️ ADMIN TOOLS',
+ value: [
+ '`/mute` Timeout a member',
+ '`/unmute` Remove timeout',
+ '`/kick` Kick a member',
+ '`/ban` Ban a member',
+ '`/ticketpanel` Post ticket panel',
+ '`/botstatus` Runtime and resource health',
+ '`/websyncstatus` Sync service diagnostics',
+ ].join('\n'),
  inline: false
  });
-
- embed
- .setFooter({ text: ' . Draxar\'s Disc I\'m glad you\'re here!' })
- .setTimestamp();
 
  await interaction.reply({ embeds: [embed] });
  },

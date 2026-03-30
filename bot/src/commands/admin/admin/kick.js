@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { sendModLog } = require('../../utils/modLog');
+const { createStyledEmbed } = require('../../utils/embedStyle');
 
 module.exports = {
  data: new SlashCommandBuilder()
@@ -34,14 +35,18 @@ module.exports = {
  try {
  // Try to DM the user before kicking
  try {
- const dmEmbed = new EmbedBuilder()
- .setColor('#8B0000')
- .setTitle(' You have been kicked ')
- .setDescription(`. .\n\nYou have been kicked from **${interaction.guild.name}**`)
+ const dmEmbed = createStyledEmbed({
+ interaction,
+ icon: '🥾',
+ title: 'You Were Kicked',
+ theme: 'moderation',
+ description: `You were removed from **${interaction.guild.name}**.`,
+ color: 'warning',
+ })
  .addFields(
- { name: ' Reason ', value: reason, inline: false }
+ { name: 'Reason', value: reason, inline: false }
  )
- .setFooter({ text: ' . You may rejoin if you wish!' })
+ .setFooter({ text: 'You may rejoin if allowed by server rules.' })
  .setTimestamp();
  await user.send({ embeds: [dmEmbed] });
  } catch (dmError) {
@@ -53,15 +58,20 @@ module.exports = {
  // Send mod log
  await sendModLog(interaction.guild, 'Kick', interaction.user, user, reason);
 
- const embed = new EmbedBuilder()
- .setColor('#8B0000')
- .setTitle(' User Kicked ')
- .setDescription(`. .\n\n**${user.tag}** has been kicked from the server.`)
+ const embed = createStyledEmbed({
+ interaction,
+ icon: '🥾',
+ title: 'Member Kicked',
+ theme: 'moderation',
+ description: `**${user.tag}** has been removed from the server.`,
+ color: 'warning',
+ })
  .addFields(
- { name: ' User ', value: `${user.tag}`, inline: true },
- { name: ' Reason ', value: reason, inline: true }
+ { name: 'User', value: `${user.tag}`, inline: true },
+ { name: 'Reason', value: reason, inline: true },
+ { name: 'Moderator', value: interaction.user.tag, inline: true }
  )
- .setFooter({ text: ' . Moderation Action' })
+ .setFooter({ text: 'Moderation action completed' })
  .setTimestamp();
 
  await interaction.reply({ embeds: [embed] });

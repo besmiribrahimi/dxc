@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { sendModLog } = require('../../utils/modLog');
+const { createStyledEmbed } = require('../../utils/embedStyle');
 
 module.exports = {
  data: new SlashCommandBuilder()
@@ -37,14 +38,18 @@ module.exports = {
  try {
  // Try to DM the user before banning
  try {
- const dmEmbed = new EmbedBuilder()
- .setColor('#FF6B6B')
- .setTitle(' You have been banned ')
- .setDescription(`. .\n\nYou have been banned from **${interaction.guild.name}**`)
+ const dmEmbed = createStyledEmbed({
+ interaction,
+ icon: '⛔',
+ title: 'You Were Banned',
+ theme: 'moderation',
+ description: `You were banned from **${interaction.guild.name}**.`,
+ color: 'danger',
+ })
  .addFields(
- { name: ' Reason ', value: reason, inline: false }
+ { name: 'Reason', value: reason, inline: false }
  )
- .setFooter({ text: ' . We wish you the best!' })
+ .setFooter({ text: 'You can appeal to staff if your server allows it.' })
  .setTimestamp();
  await user.send({ embeds: [dmEmbed] });
  } catch (dmError) {
@@ -56,15 +61,21 @@ module.exports = {
  // Send mod log
  await sendModLog(interaction.guild, 'Ban', interaction.user, user, reason);
 
- const embed = new EmbedBuilder()
- .setColor('#FF6B6B')
- .setTitle(' User Banned ')
- .setDescription(`. .\n\n**${user.tag}** has been banned from the server.`)
+ const embed = createStyledEmbed({
+ interaction,
+ icon: '⛔',
+ title: 'Member Banned',
+ theme: 'moderation',
+ description: `**${user.tag}** has been permanently removed.`,
+ color: 'danger',
+ })
  .addFields(
- { name: ' User ', value: `${user.tag}`, inline: true },
- { name: ' Reason ', value: reason, inline: true }
+ { name: 'User', value: `${user.tag}`, inline: true },
+ { name: 'Reason', value: reason, inline: true },
+ { name: 'Delete Days', value: String(days), inline: true },
+ { name: 'Moderator', value: interaction.user.tag, inline: true }
  )
- .setFooter({ text: ' . Moderation Action' })
+ .setFooter({ text: 'Moderation action completed' })
  .setTimestamp();
 
  await interaction.reply({ embeds: [embed] });

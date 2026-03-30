@@ -4,7 +4,11 @@
   "description": "Simple Discord bot for admin DM broadcasts by role",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "start:pm2": "pm2 start ecosystem.config.cjs --env production",
+    "restart:pm2": "pm2 restart entrenched-1v1-bot",
+    "stop:pm2": "pm2 stop entrenched-1v1-bot && pm2 delete entrenched-1v1-bot",
+    "logs:pm2": "pm2 logs entrenched-1v1-bot"
   },
   "engines": {
     "node": ">=18.17.0"
