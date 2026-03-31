@@ -76,6 +76,7 @@ United Kingdom:
 
 USA:
 - crimsvonn | Faction: DK
+- JacksonJGL | Faction: DK
 - iownlivy | Faction: AH/URF
 - noah464 | Faction: TWL
 - Quackenxnator | Faction: AH

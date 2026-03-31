@@ -13,6 +13,7 @@ const playerData = [
     { username: "hamit_gamer13000", faction: "URF", country: "Turkey" },
     { username: "ILIKEJOCK", faction: "TWL", country: "India" },
     { username: "iownlivy", faction: "AH/URF", country: "USA" },
+    { username: "JacksonJGL", faction: "DK", country: "USA" },
     { username: "Jokerkingksh", faction: "TAE", country: "India" },
     { username: "kbfrm242", faction: "AH", country: "Poland" },
     { username: "ligth_hand", faction: "N/A", country: "Morocco" },
