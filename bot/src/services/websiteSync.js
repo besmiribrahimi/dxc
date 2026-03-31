@@ -251,6 +251,22 @@ function normalizeStats(input) {
   };
 }
 
+function hasUsableStatsSnapshot(stats) {
+  if (!stats || typeof stats !== "object") {
+    return false;
+  }
+
+  const hasNumericCounts = [stats.players, stats.factions, stats.countries]
+    .some((value) => Number.isFinite(Number(value)));
+
+  const hasLeaderboardRows =
+    (Array.isArray(stats.topPlayers) && stats.topPlayers.length > 0) ||
+    (Array.isArray(stats.topFactions) && stats.topFactions.length > 0) ||
+    (Array.isArray(stats.topCountries) && stats.topCountries.length > 0);
+
+  return hasNumericCounts || hasLeaderboardRows;
+}
+
 function parseLocalPlayerData(scriptSource) {
   const match = scriptSource.match(PLAYER_DATA_REGEX);
   if (!match) {
@@ -466,6 +482,10 @@ async function syncWebsiteStats() {
 
     if (!result) {
       throw new Error(errors.length ? errors.join(" | ") : "No website sync source was available");
+    }
+
+    if (!hasUsableStatsSnapshot(result.stats)) {
+      throw new Error(`${result.source} returned empty stats payload`);
     }
 
     state.lastSuccessAt = Date.now();

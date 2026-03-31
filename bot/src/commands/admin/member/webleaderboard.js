@@ -27,6 +27,22 @@ function formatTopCounts(label, rows) {
     .join("\n");
 }
 
+function hasUsableSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== "object") {
+    return false;
+  }
+
+  const hasNumericCounts = [snapshot.players, snapshot.factions, snapshot.countries]
+    .some((value) => Number.isFinite(Number(value)));
+
+  const hasLeaderboardRows =
+    (Array.isArray(snapshot.topPlayers) && snapshot.topPlayers.length > 0) ||
+    (Array.isArray(snapshot.topFactions) && snapshot.topFactions.length > 0) ||
+    (Array.isArray(snapshot.topCountries) && snapshot.topCountries.length > 0);
+
+  return hasNumericCounts || hasLeaderboardRows;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("webleaderboard")
@@ -49,6 +65,10 @@ module.exports = {
 
       if (!snapshot) {
         throw new Error(syncResult.error || "No leaderboard data available yet");
+      }
+
+      if (!hasUsableSnapshot(snapshot)) {
+        throw new Error(syncResult.error || "Website sync returned empty leaderboard data");
       }
 
       const embed = createStyledEmbed({

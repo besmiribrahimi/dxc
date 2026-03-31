@@ -27,13 +27,23 @@ module.exports = {
     const lastAttempt = syncState.lastAttemptAt ? `<t:${Math.floor(syncState.lastAttemptAt / 1000)}:R>` : "Never";
     const lastSuccess = syncState.lastSuccessAt ? `<t:${Math.floor(syncState.lastSuccessAt / 1000)}:R>` : "Never";
 
-    const healthy = !syncState.lastError;
+    const snapshot = syncState.lastStats;
+    const hasUsableSnapshot = Boolean(
+      snapshot && (
+        [snapshot.players, snapshot.factions, snapshot.countries].some((value) => Number.isFinite(Number(value))) ||
+        (Array.isArray(snapshot.topPlayers) && snapshot.topPlayers.length > 0) ||
+        (Array.isArray(snapshot.topFactions) && snapshot.topFactions.length > 0) ||
+        (Array.isArray(snapshot.topCountries) && snapshot.topCountries.length > 0)
+      )
+    );
+
+    const healthy = !syncState.lastError && hasUsableSnapshot;
     const embed = createStyledEmbed({
       interaction,
       icon: '🛰️',
       title: 'Website Sync Status',
       theme: 'system',
-      summary: healthy ? 'Sync service is healthy.' : 'Sync service has recent issues.',
+      summary: healthy ? 'Sync service is healthy.' : 'Sync service has recent issues or empty data.',
       sections: [
         {
           label: 'Health',
@@ -74,6 +84,7 @@ module.exports = {
                 `Players: ${syncState.lastStats.players ?? "N/A"}`,
                 `Factions: ${syncState.lastStats.factions ?? "N/A"}`,
                 `Countries: ${syncState.lastStats.countries ?? "N/A"}`,
+                `Usable Data: ${hasUsableSnapshot ? "Yes" : "No"}`,
               ].join("\n")
             : "No cached data yet.",
           inline: false,
