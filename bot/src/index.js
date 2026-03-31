@@ -35,6 +35,7 @@ const LEADERBOARD_COMMANDS = new Set([
   "botstatus",
   "set1v1",
   "look1v1",
+  "mesga",
   "mute",
   "unmute",
   "kick",
