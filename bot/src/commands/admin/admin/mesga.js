@@ -3,7 +3,7 @@ const { createStyledEmbed } = require('../../utils/embedStyle');
 
 module.exports = {
  data: new SlashCommandBuilder()
- .setName('mesga')
+ .setName('msga')
  .setDescription('Admin messaging commands')
  .addSubcommand(subcommand =>
  subcommand

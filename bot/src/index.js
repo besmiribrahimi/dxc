@@ -35,6 +35,7 @@ const LEADERBOARD_COMMANDS = new Set([
   "botstatus",
   "set1v1",
   "look1v1",
+  "msga",
   "mesga",
   "mute",
   "unmute",
@@ -178,6 +179,9 @@ const client = new Client({
 async function registerGuildCommands() {
   const rest = new REST({ version: "10" }).setToken(token);
   const payload = commandDefinitions.map((command) => command.data.toJSON());
+  const commandNames = payload.map((item) => item.name).sort();
+
+  console.log(`Registering guild commands (${commandNames.length}): ${commandNames.join(", ")}`);
 
   await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
     body: payload,

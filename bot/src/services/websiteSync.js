@@ -30,7 +30,10 @@ function getWebsiteBaseUrl() {
 function resolveExistingLocalScript() {
   const candidates = [
     LOCAL_SCRIPT_PATH,
+    path.resolve(process.cwd(), "..", "script.js"),
     path.resolve(process.cwd(), "..", "draxar", "script.js"),
+    path.resolve(process.cwd(), "script.js"),
+    path.resolve(__dirname, "..", "..", "..", "script.js"),
   ].filter(Boolean);
 
   for (const candidate of candidates) {
