@@ -1,9 +1,9 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { createStyledEmbed } = require('../../utils/embedStyle');
 
-module.exports = {
- data: new SlashCommandBuilder()
- .setName('msga')
+function buildCommand(name) {
+ return new SlashCommandBuilder()
+ .setName(name)
  .setDescription('Admin messaging commands')
  .addSubcommand(subcommand =>
  subcommand
@@ -24,9 +24,10 @@ module.exports = {
  .setName('leaderboard')
  .setDescription('Include leaderboard added message (default: true)')
  .setRequired(false)))
- .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+ .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+}
 
- async execute(interaction) {
+async function executeMessageCommand(interaction) {
  const subcommand = interaction.options.getSubcommand();
 
  if (subcommand !== 'user') {
@@ -94,5 +95,11 @@ module.exports = {
 
  await interaction.reply({ embeds: [failure], ephemeral: true });
  }
- },
+}
+
+module.exports = {
+ data: buildCommand('msga'),
+ execute: executeMessageCommand,
+ buildMessageCommand: buildCommand,
+ executeMessageCommand,
 };

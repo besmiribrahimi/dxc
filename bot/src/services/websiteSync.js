@@ -3,7 +3,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const DEFAULT_SITE_URL = process.env.WEBSITE_HOME_URL || "https://dxc-chi.vercel.app/";
-const API_URL = process.env.WEBSITE_API_URL || "";
+const API_URL_FROM_ENV = process.env.WEBSITE_API_URL || "";
 const API_TOKEN = process.env.WEBSITE_API_TOKEN || "";
 const LOCAL_SCRIPT_PATH = process.env.WEBSITE_LOCAL_SCRIPT_PATH || "";
 const SYNC_ENABLED = String(process.env.WEBSITE_SYNC_ENABLED || "true").toLowerCase() !== "false";
@@ -16,15 +16,30 @@ function trimTrailingSlash(url) {
 }
 
 function getWebsiteBaseUrl() {
-  if (API_URL) {
+  const configuredApiUrl = getApiUrl();
+
+  if (configuredApiUrl) {
     try {
-      return trimTrailingSlash(new URL(API_URL).origin);
+      return trimTrailingSlash(new URL(configuredApiUrl).origin);
     } catch {
       // Ignore parse errors and fall back to configured home URL.
     }
   }
 
   return trimTrailingSlash(DEFAULT_SITE_URL);
+}
+
+function getApiUrl() {
+  if (API_URL_FROM_ENV) {
+    return API_URL_FROM_ENV;
+  }
+
+  const base = trimTrailingSlash(DEFAULT_SITE_URL);
+  if (!base) {
+    return "";
+  }
+
+  return `${base}/api/bot/stats`;
 }
 
 function resolveExistingLocalScript() {
@@ -46,11 +61,12 @@ function resolveExistingLocalScript() {
 }
 
 const RESOLVED_LOCAL_SCRIPT = resolveExistingLocalScript();
+const RESOLVED_API_URL = getApiUrl();
 
 const state = {
   enabled: SYNC_ENABLED,
-  apiConfigured: Boolean(API_URL),
-  apiUrl: API_URL || null,
+  apiConfigured: Boolean(RESOLVED_API_URL),
+  apiUrl: RESOLVED_API_URL || null,
   homeUrl: DEFAULT_SITE_URL,
   localScriptPath: RESOLVED_LOCAL_SCRIPT,
   intervalMinutes: Number.isFinite(SYNC_INTERVAL_MINUTES) && SYNC_INTERVAL_MINUTES > 0 ? SYNC_INTERVAL_MINUTES : 5,
@@ -61,9 +77,31 @@ const state = {
 };
 
 function parseMetric(html, label) {
-  const pattern = new RegExp(`${label}\\s*(\\d+)`, "i");
-  const match = html.match(pattern);
-  return match ? Number(match[1]) : null;
+  const source = String(html || "");
+  if (!source) {
+    return null;
+  }
+
+  const plain = source
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const patterns = [
+    new RegExp(`${label}\\s*[:\\-]?\\s*(\\d+)`, "i"),
+    new RegExp(`(\\d+)\\s*${label}`, "i"),
+  ];
+
+  for (const pattern of patterns) {
+    const match = plain.match(pattern);
+    if (match) {
+      return Number(match[1]);
+    }
+  }
+
+  return null;
 }
 
 function normalizeLabel(value) {
@@ -271,11 +309,11 @@ async function fetchWithTimeout(url, options = {}) {
 }
 
 async function fetchFromApi() {
-  if (!API_URL) {
+  if (!RESOLVED_API_URL) {
     return null;
   }
 
-  const response = await fetchWithTimeout(API_URL, {
+  const response = await fetchWithTimeout(RESOLVED_API_URL, {
     headers: {
       ...(API_TOKEN ? { "x-bot-token": API_TOKEN } : {}),
     },
@@ -360,15 +398,23 @@ async function fetchFromHomepage() {
 
   const html = await response.text();
 
+  const stats = {
+    players: parseMetric(html, "PLAYERS"),
+    factions: parseMetric(html, "FACTIONS"),
+    countries: parseMetric(html, "COUNTRIES"),
+    topPlayers: [],
+    topFactions: [],
+    topCountries: [],
+    sourceUpdatedAt: null,
+  };
+
+  if (stats.players == null && stats.factions == null && stats.countries == null) {
+    throw new Error("Homepage metrics were not found");
+  }
+
   return {
     stats: {
-      players: parseMetric(html, "PLAYERS"),
-      factions: parseMetric(html, "FACTIONS"),
-      countries: parseMetric(html, "COUNTRIES"),
-      topPlayers: [],
-      topFactions: [],
-      topCountries: [],
-      sourceUpdatedAt: null,
+      ...stats,
     },
     source: "homepage",
   };
