@@ -40,6 +40,7 @@ const playerData = [
     { username: "SwissAbyss1", faction: "TWL", country: "USA" },
     { username: "tamika2006s", faction: "NDV", country: "Sweden" },
     { username: "ThatRandomPerson142", faction: "RKA", country: "USA" },
+    { username: "ThatThatRandomPerson142", faction: "RKA", country: "US" },
     { username: "Vespartan_alt", faction: "TWL", country: "Czechia" },
     { username: "vcfghcemil", faction: "CZSK", country: "Germany" },
     { username: "xxninjaxx9065", faction: "TWL", country: "United Kingdom" },
