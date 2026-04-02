@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>[D.X.C] Draxar Competitive - Live 1v1 Tournament</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260402-t72">
 </head>
 <body data-style-preset="clean-esports" class="bracket-page">
     <div class="ambient-bg" aria-hidden="true">
@@ -37,17 +37,21 @@
 
     <main class="container bracket-page-main">
         <section class="faction-hero-card bracket-hero-card cinematic-item">
-            <p class="faction-hero-kicker">Live Tournament Control</p>
-            <h2>Locked 1v1 Bracket</h2>
-            <p class="faction-hero-subtitle">Manual groups from groups.txt always stay locked. If there are no manual groups, the first generated groups stay fixed until you force a sync.</p>
+            <p class="faction-hero-kicker">Competitive Event Dashboard</p>
+            <h2>72 Player Tournament Center</h2>
+            <p class="faction-hero-subtitle">Nine groups, eight players each, auto-advancing into a dynamic knockout tree with live updates and smooth esports animations.</p>
             <div class="bracket-meta-row" aria-label="Tournament summary">
                 <div class="bracket-meta-chip">
                     <span class="bracket-meta-label">Groups</span>
-                    <strong id="group-count" class="bracket-meta-value">0</strong>
+                    <strong id="group-count" class="bracket-meta-value">9</strong>
                 </div>
                 <div class="bracket-meta-chip">
                     <span class="bracket-meta-label">Entrants</span>
                     <strong id="entrant-count" class="bracket-meta-value">0</strong>
+                </div>
+                <div class="bracket-meta-chip">
+                    <span class="bracket-meta-label">Qualifiers</span>
+                    <strong id="qualifier-count" class="bracket-meta-value">0</strong>
                 </div>
                 <div class="bracket-meta-chip">
                     <span class="bracket-meta-label">Last Update</span>
@@ -56,30 +60,52 @@
             </div>
         </section>
 
-        <section class="faction-ranking-board bracket-faction-board cinematic-item" aria-label="Faction tier context">
-            <div class="faction-ranking-head">
-                <p class="faction-ranking-kicker">Faction Power Snapshot</p>
-                <h3>Equal-Tier Matchups</h3>
-                <span class="faction-ranking-date">AH, DK and others are styled by shared tier strength</span>
+        <section class="faction-controls bracket-command-bar cinematic-item" aria-label="Tournament controls">
+            <div class="bracket-control-grid">
+                <label class="bracket-control-field" for="player-search">
+                    <span>Search Player</span>
+                    <input id="player-search" class="search-input bracket-input" type="search" placeholder="Username, faction, or country..." autocomplete="off">
+                </label>
+                <label class="bracket-control-field" for="group-filter">
+                    <span>Filter Group</span>
+                    <select id="group-filter" class="filter-select bracket-select">
+                        <option value="all">All Groups</option>
+                        <option value="A">Group A</option>
+                        <option value="B">Group B</option>
+                        <option value="C">Group C</option>
+                        <option value="D">Group D</option>
+                        <option value="E">Group E</option>
+                        <option value="F">Group F</option>
+                        <option value="G">Group G</option>
+                        <option value="H">Group H</option>
+                        <option value="I">Group I</option>
+                    </select>
+                </label>
+                <div class="bracket-control-actions">
+                    <button id="admin-toggle" class="quick-chip bracket-admin-toggle" type="button" aria-pressed="false">Admin Mode: Off</button>
+                </div>
             </div>
-            <div class="faction-ranking-grid">
-                <article class="faction-tier faction-tier-elite"><h4>Elite</h4><p>DK, AH, TTI2</p></article>
-                <article class="faction-tier faction-tier-top-mid"><h4>Top Mid</h4><p>SWL, IA, 271ST, CZSK</p></article>
-                <article class="faction-tier faction-tier-mid"><h4>Mid</h4><p>TWA, RRF, INS, RKA 2</p></article>
-                <article class="faction-tier faction-tier-low-mid"><h4>Low Mid</h4><p>URF, TAE, AEF, NDV, KOC, and others</p></article>
-            </div>
-            <p class="faction-ranking-note">Factions in the same category are treated as roughly equal for visual grouping.</p>
+            <p id="message" class="bracket-message" role="status" aria-live="polite"></p>
         </section>
 
-        <section class="faction-stage bracket-stage cinematic-item" aria-label="Tournament bracket board">
+        <section class="faction-stage bracket-stage cinematic-item" aria-label="Group stage board">
             <div class="bracket-stage-head">
-                <p class="faction-spotlight-kicker">Tournament Board</p>
+                <p class="faction-spotlight-kicker">Group Stage</p>
                 <span class="bracket-live-pill">LIVE</span>
             </div>
-            <h3>Group Stage + Champions Stage</h3>
-            <p class="faction-spotlight-copy">The board refreshes from source files every 45 seconds and keeps manual groups as the highest priority.</p>
-            <p id="message" class="bracket-message" role="status" aria-live="polite"></p>
-            <div id="brackets" class="brackets"></div>
+            <h3>Groups A to I</h3>
+            <p class="faction-spotlight-copy">Each group contains 8 players with first-round pairings 1v2, 3v4, 5v6, 7v8, plus auto standings and progression.</p>
+            <div id="groups-grid" class="groups-grid"></div>
+        </section>
+
+        <section class="faction-stage bracket-stage cinematic-item" aria-label="Knockout stage board">
+            <div class="bracket-stage-head">
+                <p class="faction-spotlight-kicker">Final Stage</p>
+                <span class="bracket-live-pill">KNOCKOUT</span>
+            </div>
+            <h3>Dynamic Knockout Bracket</h3>
+            <p class="faction-spotlight-copy">Top players qualify automatically and the tree updates instantly when results change.</p>
+            <div id="knockout-bracket" class="knockout-bracket"></div>
         </section>
     </main>
 
@@ -87,6 +113,6 @@
         <p>&copy; 2026 [D.X.C] Draxar Competitive. All rights reserved.</p>
     </footer>
 
-    <script src="bracket.js"></script>
+    <script src="bracket.js?v=20260402-t72"></script>
 </body>
 </html>

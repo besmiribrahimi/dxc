@@ -15,11 +15,19 @@ function toJson(res, statusCode, payload) {
 }
 
 function getAuthSecret() {
-    return normalizeEnvValue(process.env.ADMIN_PANEL_SECRET || process.env.WEBSITE_API_TOKEN);
+    return normalizeEnvValue(
+        process.env.ADMIN_PANEL_SECRET
+        || process.env.ADMIN_SECRET
+        || process.env.WEBSITE_API_TOKEN
+    );
 }
 
 function getAdminPassword() {
-    return normalizeEnvValue(process.env.ADMIN_PANEL_PASSWORD || process.env.WEBSITE_API_TOKEN);
+    return normalizeEnvValue(
+        process.env.ADMIN_PANEL_PASSWORD
+        || process.env.ADMIN_PASSWORD
+        || process.env.WEBSITE_API_TOKEN
+    );
 }
 
 function safeCompare(input, expected) {
