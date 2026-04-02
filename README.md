@@ -174,8 +174,8 @@ The website now includes a movable admin panel for reordering players.
 
 Set these variables in Vercel Environment Variables:
 
-- `ADMIN_PANEL_PASSWORD=FREE_168aff8f8d58eee686ad23f4dd192e2f`
-- `ADMIN_PANEL_SECRET=FREE_168aff8f8d58eee686ad23f4dd192e2f`
+- `ADMIN_PANEL_PASSWORD=<set_a_strong_unique_password>`
+- `ADMIN_PANEL_SECRET=<set_a_long_random_secret>`
 - One global sync backend option:
    - `KV_REST_API_URL=your_vercel_kv_rest_url`
    - `KV_REST_API_TOKEN=your_vercel_kv_rest_token`

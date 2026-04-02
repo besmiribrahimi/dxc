@@ -47,6 +47,7 @@
                 <a href="#leaderboard" class="nav-link active" data-tip="Live ranking board" onclick="switchView('leaderboard', event)">Leaderboard</a>
                 <a href="#matches" class="nav-link" data-tip="Recent matches" onclick="switchView('matches', event)">Match History</a>
                 <a href="faction-rankings.html" class="nav-link" data-tip="Official faction tiers">Faction Rankings</a>
+                <a href="bracket.html" class="nav-link" data-tip="Live 1v1 tournament bracket">Tournament</a>
                 <a href="https://discord.gg/ZbKT946X" class="nav-link discord-link" data-tip="Official Draxar Discord" target="_blank" rel="noopener noreferrer">Join Discord</a>
             </nav>
         </div>
@@ -457,12 +458,17 @@
             <label for="adminPasswordInput" class="admin-auth-label">Enter admin password</label>
             <div class="admin-auth-row">
                 <input type="password" id="adminPasswordInput" class="admin-auth-input" placeholder="Admin password" autocomplete="current-password">
+                <button type="button" id="adminPasswordToggle" class="editor-action-btn">Show</button>
                 <button type="button" id="adminLoginBtn" class="editor-action-btn primary">Unlock</button>
             </div>
         </div>
 
         <div id="adminControls" class="admin-controls" hidden>
             <p class="movable-editor-help">Drag players to reorder and set levels for all players, then apply.</p>
+            <div class="admin-toolbar">
+                <input type="text" id="adminSearchInput" class="admin-auth-input admin-search-input" placeholder="Find player, faction, or country..." autocomplete="off">
+                <p id="adminListMeta" class="admin-list-meta">Showing 0 players</p>
+            </div>
             <ul id="adminPlayerList" class="admin-player-list"></ul>
             <div class="movable-editor-actions">
                 <button type="button" id="adminApplyOrder" class="editor-action-btn primary">Apply Ranking</button>

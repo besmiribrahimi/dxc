@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[D.X.C] Draxar Competitive - Live 1v1 Tournament</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-style-preset="clean-esports" class="bracket-page">
+    <div class="ambient-bg" aria-hidden="true">
+        <span class="ambient-dot"></span>
+        <span class="ambient-dot"></span>
+        <span class="ambient-dot"></span>
+        <span class="ambient-dot"></span>
+        <span class="ambient-dot"></span>
+        <span class="ambient-dot"></span>
+    </div>
+
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <img src="logo.png" alt="Draxar Competitive logo" class="logo-image">
+                <div class="logo-text">
+                    <h1>[D.X.C] Draxar Competitive</h1>
+                    <p>Live 1v1 Tournament Bracket</p>
+                </div>
+            </div>
+            <nav class="nav">
+                <a href="index.html#leaderboard" class="nav-link" data-tip="Main leaderboard">Leaderboard</a>
+                <a href="index.html#matches" class="nav-link" data-tip="Recent matches">Match History</a>
+                <a href="faction-rankings.html" class="nav-link" data-tip="Official faction tiers">Faction Rankings</a>
+                <a href="bracket.html" class="nav-link active" data-tip="Live 1v1 tournament bracket">Tournament</a>
+                <a href="https://discord.gg/ZbKT946X" class="nav-link discord-link" data-tip="Official Draxar Discord" target="_blank" rel="noopener noreferrer">Join Discord</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container bracket-page-main">
+        <section class="faction-hero-card bracket-hero-card cinematic-item">
+            <p class="faction-hero-kicker">Live Tournament Control</p>
+            <h2>Locked 1v1 Bracket</h2>
+            <p class="faction-hero-subtitle">Manual groups from groups.txt always stay locked. If there are no manual groups, the first generated groups stay fixed until you force a sync.</p>
+            <div class="bracket-meta-row" aria-label="Tournament summary">
+                <div class="bracket-meta-chip">
+                    <span class="bracket-meta-label">Groups</span>
+                    <strong id="group-count" class="bracket-meta-value">0</strong>
+                </div>
+                <div class="bracket-meta-chip">
+                    <span class="bracket-meta-label">Entrants</span>
+                    <strong id="entrant-count" class="bracket-meta-value">0</strong>
+                </div>
+                <div class="bracket-meta-chip">
+                    <span class="bracket-meta-label">Last Update</span>
+                    <strong id="last-updated" class="bracket-meta-value">Waiting...</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="faction-ranking-board bracket-faction-board cinematic-item" aria-label="Faction tier context">
+            <div class="faction-ranking-head">
+                <p class="faction-ranking-kicker">Faction Power Snapshot</p>
+                <h3>Equal-Tier Matchups</h3>
+                <span class="faction-ranking-date">AH, DK and others are styled by shared tier strength</span>
+            </div>
+            <div class="faction-ranking-grid">
+                <article class="faction-tier faction-tier-elite"><h4>Elite</h4><p>DK, AH, TTI2</p></article>
+                <article class="faction-tier faction-tier-top-mid"><h4>Top Mid</h4><p>SWL, IA, 271ST, CZSK</p></article>
+                <article class="faction-tier faction-tier-mid"><h4>Mid</h4><p>TWA, RRF, INS, RKA 2</p></article>
+                <article class="faction-tier faction-tier-low-mid"><h4>Low Mid</h4><p>URF, TAE, AEF, NDV, KOC, and others</p></article>
+            </div>
+            <p class="faction-ranking-note">Factions in the same category are treated as roughly equal for visual grouping.</p>
+        </section>
+
+        <section class="faction-stage bracket-stage cinematic-item" aria-label="Tournament bracket board">
+            <div class="bracket-stage-head">
+                <p class="faction-spotlight-kicker">Tournament Board</p>
+                <span class="bracket-live-pill">LIVE</span>
+            </div>
+            <h3>Group Stage + Champions Stage</h3>
+            <p class="faction-spotlight-copy">The board refreshes from source files every 45 seconds and keeps manual groups as the highest priority.</p>
+            <p id="message" class="bracket-message" role="status" aria-live="polite"></p>
+            <div id="brackets" class="brackets"></div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2026 [D.X.C] Draxar Competitive. All rights reserved.</p>
+    </footer>
+
+    <script src="bracket.js"></script>
+</body>
+</html>

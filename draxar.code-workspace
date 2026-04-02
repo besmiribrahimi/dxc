@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../draxar bot"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "draxar"
+	}
+}
