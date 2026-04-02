@@ -4,7 +4,6 @@ const playerData = [
     { username: "20SovietSO21", faction: "DK", country: "Spain" },
     { username: "BLESK_BLESKAC", faction: "CZSK", country: "Slovakia" },
     { username: "Clown213o", faction: "TCL", country: "N/A" },
-    { username: "crimsvonn", faction: "DK", country: "USA" },
     { username: "DaSpokeyNameYT", faction: "N/A", country: "England" },
     { username: "Dociusaltius", faction: "URF", country: "Sweden" },
     { username: "doudperfectcom", faction: "AH", country: "Denmark" },
@@ -662,6 +661,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                 'systemNotice',
                 'Ranking Update',
                 'ELO has been removed because the ratio between active and offline players is too high. Staff will now judge players.'
+            );
+            notifyWithProfile(
+                'systemNotice',
+                'Roster Update',
+                'crimsvonn has been removed from the rankings after quitting the game.'
             );
         }, reducedMotion ? 0 : 210);
     }, reducedMotion ? 160 : 900);

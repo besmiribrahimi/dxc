@@ -25,7 +25,6 @@ CZSK:
 
 DK:
 - 20SovietSO21 | Country: Spain
-- crimsvonn | Country: US
 - JacksonJGL | Country: USA
 - MyNameIsBrickWall | Country: UK
 
