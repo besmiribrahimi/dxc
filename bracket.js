@@ -1,5 +1,6 @@
 const GROUP_COUNT = 9;
 const GROUP_SIZE = 8;
+const QUALIFIERS_PER_GROUP = 2;
 const GROUP_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
 const LIVE_REFRESH_INTERVAL_MS = 45_000;
 const POINTS_PER_WIN = 3;
@@ -15,6 +16,18 @@ const dom = {
   playerSearch: document.getElementById("player-search"),
   groupFilter: document.getElementById("group-filter"),
   adminToggle: document.getElementById("admin-toggle"),
+  globalSync: document.getElementById("global-sync"),
+  soundToggle: document.getElementById("sound-toggle"),
+  particles: document.getElementById("bracket-particles"),
+  playerPopup: document.getElementById("player-popup"),
+  playerPopupClose: document.getElementById("player-popup-close"),
+  popupName: document.getElementById("player-popup-name"),
+  popupFaction: document.getElementById("player-popup-faction"),
+  popupCountry: document.getElementById("player-popup-country"),
+  popupGroup: document.getElementById("player-popup-group"),
+  popupPoints: document.getElementById("player-popup-points"),
+  popupWins: document.getElementById("player-popup-wins"),
+  popupLosses: document.getElementById("player-popup-losses"),
 };
 
 const state = {
@@ -22,16 +35,21 @@ const state = {
   source: "",
   loading: true,
   adminMode: false,
+  soundEnabled: true,
   searchTerm: "",
   groupFilter: "all",
   collapsedGroups: new Set(),
+  expandedMatches: new Set(),
   groupResults: new Map(),
   knockoutResults: new Map(),
   scoreMemory: new Map(),
+  winnerMemory: new Map(),
+  playerIndex: new Map(),
   lastUpdatedAt: 0,
 };
 
 bindUiEvents();
+initializeParticles();
 renderLoadingSkeletons();
 void initializeTournament();
 
@@ -79,8 +97,58 @@ function bindUiEvents() {
     renderTournament();
   });
 
+  dom.soundToggle?.addEventListener("click", () => {
+    state.soundEnabled = !state.soundEnabled;
+    dom.soundToggle.setAttribute("aria-pressed", String(state.soundEnabled));
+    dom.soundToggle.textContent = state.soundEnabled ? "Sound: On" : "Sound: Off";
+  });
+
+  dom.globalSync?.addEventListener("click", () => {
+    void syncGlobalOrder();
+  });
+
   dom.groupsGrid?.addEventListener("click", handleBracketAction);
   dom.knockoutBracket?.addEventListener("click", handleBracketAction);
+
+  dom.playerPopupClose?.addEventListener("click", closePlayerPopup);
+  dom.playerPopup?.addEventListener("click", (event) => {
+    if (event.target === dom.playerPopup) {
+      closePlayerPopup();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closePlayerPopup();
+    }
+  });
+}
+
+function initializeParticles() {
+  if (!dom.particles) {
+    return;
+  }
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reducedMotion) {
+    return;
+  }
+
+  const count = 18;
+  const fragment = document.createDocumentFragment();
+
+  for (let i = 0; i < count; i += 1) {
+    const particle = document.createElement("span");
+    particle.className = "bracket-particle";
+    particle.style.left = `${Math.random() * 100}%`;
+    particle.style.top = `${Math.random() * 100}%`;
+    particle.style.animationDelay = `${Math.random() * -12}s`;
+    particle.style.animationDuration = `${10 + Math.random() * 12}s`;
+    particle.style.opacity = `${0.08 + Math.random() * 0.2}`;
+    fragment.appendChild(particle);
+  }
+
+  dom.particles.appendChild(fragment);
 }
 
 function handleBracketAction(event) {
@@ -104,6 +172,46 @@ function handleBracketAction(event) {
     }
 
     renderTournament();
+    return;
+  }
+
+  if (action === "toggle-match") {
+    const matchId = String(target.dataset.match || "");
+    if (!matchId) {
+      return;
+    }
+
+    if (state.expandedMatches.has(matchId)) {
+      state.expandedMatches.delete(matchId);
+    } else {
+      state.expandedMatches.add(matchId);
+    }
+
+    renderTournament();
+    return;
+  }
+
+  if (action === "player-popup") {
+    const key = String(target.dataset.player || "").toLowerCase();
+    openPlayerPopup(key);
+    return;
+  }
+
+  if (action === "move-seed") {
+    if (!state.adminMode) {
+      showMessage("Enable admin mode to reorder players.", true);
+      return;
+    }
+
+    const groupId = String(target.dataset.group || "").toUpperCase();
+    const index = Number.parseInt(String(target.dataset.index || "-1"), 10);
+    const direction = String(target.dataset.direction || "");
+
+    moveGroupSeed(groupId, index, direction === "up" ? -1 : 1);
+    return;
+  }
+
+  if (!["set-winner", "save-score", "clear-result"].includes(action)) {
     return;
   }
 
@@ -174,6 +282,80 @@ function handleBracketAction(event) {
   if (action === "clear-result") {
     resultMap.delete(matchId);
     renderTournament();
+  }
+}
+
+function moveGroupSeed(groupId, fromIndex, delta) {
+  const groupIndex = GROUP_LABELS.indexOf(groupId);
+  if (groupIndex < 0) {
+    return;
+  }
+
+  const group = state.groups[groupIndex];
+  if (!group || !Array.isArray(group.entrants)) {
+    return;
+  }
+
+  const toIndex = fromIndex + delta;
+  if (
+    !Number.isInteger(fromIndex)
+    || !Number.isInteger(toIndex)
+    || fromIndex < 0
+    || toIndex < 0
+    || fromIndex >= group.entrants.length
+    || toIndex >= group.entrants.length
+  ) {
+    return;
+  }
+
+  const reordered = [...group.entrants];
+  const [moved] = reordered.splice(fromIndex, 1);
+  reordered.splice(toIndex, 0, moved);
+
+  reordered.forEach((entrant, index) => {
+    entrant.seed = index + 1;
+  });
+
+  state.groups[groupIndex] = {
+    ...group,
+    entrants: reordered,
+  };
+
+  renderTournament();
+}
+
+async function syncGlobalOrder() {
+  const usernames = state.groups.flatMap((group) =>
+    group.entrants.filter((entrant) => isRealEntrant(entrant)).map((entrant) => entrant.username)
+  );
+
+  if (!usernames.length) {
+    showMessage("No players available to sync.", true);
+    return;
+  }
+
+  showMessage("Syncing current tournament order globally...");
+
+  try {
+    const response = await fetch("/api/admin/ranking-order", {
+      method: "PUT",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ order: usernames }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      showMessage(payload.error || "Global sync failed. Login may be required.", true);
+      return;
+    }
+
+    showMessage("Global sync completed.");
+  } catch {
+    showMessage("Global sync failed due to network issue.", true);
   }
 }
 
@@ -476,33 +658,49 @@ function renderTournament() {
   }
 
   const evaluatedGroups = state.groups.map((group) => evaluateGroup(group));
-  const qualifiers = evaluatedGroups
-    .map((entry) => entry.qualifier)
-    .filter((entrant) => isRealEntrant(entrant));
-
+  const qualifiers = evaluatedGroups.flatMap((entry) => entry.qualifiers);
   const knockoutRounds = buildKnockoutRounds(qualifiers);
-  const scoreMemoryBuffer = new Map();
 
-  renderGroups(evaluatedGroups, scoreMemoryBuffer);
-  renderKnockout(knockoutRounds, scoreMemoryBuffer);
+  const scoreMemoryBuffer = new Map();
+  const winnerMemoryBuffer = new Map();
+  const winnerTracker = { changes: 0 };
+  const playerIndex = buildPlayerIndex(evaluatedGroups);
+
+  renderGroups(evaluatedGroups, scoreMemoryBuffer, winnerMemoryBuffer, winnerTracker);
+  renderKnockout(
+    knockoutRounds,
+    scoreMemoryBuffer,
+    winnerMemoryBuffer,
+    winnerTracker
+  );
+
   updateHeaderMeta(evaluatedGroups, qualifiers);
   updateLastUpdatedTime();
 
   state.scoreMemory = scoreMemoryBuffer;
+  state.winnerMemory = winnerMemoryBuffer;
+  state.playerIndex = playerIndex;
+
   animateScoreCounters();
+
+  if (winnerTracker.changes > 0) {
+    playMatchUpdateSound();
+  }
 }
 
 function evaluateGroup(group) {
   const rounds = buildGroupRounds(group);
   const standings = buildGroupStandings(group, rounds);
-  const qualifier =
-    (standings[0] && standings[0].player) || group.entrants.find((entrant) => isRealEntrant(entrant)) || null;
+  const qualifiers = standings
+    .slice(0, QUALIFIERS_PER_GROUP)
+    .map((row) => row.player)
+    .filter((entrant) => isRealEntrant(entrant));
 
   return {
     group,
     rounds,
     standings,
-    qualifier,
+    qualifiers,
   };
 }
 
@@ -536,7 +734,6 @@ function buildGroupRounds(group) {
 
   const finalA = semifinals[0].winner || createPendingEntrant("Winner SF1", `g${group.id}-f-a`);
   const finalB = semifinals[1].winner || createPendingEntrant("Winner SF2", `g${group.id}-f-b`);
-
   const final = [resolveMatch(`g${group.id}-r3-m1`, finalA, finalB, state.groupResults)];
 
   return [
@@ -701,7 +898,7 @@ function getAutoWinnerSide(a, b) {
   return "";
 }
 
-function renderGroups(evaluatedGroups, scoreMemoryBuffer) {
+function renderGroups(evaluatedGroups, scoreMemoryBuffer, winnerMemoryBuffer, winnerTracker) {
   if (!dom.groupsGrid) {
     return;
   }
@@ -732,12 +929,22 @@ function renderGroups(evaluatedGroups, scoreMemoryBuffer) {
         </button>
       </header>
       <div class="group-stage-body ${collapsed ? "is-collapsed" : ""}">
+        ${renderGroupRoster(entry.group)}
         <div class="group-stage-rounds">
           ${entry.rounds
-            .map((round) => renderRoundMarkup(round, "group", entry.group.id, scoreMemoryBuffer))
+            .map((round) =>
+              renderRoundMarkup(
+                round,
+                "group",
+                entry.group.id,
+                scoreMemoryBuffer,
+                winnerMemoryBuffer,
+                winnerTracker
+              )
+            )
             .join("")}
         </div>
-        ${renderStandingsMarkup(entry.standings, entry.qualifier)}
+        ${renderStandingsMarkup(entry.standings, entry.qualifiers)}
       </div>
     `;
 
@@ -748,7 +955,51 @@ function renderGroups(evaluatedGroups, scoreMemoryBuffer) {
   dom.groupsGrid.appendChild(fragment);
 }
 
-function renderRoundMarkup(round, scope, groupId, scoreMemoryBuffer) {
+function renderGroupRoster(group) {
+  const rows = group.entrants
+    .map((entrant, index) => {
+      const canMoveUp = state.adminMode && index > 0;
+      const canMoveDown = state.adminMode && index < group.entrants.length - 1;
+
+      return `
+        <div class="group-roster-row ${entrant.isBye ? "is-bye" : ""}">
+          <span class="group-seed">S${index + 1}</span>
+          <div class="group-roster-player">${renderEntrantMarkup(entrant, state.searchTerm)}</div>
+          ${
+            state.adminMode
+              ? `
+                <div class="group-roster-actions">
+                  <button type="button" class="quick-chip mini" data-action="move-seed" data-group="${escapeHtml(
+                    group.id
+                  )}" data-index="${index}" data-direction="up" ${canMoveUp ? "" : "disabled"}>Up</button>
+                  <button type="button" class="quick-chip mini" data-action="move-seed" data-group="${escapeHtml(
+                    group.id
+                  )}" data-index="${index}" data-direction="down" ${canMoveDown ? "" : "disabled"}>Down</button>
+                </div>
+              `
+              : ""
+          }
+        </div>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="group-roster">
+      <h4>Player Seeds</h4>
+      <div class="group-roster-list">${rows}</div>
+    </div>
+  `;
+}
+
+function renderRoundMarkup(
+  round,
+  scope,
+  groupId,
+  scoreMemoryBuffer,
+  winnerMemoryBuffer,
+  winnerTracker
+) {
   const roundClass = `round ${getRoundClassName(round.title)}`;
   const matchHtml = round.matches
     .map((match, matchIndex) =>
@@ -758,6 +1009,8 @@ function renderRoundMarkup(round, scope, groupId, scoreMemoryBuffer) {
         roundTitle: round.title,
         matchIndex,
         scoreMemoryBuffer,
+        winnerMemoryBuffer,
+        winnerTracker,
       })
     )
     .join("");
@@ -771,38 +1024,75 @@ function renderRoundMarkup(round, scope, groupId, scoreMemoryBuffer) {
 }
 
 function renderMatchMarkup(match, options) {
-  const { scope, groupId, roundTitle, matchIndex, scoreMemoryBuffer } = options;
-  const previous = state.scoreMemory.get(match.id) || { a: 0, b: 0 };
+  const {
+    scope,
+    groupId,
+    roundTitle,
+    matchIndex,
+    scoreMemoryBuffer,
+    winnerMemoryBuffer,
+    winnerTracker,
+  } = options;
+
+  const previousScore = state.scoreMemory.get(match.id) || { a: 0, b: 0 };
   scoreMemoryBuffer.set(match.id, { a: match.scoreA, b: match.scoreB });
+
+  const previousWinner = state.winnerMemory.get(match.id) || "";
+  winnerMemoryBuffer.set(match.id, match.winnerSide || "");
+
+  const winnerChanged =
+    Boolean(previousWinner)
+    && Boolean(match.winnerSide)
+    && previousWinner !== match.winnerSide;
+
+  if (winnerChanged) {
+    winnerTracker.changes += 1;
+  }
 
   const winnerA = match.winnerSide === "a";
   const winnerB = match.winnerSide === "b";
+  const open = state.expandedMatches.has(match.id);
+
+  const statusClass = match.winnerSide ? "is-finished" : "is-live";
+  const statusText = match.winnerSide ? "DONE" : "LIVE";
 
   return `
     <article class="stage-match" style="--match-index:${matchIndex};" data-match-id="${escapeHtml(match.id)}">
       <div class="match-label-row">
-        <span class="match-label">${escapeHtml(roundTitle)} Match ${matchIndex + 1}</span>
+        <button type="button" class="match-label-toggle" data-action="toggle-match" data-match="${escapeHtml(
+          match.id
+        )}">
+          <span class="match-label">${escapeHtml(roundTitle)} Match ${matchIndex + 1}</span>
+          <span class="live-indicator ${statusClass}"><i></i>${statusText}</span>
+        </button>
       </div>
-      <div class="stage-player-line ${winnerA ? "is-winner" : ""}">
+      <div class="stage-player-line ${winnerA ? "is-winner" : ""} ${
+    winnerA && winnerChanged ? "is-advanced" : ""
+  }">
         ${renderEntrantMarkup(match.a, state.searchTerm)}
       </div>
-      <div class="stage-player-line ${winnerB ? "is-winner" : ""}">
+      <div class="stage-player-line ${winnerB ? "is-winner" : ""} ${
+    winnerB && winnerChanged ? "is-advanced" : ""
+  }">
         ${renderEntrantMarkup(match.b, state.searchTerm)}
       </div>
       <div class="stage-score" aria-label="Current score">
-        <span class="score-number" data-animate-score="${match.scoreA}" data-prev-score="${previous.a}">${
-    previous.a
+        <span class="score-number" data-animate-score="${match.scoreA}" data-prev-score="${previousScore.a}">${
+    previousScore.a
   }</span>
         <span class="score-separator">:</span>
-        <span class="score-number" data-animate-score="${match.scoreB}" data-prev-score="${previous.b}">${
-    previous.b
+        <span class="score-number" data-animate-score="${match.scoreB}" data-prev-score="${previousScore.b}">${
+    previousScore.b
   }</span>
       </div>
-      ${
-        state.adminMode
-          ? renderAdminMatchControls(scope, groupId, match)
-          : ""
-      }
+      <div class="match-details ${open ? "is-open" : ""}">
+        <p class="match-details-text">${
+          match.winner
+            ? `${escapeHtml(match.winner.username)} is currently advancing.`
+            : "No winner selected yet."
+        }</p>
+        ${state.adminMode ? renderAdminMatchControls(scope, groupId, match) : ""}
+      </div>
     </article>
   `;
 }
@@ -820,20 +1110,20 @@ function renderEntrantMarkup(entrant, searchTerm) {
     return '<span class="entrant-name is-bye">BYE</span>';
   }
 
+  const key = slugify(entrant.username).toLowerCase();
   const displayName = highlightMatch(entrant.username, searchTerm);
   const faction = escapeHtml(entrant.faction || "N/A");
   const country = escapeHtml(entrant.country || "Unknown");
 
   return `
-    <span class="entrant-name">${displayName}</span>
-    <span class="entrant-meta">${faction} | ${country}</span>
+    <button type="button" class="entrant-button" data-action="player-popup" data-player="${escapeHtml(key)}">
+      <span class="entrant-name">${displayName}</span>
+      <span class="entrant-meta">${faction} | ${country}</span>
+    </button>
   `;
 }
 
 function renderAdminMatchControls(scope, groupId, match) {
-  const aLabel = `${scope}-${match.id}-a`;
-  const bLabel = `${scope}-${match.id}-b`;
-
   const hasPlayableA = isRealEntrant(match.a);
   const hasPlayableB = isRealEntrant(match.b);
 
@@ -851,10 +1141,10 @@ function renderAdminMatchControls(scope, groupId, match) {
       )}" data-match="${escapeHtml(match.id)}" data-side="b" ${
     hasPlayableB ? "" : "disabled"
   }>B Win</button>
-      <input id="${escapeHtml(aLabel)}" data-role="score-a" class="admin-score-input" type="number" min="0" max="99" value="${
+      <input data-role="score-a" class="admin-score-input" type="number" min="0" max="99" value="${
     match.scoreA
   }">
-      <input id="${escapeHtml(bLabel)}" data-role="score-b" class="admin-score-input" type="number" min="0" max="99" value="${
+      <input data-role="score-b" class="admin-score-input" type="number" min="0" max="99" value="${
     match.scoreB
   }">
       <button type="button" class="quick-chip mini" data-action="save-score" data-scope="${escapeHtml(
@@ -867,47 +1157,43 @@ function renderAdminMatchControls(scope, groupId, match) {
   `;
 }
 
-function renderStandingsMarkup(standings, qualifier) {
+function renderStandingsMarkup(standings, qualifiers) {
   if (!standings.length) {
     return '<div class="group-standings"><p class="empty-state">No standings available.</p></div>';
   }
 
+  const qualifierIds = new Set((qualifiers || []).map((player) => player.id));
+
   const rows = standings
     .map((row, index) => {
-      const isQualifier = qualifier && row.player.id === qualifier.id;
+      const isQualifier = qualifierIds.has(row.player.id);
 
       return `
-        <tr class="${isQualifier ? "is-qualifier" : ""}">
-          <td>${index + 1}</td>
-          <td>${escapeHtml(row.player.username)}</td>
-          <td>${row.points}</td>
-          <td>${row.wins}</td>
-          <td>${row.losses}</td>
-        </tr>
+        <div class="standing-row ${isQualifier ? "is-qualifier" : ""}">
+          <span class="standing-rank">${index + 1}</span>
+          <span class="standing-name">${escapeHtml(row.player.username)}</span>
+          <span class="standing-stat">${row.points} pts</span>
+          <span class="standing-stat">${row.wins}W</span>
+          <span class="standing-stat">${row.losses}L</span>
+        </div>
       `;
     })
     .join("");
 
   return `
     <div class="group-standings">
-      <h4>Standings</h4>
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Player</th>
-            <th>Pts</th>
-            <th>W</th>
-            <th>L</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
+      <h4>Group Progress</h4>
+      <div class="standing-stack">${rows}</div>
     </div>
   `;
 }
 
-function renderKnockout(rounds, scoreMemoryBuffer) {
+function renderKnockout(
+  rounds,
+  scoreMemoryBuffer,
+  winnerMemoryBuffer,
+  winnerTracker
+) {
   if (!dom.knockoutBracket) {
     return;
   }
@@ -932,6 +1218,8 @@ function renderKnockout(rounds, scoreMemoryBuffer) {
                     roundTitle: round.title,
                     matchIndex,
                     scoreMemoryBuffer,
+                    winnerMemoryBuffer,
+                    winnerTracker,
                   })
                 )
                 .join("")}
@@ -941,6 +1229,54 @@ function renderKnockout(rounds, scoreMemoryBuffer) {
         .join("")}
     </div>
   `;
+}
+
+function buildPlayerIndex(evaluatedGroups) {
+  const index = new Map();
+
+  evaluatedGroups.forEach((entry) => {
+    entry.standings.forEach((row) => {
+      const key = slugify(row.player.username).toLowerCase();
+      index.set(key, {
+        username: row.player.username,
+        faction: row.player.faction,
+        country: row.player.country,
+        group: entry.group.label,
+        points: row.points,
+        wins: row.wins,
+        losses: row.losses,
+      });
+    });
+  });
+
+  return index;
+}
+
+function openPlayerPopup(playerKey) {
+  const stats = state.playerIndex.get(playerKey);
+  if (!stats || !dom.playerPopup) {
+    return;
+  }
+
+  if (dom.popupName) dom.popupName.textContent = stats.username;
+  if (dom.popupFaction) dom.popupFaction.textContent = stats.faction;
+  if (dom.popupCountry) dom.popupCountry.textContent = stats.country;
+  if (dom.popupGroup) dom.popupGroup.textContent = stats.group;
+  if (dom.popupPoints) dom.popupPoints.textContent = String(stats.points);
+  if (dom.popupWins) dom.popupWins.textContent = String(stats.wins);
+  if (dom.popupLosses) dom.popupLosses.textContent = String(stats.losses);
+
+  dom.playerPopup.classList.add("active");
+  dom.playerPopup.setAttribute("aria-hidden", "false");
+}
+
+function closePlayerPopup() {
+  if (!dom.playerPopup) {
+    return;
+  }
+
+  dom.playerPopup.classList.remove("active");
+  dom.playerPopup.setAttribute("aria-hidden", "true");
 }
 
 function isGroupVisible(entry) {
@@ -1029,6 +1365,39 @@ function animateScoreCounters() {
 
     window.requestAnimationFrame(step);
   });
+}
+
+function playMatchUpdateSound() {
+  if (!state.soundEnabled) {
+    return;
+  }
+
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) {
+      return;
+    }
+
+    const context = new AudioCtx();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+
+    oscillator.type = "triangle";
+    oscillator.frequency.value = 560;
+    gain.gain.value = 0.0001;
+
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+
+    const now = context.currentTime;
+    gain.gain.exponentialRampToValueAtTime(0.035, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+
+    oscillator.start(now);
+    oscillator.stop(now + 0.13);
+  } catch {
+    // Audio can fail if browser blocks autoplay.
+  }
 }
 
 function updateHeaderMeta(evaluatedGroups, qualifiers) {

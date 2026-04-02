@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css?v=20260402-t72">
 </head>
 <body data-style-preset="clean-esports" class="bracket-page">
+    <div id="bracket-particles" class="bracket-particles" aria-hidden="true"></div>
     <div class="ambient-bg" aria-hidden="true">
         <span class="ambient-dot"></span>
         <span class="ambient-dot"></span>
@@ -83,6 +84,8 @@
                 </label>
                 <div class="bracket-control-actions">
                     <button id="admin-toggle" class="quick-chip bracket-admin-toggle" type="button" aria-pressed="false">Admin Mode: Off</button>
+                    <button id="global-sync" class="quick-chip bracket-admin-toggle" type="button">Global Sync</button>
+                    <button id="sound-toggle" class="quick-chip bracket-admin-toggle" type="button" aria-pressed="true">Sound: On</button>
                 </div>
             </div>
             <p id="message" class="bracket-message" role="status" aria-live="polite"></p>
@@ -112,6 +115,41 @@
     <footer class="footer">
         <p>&copy; 2026 [D.X.C] Draxar Competitive. All rights reserved.</p>
     </footer>
+
+    <section id="player-popup" class="bracket-popup" aria-hidden="true">
+        <article class="bracket-popup-card" role="dialog" aria-modal="true" aria-labelledby="player-popup-name">
+            <header class="bracket-popup-head">
+                <h3 id="player-popup-name">Player</h3>
+                <button id="player-popup-close" type="button" class="editor-close-btn" aria-label="Close player popup">&times;</button>
+            </header>
+            <div class="bracket-popup-grid">
+                <div>
+                    <span class="bracket-popup-label">Faction</span>
+                    <strong id="player-popup-faction">-</strong>
+                </div>
+                <div>
+                    <span class="bracket-popup-label">Country</span>
+                    <strong id="player-popup-country">-</strong>
+                </div>
+                <div>
+                    <span class="bracket-popup-label">Group</span>
+                    <strong id="player-popup-group">-</strong>
+                </div>
+                <div>
+                    <span class="bracket-popup-label">Points</span>
+                    <strong id="player-popup-points">0</strong>
+                </div>
+                <div>
+                    <span class="bracket-popup-label">Wins</span>
+                    <strong id="player-popup-wins">0</strong>
+                </div>
+                <div>
+                    <span class="bracket-popup-label">Losses</span>
+                    <strong id="player-popup-losses">0</strong>
+                </div>
+            </div>
+        </article>
+    </section>
 
     <script src="bracket.js?v=20260402-t72"></script>
 </body>
