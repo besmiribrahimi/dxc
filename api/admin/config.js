@@ -39,6 +39,33 @@ function normalizePlayers(rawPlayers) {
   return normalized;
 }
 
+function normalizeOrder(rawOrder, playerKeys) {
+  const keys = Array.isArray(playerKeys) ? playerKeys : [];
+  const valid = new Set(keys);
+  const seen = new Set();
+  const ordered = [];
+
+  if (Array.isArray(rawOrder)) {
+    rawOrder.forEach((rawKey) => {
+      const key = String(rawKey || "").trim().toLowerCase();
+      if (!key || !valid.has(key) || seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      ordered.push(key);
+    });
+  }
+
+  keys.forEach((key) => {
+    if (!seen.has(key)) {
+      ordered.push(key);
+    }
+  });
+
+  return ordered;
+}
+
 module.exports = async function handler(req, res) {
   if (!requireAdmin(req, res)) {
     return;
@@ -59,10 +86,12 @@ module.exports = async function handler(req, res) {
   if (req.method === "PUT") {
     const body = parseJsonBody(req);
     const players = normalizePlayers(body?.players);
+    const order = normalizeOrder(body?.order, Object.keys(players));
     const nextConfig = {
       version: 1,
       updatedAt: new Date().toISOString(),
-      players
+      players,
+      order
     };
 
     try {

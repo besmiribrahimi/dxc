@@ -15,6 +15,7 @@ const logoutButtonNode = document.getElementById("adminLogoutBtn");
 
 let currentConfig = { version: 1, updatedAt: null, players: {} };
 let currentPlayers = [];
+let draggingPlayerKey = "";
 
 function safeText(value) {
   if (typeof escapeHtml === "function") {
@@ -191,19 +192,50 @@ function buildFactionMarkup(player) {
   return `<span class="admin-faction-chip">${safeText(player.faction)}</span>`;
 }
 
+function normalizeOrderKeys(rawOrder, validKeys) {
+  const valid = new Set(validKeys);
+  const seen = new Set();
+  const ordered = [];
+
+  if (Array.isArray(rawOrder)) {
+    rawOrder.forEach((rawKey) => {
+      const key = String(rawKey || "").trim().toLowerCase();
+      if (!key || !valid.has(key) || seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      ordered.push(key);
+    });
+  }
+
+  validKeys.forEach((key) => {
+    if (!seen.has(key)) {
+      ordered.push(key);
+    }
+  });
+
+  return ordered;
+}
+
 function renderRows(players) {
   rowsNode.innerHTML = "";
 
-  players.forEach((player) => {
+  players.forEach((player, index) => {
     const row = document.createElement("article");
     row.className = "admin-row";
     row.dataset.playerKey = player.key;
+    row.draggable = true;
 
     const avatarUrl = getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
     const fallback = getFallbackAvatarUrl(player.name);
     const country = `${countryToFlag(player.country)} ${player.country}`;
 
     row.innerHTML = `
+      <span class="admin-order-cell">
+        <span class="admin-rank-pill">#${index + 1}</span>
+        <span class="admin-drag-handle" aria-hidden="true" title="Drag to reorder">::</span>
+      </span>
       <span class="admin-player-cell">
         <img class="admin-avatar" src="${avatarUrl}" alt="${safeText(player.name)} avatar" loading="lazy" referrerpolicy="no-referrer">
         <strong>${safeText(player.name)}</strong>
@@ -225,25 +257,117 @@ function renderRows(players) {
       avatarNode.src = fallback;
     });
 
+    row.addEventListener("dragstart", (event) => {
+      draggingPlayerKey = player.key;
+      row.classList.add("dragging");
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", player.key);
+      }
+    });
+
+    row.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      row.classList.add("drag-over");
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "move";
+      }
+    });
+
+    row.addEventListener("dragleave", () => {
+      row.classList.remove("drag-over");
+    });
+
+    row.addEventListener("drop", (event) => {
+      event.preventDefault();
+      row.classList.remove("drag-over");
+      const sourceKey = draggingPlayerKey || event.dataTransfer?.getData("text/plain") || "";
+      const targetKey = String(row.dataset.playerKey || "");
+
+      if (sourceKey && targetKey && sourceKey !== targetKey) {
+        movePlayer(sourceKey, targetKey);
+      }
+    });
+
+    row.addEventListener("dragend", () => {
+      draggingPlayerKey = "";
+      row.classList.remove("dragging");
+      rowsNode.querySelectorAll(".admin-row.drag-over").forEach((node) => {
+        node.classList.remove("drag-over");
+      });
+    });
+
     rowsNode.append(row);
   });
 }
 
 function mergePlayersWithConfig(players, config) {
-  return players
-    .map((player) => {
+  const merged = players.map((player, sourceIndex) => {
       const key = player.name.toLowerCase();
       const override = config?.players?.[key] || {};
       const defaults = getDefaultStats(player.name);
 
       return {
         ...player,
+        sourceIndex,
         key,
         level: clampLevel(override.level ?? defaults.level),
         kd: clampKd(override.kd ?? defaults.kd)
       };
+    });
+
+  const orderedKeys = normalizeOrderKeys(config?.order, merged.map((player) => player.key));
+  const orderMap = new Map(orderedKeys.map((key, index) => [key, index]));
+
+  return merged
+    .sort((a, b) => {
+      const aOrder = orderMap.has(a.key) ? orderMap.get(a.key) : Number.MAX_SAFE_INTEGER;
+      const bOrder = orderMap.has(b.key) ? orderMap.get(b.key) : Number.MAX_SAFE_INTEGER;
+
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+
+      return a.sourceIndex - b.sourceIndex;
     })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .map(({ sourceIndex, ...player }) => player);
+}
+
+function syncCurrentPlayersFromInputs() {
+  const values = collectRowValues();
+  currentPlayers = currentPlayers.map((player) => {
+    const next = values[player.key];
+    if (!next) {
+      return player;
+    }
+
+    return {
+      ...player,
+      level: next.level,
+      kd: next.kd
+    };
+  });
+}
+
+function movePlayer(sourceKey, targetKey) {
+  syncCurrentPlayersFromInputs();
+
+  const fromIndex = currentPlayers.findIndex((player) => player.key === sourceKey);
+  const toIndex = currentPlayers.findIndex((player) => player.key === targetKey);
+  if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+    return;
+  }
+
+  const [movedPlayer] = currentPlayers.splice(fromIndex, 1);
+  currentPlayers.splice(toIndex, 0, movedPlayer);
+  renderRows(currentPlayers);
+  setSyncStatus("Order updated locally. Click Save Global Sync to publish.");
+}
+
+function collectRowOrder() {
+  return Array.from(rowsNode.querySelectorAll(".admin-row[data-player-key]"))
+    .map((row) => String(row.dataset.playerKey || "").trim().toLowerCase())
+    .filter(Boolean);
 }
 
 function collectRowValues() {
@@ -292,7 +416,7 @@ async function loadPanelData() {
     currentPlayers = mergePlayersWithConfig(parsedPlayers, config);
     renderRows(currentPlayers);
 
-    setSyncStatus(`Loaded ${currentPlayers.length} Players. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
+    setSyncStatus(`Loaded ${currentPlayers.length} Players. Drag rows to reorder. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load panel data";
 
@@ -340,9 +464,13 @@ async function onSaveClick() {
   setSyncStatus("Saving global sync...");
 
   try {
+    syncCurrentPlayersFromInputs();
     const players = collectRowValues();
-    const saved = await saveAdminConfig(token, { players });
+    const order = collectRowOrder();
+    const saved = await saveAdminConfig(token, { players, order });
     currentConfig = saved;
+    currentPlayers = mergePlayersWithConfig(currentPlayers, saved);
+    renderRows(currentPlayers);
     setSyncStatus(`Global sync saved. Updated: ${formatSyncTime(saved.updatedAt)}.`);
   } catch (error) {
     setSyncStatus(error instanceof Error ? error.message : "Save failed", true);

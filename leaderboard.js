@@ -57,6 +57,27 @@ function normalizeConfigPlayers(config) {
   return output;
 }
 
+function normalizeConfigOrder(config, validKeys) {
+  const keys = Array.isArray(validKeys) ? validKeys : [];
+  const valid = new Set(keys);
+  const seen = new Set();
+  const ordered = [];
+
+  if (Array.isArray(config?.order)) {
+    config.order.forEach((rawKey) => {
+      const key = String(rawKey || "").trim().toLowerCase();
+      if (!key || !valid.has(key) || seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      ordered.push(key);
+    });
+  }
+
+  return ordered;
+}
+
 function clampKd(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
@@ -204,7 +225,12 @@ function buildLeaderboardRow(player, rank, avatarMap) {
   return row;
 }
 
-function renderLeaderboard(players, avatarMap, syncLabel = "") {
+function renderLeaderboard(players, avatarMap, options = {}) {
+  const {
+    syncLabel = "",
+    hasManualOrder = false
+  } = options;
+
   topThreeNode.innerHTML = "";
   leaderboardRowsNode.innerHTML = "";
 
@@ -217,7 +243,10 @@ function renderLeaderboard(players, avatarMap, syncLabel = "") {
     leaderboardRowsNode.append(buildLeaderboardRow(player, index + 1, avatarMap));
   });
 
-  leaderboardStatusNode.textContent = `${players.length} Players ranked by Level and K/D.${syncLabel}`;
+  const modeLabel = hasManualOrder
+    ? "Players ranked by Admin custom order."
+    : "Players ranked by Level and K/D.";
+  leaderboardStatusNode.textContent = `${players.length} ${modeLabel}${syncLabel}`;
 }
 
 async function initLeaderboardPage() {
@@ -232,16 +261,31 @@ async function initLeaderboardPage() {
   const players = lines
     .map(parsePlayerLine)
     .filter(Boolean)
-    .map((player) => {
+    .map((player, sourceIndex) => {
       const stats = getLeaderboardStats(player.name);
       const key = player.name.toLowerCase();
       const override = syncedPlayers[key];
+      player.key = key;
+      player.sourceIndex = sourceIndex;
       player.level = override?.level ?? stats.level;
       player.wins = player.level;
       player.kd = override?.kd ?? stats.kd;
       return player;
-    })
+    });
+
+  const configuredOrder = normalizeConfigOrder(remoteConfig, players.map((player) => player.key));
+  const orderMap = new Map(configuredOrder.map((key, index) => [key, index]));
+  const hasManualOrder = configuredOrder.length > 0;
+
+  players
     .sort((a, b) => {
+      const aOrder = orderMap.has(a.key) ? orderMap.get(a.key) : Number.MAX_SAFE_INTEGER;
+      const bOrder = orderMap.has(b.key) ? orderMap.get(b.key) : Number.MAX_SAFE_INTEGER;
+
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+
       if (b.level !== a.level) {
         return b.level - a.level;
       }
@@ -250,7 +294,7 @@ async function initLeaderboardPage() {
         return b.kd - a.kd;
       }
 
-      return a.name.localeCompare(b.name);
+      return a.sourceIndex - b.sourceIndex;
     });
 
   const avatarMap = await fetchAvatarUrls(players);
@@ -259,13 +303,17 @@ async function initLeaderboardPage() {
     player.avatarUrl = getResolvedAvatar(player, avatarMap);
     player.bodyAvatarUrl = player.avatarUrl;
     player.wins = player.level;
+    delete player.sourceIndex;
   });
 
   const syncSuffix = remoteConfig?.updatedAt
     ? ` Global sync updated ${new Date(remoteConfig.updatedAt).toLocaleString()}.`
     : "";
 
-  renderLeaderboard(players, avatarMap, syncSuffix);
+  renderLeaderboard(players, avatarMap, {
+    syncLabel: syncSuffix,
+    hasManualOrder
+  });
 }
 
 initLeaderboardPage();

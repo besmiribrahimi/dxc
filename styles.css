@@ -1099,12 +1099,26 @@ body::after {
 
 .admin-row {
   display: grid;
-  grid-template-columns: minmax(270px, 1.35fr) minmax(240px, 1.3fr) minmax(170px, 0.95fr) 124px 124px;
+  grid-template-columns: 108px minmax(270px, 1.3fr) minmax(240px, 1.2fr) minmax(170px, 0.95fr) 124px 124px;
   align-items: center;
   gap: 0.74rem;
   padding: 0.74rem 0.88rem;
   border-bottom: 1px solid rgba(147, 197, 253, 0.1);
   background: rgba(10, 18, 33, 0.42);
+}
+
+.admin-row:not(.admin-row-head) {
+  cursor: move;
+}
+
+.admin-row.dragging {
+  opacity: 0.55;
+}
+
+.admin-row.drag-over {
+  outline: 1px dashed rgba(147, 197, 253, 0.82);
+  outline-offset: -4px;
+  background: rgba(30, 64, 175, 0.2);
 }
 
 .admin-row:last-child {
@@ -1118,6 +1132,42 @@ body::after {
   letter-spacing: 0.08em;
   color: #bfd3ea;
   font-weight: 700;
+}
+
+.admin-order-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.44rem;
+}
+
+.admin-rank-pill {
+  min-width: 2.9rem;
+  min-height: 1.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.34);
+  background: rgba(2, 6, 23, 0.5);
+  color: #d3e2f5;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+.admin-drag-handle {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(147, 197, 253, 0.26);
+  background: rgba(59, 130, 246, 0.12);
+  color: #bfd7f5;
+  display: grid;
+  place-items: center;
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  user-select: none;
 }
 
 .admin-player-cell {
@@ -1223,6 +1273,10 @@ body::after {
   .admin-row {
     grid-template-columns: 1fr;
     gap: 0.5rem;
+  }
+
+  .admin-order-cell {
+    justify-content: flex-start;
   }
 
   .admin-row-head {
