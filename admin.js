@@ -210,12 +210,6 @@ function normalizeOrderKeys(rawOrder, validKeys) {
     });
   }
 
-  validKeys.forEach((key) => {
-    if (!seen.has(key)) {
-      ordered.push(key);
-    }
-  });
-
   return ordered;
 }
 
@@ -367,14 +361,25 @@ function mergePlayersWithConfig(players, config) {
 
   const orderedKeys = normalizeOrderKeys(config?.order, merged.map((player) => player.key));
   const orderMap = new Map(orderedKeys.map((key, index) => [key, index]));
+  const hasManualOrder = orderedKeys.length > 0;
 
   return merged
     .sort((a, b) => {
-      const aOrder = orderMap.has(a.key) ? orderMap.get(a.key) : Number.MAX_SAFE_INTEGER;
-      const bOrder = orderMap.has(b.key) ? orderMap.get(b.key) : Number.MAX_SAFE_INTEGER;
+      if (hasManualOrder) {
+        const aOrder = orderMap.has(a.key) ? orderMap.get(a.key) : Number.MAX_SAFE_INTEGER;
+        const bOrder = orderMap.has(b.key) ? orderMap.get(b.key) : Number.MAX_SAFE_INTEGER;
 
-      if (aOrder !== bOrder) {
-        return aOrder - bOrder;
+        if (aOrder !== bOrder) {
+          return aOrder - bOrder;
+        }
+      }
+
+      if (b.level !== a.level) {
+        return b.level - a.level;
+      }
+
+      if (b.kd !== a.kd) {
+        return b.kd - a.kd;
       }
 
       return a.sourceIndex - b.sourceIndex;
@@ -470,7 +475,12 @@ async function loadPanelData() {
     currentPlayers = mergePlayersWithConfig(parsedPlayers, config);
     renderRows(currentPlayers);
 
-    setSyncStatus(`Loaded ${currentPlayers.length} Players. Drag with the :: handle to reorder. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
+    const hasManualOrder = Array.isArray(config?.order) && config.order.length > 0;
+    const modeText = hasManualOrder
+      ? "Mode: custom admin order"
+      : "Mode: leaderboard rank (Level/K/D)";
+
+    setSyncStatus(`Loaded ${currentPlayers.length} Players. ${modeText}. Drag with the :: handle to reorder. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load panel data";
 
@@ -525,7 +535,7 @@ async function onSaveClick() {
     currentConfig = saved;
     currentPlayers = mergePlayersWithConfig(currentPlayers, saved);
     renderRows(currentPlayers);
-    setSyncStatus(`Global sync saved. Updated: ${formatSyncTime(saved.updatedAt)}.`);
+    setSyncStatus(`Global sync saved. Mode: custom admin order. Updated: ${formatSyncTime(saved.updatedAt)}.`);
   } catch (error) {
     setSyncStatus(error instanceof Error ? error.message : "Save failed", true);
   }
