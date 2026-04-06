@@ -220,7 +220,6 @@ function renderRows(players) {
     const row = document.createElement("article");
     row.className = "admin-row";
     row.dataset.playerKey = player.key;
-    row.draggable = true;
 
     const avatarUrl = getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
     const fallback = getFallbackAvatarUrl(player.name);
@@ -229,7 +228,7 @@ function renderRows(players) {
     row.innerHTML = `
       <span class="admin-order-cell">
         <span class="admin-rank-pill">#${index + 1}</span>
-        <span class="admin-drag-handle" aria-hidden="true" title="Drag to reorder">::</span>
+        <span class="admin-drag-handle" draggable="true" aria-hidden="true" title="Drag to reorder">::</span>
       </span>
       <span class="admin-player-cell">
         <img class="admin-avatar" src="${avatarUrl}" alt="${safeText(player.name)} avatar" loading="lazy" referrerpolicy="no-referrer">
@@ -248,17 +247,12 @@ function renderRows(players) {
     `;
 
     const avatarNode = row.querySelector(".admin-avatar");
+    const dragHandleNode = row.querySelector(".admin-drag-handle");
     avatarNode.addEventListener("error", () => {
       avatarNode.src = fallback;
     });
 
-    row.addEventListener("dragstart", (event) => {
-      const startedFromHandle = event.target instanceof Element && event.target.closest(".admin-drag-handle");
-      if (!startedFromHandle) {
-        event.preventDefault();
-        return;
-      }
-
+    dragHandleNode.addEventListener("dragstart", (event) => {
       draggingPlayerKey = player.key;
       row.classList.add("dragging");
       if (event.dataTransfer) {
@@ -267,7 +261,7 @@ function renderRows(players) {
       }
     });
 
-    row.addEventListener("dragend", () => {
+    dragHandleNode.addEventListener("dragend", () => {
       draggingPlayerKey = "";
       row.classList.remove("dragging");
       rowsNode.querySelectorAll(".admin-row.drag-over").forEach((node) => {
