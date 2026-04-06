@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DraXar Competitive | Admin Panel</title>
+  <meta name="description" content="DraXar Competitive Admin Panel">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page-glow" aria-hidden="true"></div>
+
+  <header class="hero">
+    <h1>DraXar Competitive</h1>
+    <p>Admin Panel</p>
+    <nav class="site-nav" aria-label="Main pages">
+      <a class="nav-link" href="index.html">Player Showcase</a>
+      <a class="nav-link" href="leaderboard.html">Leaderboard</a>
+      <a class="nav-link active" href="admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <main class="admin-content">
+    <section id="adminAuthCard" class="admin-card" aria-label="Admin login">
+      <h2>Secure Login</h2>
+      <p>Sign in to edit global Level and K/D data synced from Vercel KV.</p>
+      <form id="adminLoginForm" class="admin-login-form">
+        <label for="adminPassword">Admin Password</label>
+        <input id="adminPassword" name="password" type="password" autocomplete="current-password" required>
+        <button type="submit" class="admin-button">Sign In</button>
+      </form>
+      <p id="adminLoginStatus" class="admin-status">Waiting for login.</p>
+    </section>
+
+    <section id="adminPanel" class="admin-card admin-panel hidden" aria-label="Leaderboard admin panel">
+      <div class="admin-panel-header">
+        <h2>Global Leaderboard Sync</h2>
+        <div class="admin-actions">
+          <button id="adminReloadBtn" type="button" class="admin-button secondary">Reload</button>
+          <button id="adminSaveBtn" type="button" class="admin-button">Save Global Sync</button>
+          <button id="adminLogoutBtn" type="button" class="admin-button danger">Logout</button>
+        </div>
+      </div>
+
+      <p id="adminSyncInfo" class="admin-status">Loading data...</p>
+
+      <div class="admin-table-wrap">
+        <div class="admin-row admin-row-head" role="row">
+          <span>Player</span>
+          <span>Faction</span>
+          <span>Country</span>
+          <span>Level</span>
+          <span>K/D</span>
+        </div>
+        <div id="adminRows" class="admin-rows"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

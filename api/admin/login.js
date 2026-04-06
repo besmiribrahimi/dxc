@@ -1,39 +1,45 @@
 const {
-    toJson,
-    getAuthSecret,
-    getAdminPassword,
-    safeCompare,
-    issueSessionToken,
-    setSessionCookie,
-    parseJsonBody
-} = require("./_auth");
+  createAdminToken,
+  getAdminPassword,
+  getAdminTestPassword,
+  parseJsonBody,
+  sendJson
+} = require("../_lib/auth");
 
 module.exports = async function handler(req, res) {
-    if (req.method !== "POST") {
-        res.setHeader("Allow", "POST");
-        return toJson(res, 405, { error: "Method Not Allowed" });
-    }
+  if (req.method !== "POST") {
+    return sendJson(res, 405, { ok: false, error: "Method not allowed" });
+  }
 
-    const adminPassword = getAdminPassword();
-    const secret = getAuthSecret();
-    if (!adminPassword || !secret) {
-        return toJson(res, 500, { error: "Admin auth is not configured" });
-    }
+  const adminPassword = getAdminPassword();
+  const testPassword = getAdminTestPassword();
+  if (!adminPassword && !testPassword) {
+    return sendJson(res, 500, {
+      ok: false,
+      error: "Missing ADMIN_PANEL_PASSWORD env var"
+    });
+  }
 
-    let body = {};
-    try {
-        body = await parseJsonBody(req);
-    } catch (error) {
-        return toJson(res, 400, { error: error instanceof Error ? error.message : "Invalid request" });
-    }
+  const body = parseJsonBody(req);
+  const password = String(body?.password || "");
 
-    const password = String(body.password || "").trim();
-    if (!safeCompare(password, adminPassword)) {
-        return toJson(res, 401, { error: "Invalid admin password" });
-    }
+  const isPrimaryMatch = Boolean(adminPassword) && password === adminPassword;
+  const isTestMatch = Boolean(testPassword) && password === testPassword;
+  if (!password || (!isPrimaryMatch && !isTestMatch)) {
+    return sendJson(res, 401, { ok: false, error: "Invalid password" });
+  }
 
-    const token = issueSessionToken(secret);
-    setSessionCookie(res, token);
-
-    return toJson(res, 200, { authenticated: true });
+  try {
+    const token = createAdminToken();
+    return sendJson(res, 200, {
+      ok: true,
+      token,
+      expiresIn: 86400
+    });
+  } catch (error) {
+    return sendJson(res, 500, {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to create token"
+    });
+  }
 };

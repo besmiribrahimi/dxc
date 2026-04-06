@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DraXar Competitive | Player Showcase</title>
-  <meta name="description" content="DraXar Competitive Player Showcase">
+  <title>DraXar Competitive | Leaderboard</title>
+  <meta name="description" content="DraXar Competitive Player Leaderboard">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
@@ -15,50 +15,28 @@
 
   <header class="hero">
     <h1>DraXar Competitive</h1>
-    <p>Player Showcase</p>
+    <p>Player Leaderboard</p>
     <nav class="site-nav" aria-label="Main pages">
-      <a class="nav-link active" href="index.html">Player Showcase</a>
-      <a class="nav-link" href="leaderboard.html">Leaderboard</a>
+      <a class="nav-link" href="index.html">Player Showcase</a>
+      <a class="nav-link active" href="leaderboard.html">Leaderboard</a>
     </nav>
   </header>
 
-  <main class="content">
-    <section class="leaderboard-highlight" aria-label="Top Player Leaderboard">
-      <article id="topPlayerCard" class="top-player-card" role="button" tabindex="0" aria-label="Open top Player profile">
-        <div class="top-player-overlay"></div>
+  <main class="leaderboard-content">
+    <p id="leaderboardStatus" class="leaderboard-status">Loading leaderboard...</p>
 
-        <div class="top-player-left">
-          <span class="top-player-label">Leaderboard</span>
-          <div id="topFactionBadge" class="top-faction-badge">Faction</div>
-          <h2 id="topPlayerName">Player</h2>
-          <p id="topPlayerSubtitle">Top performance across recent matches.</p>
+    <section class="leaderboard-top-three" id="leaderTopThree" aria-label="Top 3 Players"></section>
 
-          <div class="top-player-stats">
-            <div class="top-stat-card">
-              <span>Wins</span>
-              <strong id="topPlayerWins">0</strong>
-            </div>
-            <div class="top-stat-card">
-              <span>K/D</span>
-              <strong id="topPlayerKd">0.0</strong>
-            </div>
-          </div>
-        </div>
-
-        <div class="top-player-right">
-          <div id="topCountryBadge" class="country-badge">Country</div>
-          <div class="top-avatar-wrap">
-            <img id="topPlayerAvatar" src="" alt="Top Player avatar">
-          </div>
-        </div>
-      </article>
-      <div class="leaderboard-cta">
-        <a class="leaderboard-button" href="leaderboard.html">Open Full Leaderboard</a>
+    <section class="leaderboard-panel" aria-label="Full leaderboard ranking">
+      <div class="leaderboard-header">
+        <span>Rank</span>
+        <span>Player</span>
+        <span>Faction</span>
+        <span>Country</span>
+        <span>K/D</span>
+        <span>Level</span>
       </div>
-    </section>
-
-    <section class="players-section" aria-label="Players">
-      <div id="playersGrid" class="players-grid"></div>
+      <div id="leaderboardRows"></div>
     </section>
   </main>
 
@@ -82,7 +60,7 @@
         </div>
         <div class="modal-stats">
           <div class="modal-stat-box">
-            <span>Wins</span>
+            <span>Level</span>
             <strong id="modalWins">0</strong>
           </div>
           <div class="modal-stat-box">
@@ -96,5 +74,6 @@
   </div>
 
   <script src="script.js"></script>
+  <script src="leaderboard.js"></script>
 </body>
 </html>
