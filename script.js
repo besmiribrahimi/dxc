@@ -178,6 +178,7 @@ const TOP_PLAYER_OVERRIDES = {
   subtitle: "Dominating recent matches with top performance."
 };
 const FULL_BODY_SIZE = "720x720";
+const DISBANDED_FACTIONS = new Set(["TWL"]);
 const factionFlagMap = new Map([
   ["72ND", "faction_flags/72ND.png"],
   ["AEF", "faction_flags/AEF.png"],
@@ -198,7 +199,6 @@ const factionFlagMap = new Map([
   ["TIO", "faction_flags/TIO.png"],
   ["TTI", "faction_flags/tti.png"],
   ["TWA", "faction_flags/TWA.png"],
-  ["TWL", "faction_flags/TWL.png"],
   ["URF", "faction_flags/URF.png"]
 ]);
 
@@ -216,15 +216,30 @@ function escapeHtml(value) {
 }
 
 function splitFactionTokens(faction) {
-  const normalized = normalizeText(faction);
+  const normalized = normalizeText(faction).toUpperCase();
   if (!normalized || normalized.toUpperCase() === "N/A") {
     return ["N/A"];
   }
 
-  return normalized
+  const filteredTokens = normalized
     .split(/[\/,&|]+/)
     .map((part) => normalizeText(part).toUpperCase())
-    .filter(Boolean);
+    .filter((token) => Boolean(token) && !DISBANDED_FACTIONS.has(token));
+
+  if (!filteredTokens.length) {
+    return ["N/A"];
+  }
+
+  return [...new Set(filteredTokens)];
+}
+
+function sanitizeFactionValue(faction) {
+  const tokens = splitFactionTokens(faction);
+  if (!tokens.length || (tokens.length === 1 && tokens[0] === "N/A")) {
+    return "N/A";
+  }
+
+  return tokens.join("/");
 }
 
 function getFactionFlagPath(token) {
@@ -277,7 +292,7 @@ function parsePlayerLine(rawLine) {
   }
 
   const name = normalizeText(dataMatch[1]);
-  const faction = normalizeText(dataMatch[2]) || "N/A";
+  const faction = sanitizeFactionValue(dataMatch[2]);
   const country = normalizeText(dataMatch[3]) || "N/A";
 
   if (!name) {

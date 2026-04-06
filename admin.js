@@ -16,6 +16,7 @@ const logoutButtonNode = document.getElementById("adminLogoutBtn");
 let currentConfig = { version: 1, updatedAt: null, players: {} };
 let currentPlayers = [];
 let draggingPlayerKey = "";
+let draggingInitialized = false;
 
 function safeText(value) {
   if (typeof escapeHtml === "function") {
@@ -258,34 +259,17 @@ function renderRows(players) {
     });
 
     row.addEventListener("dragstart", (event) => {
+      const startedFromHandle = event.target instanceof Element && event.target.closest(".admin-drag-handle");
+      if (!startedFromHandle) {
+        event.preventDefault();
+        return;
+      }
+
       draggingPlayerKey = player.key;
       row.classList.add("dragging");
       if (event.dataTransfer) {
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("text/plain", player.key);
-      }
-    });
-
-    row.addEventListener("dragover", (event) => {
-      event.preventDefault();
-      row.classList.add("drag-over");
-      if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = "move";
-      }
-    });
-
-    row.addEventListener("dragleave", () => {
-      row.classList.remove("drag-over");
-    });
-
-    row.addEventListener("drop", (event) => {
-      event.preventDefault();
-      row.classList.remove("drag-over");
-      const sourceKey = draggingPlayerKey || event.dataTransfer?.getData("text/plain") || "";
-      const targetKey = String(row.dataset.playerKey || "");
-
-      if (sourceKey && targetKey && sourceKey !== targetKey) {
-        movePlayer(sourceKey, targetKey);
       }
     });
 
@@ -295,9 +279,74 @@ function renderRows(players) {
       rowsNode.querySelectorAll(".admin-row.drag-over").forEach((node) => {
         node.classList.remove("drag-over");
       });
+
+      syncCurrentPlayersFromDom();
+      renderRows(currentPlayers);
+      setSyncStatus("Order updated locally. Click Save Global Sync to publish.");
     });
 
     rowsNode.append(row);
+  });
+
+  initDragAndDrop();
+}
+
+function getDragAfterElement(container, pointerY) {
+  const candidateRows = [...container.querySelectorAll(".admin-row[data-player-key]:not(.dragging)")];
+  let closest = {
+    offset: Number.NEGATIVE_INFINITY,
+    element: null
+  };
+
+  candidateRows.forEach((row) => {
+    const rect = row.getBoundingClientRect();
+    const offset = pointerY - rect.top - rect.height / 2;
+    if (offset < 0 && offset > closest.offset) {
+      closest = { offset, element: row };
+    }
+  });
+
+  return closest.element;
+}
+
+function initDragAndDrop() {
+  if (draggingInitialized || !rowsNode) {
+    return;
+  }
+
+  draggingInitialized = true;
+
+  rowsNode.addEventListener("dragover", (event) => {
+    const draggingRow = rowsNode.querySelector(".admin-row.dragging");
+    if (!draggingRow) {
+      return;
+    }
+
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+
+    const afterElement = getDragAfterElement(rowsNode, event.clientY);
+    rowsNode.querySelectorAll(".admin-row.drag-over").forEach((node) => {
+      node.classList.remove("drag-over");
+    });
+
+    if (!afterElement) {
+      rowsNode.appendChild(draggingRow);
+      return;
+    }
+
+    afterElement.classList.add("drag-over");
+    rowsNode.insertBefore(draggingRow, afterElement);
+  });
+
+  rowsNode.addEventListener("drop", (event) => {
+    if (!draggingPlayerKey) {
+      return;
+    }
+
+    event.preventDefault();
   });
 }
 
@@ -333,6 +382,26 @@ function mergePlayersWithConfig(players, config) {
     .map(({ sourceIndex, ...player }) => player);
 }
 
+function syncCurrentPlayersFromDom() {
+  const values = collectRowValues();
+  const order = collectRowOrder();
+  const byKey = new Map(currentPlayers.map((player) => [player.key, player]));
+
+  currentPlayers = order.map((key) => {
+    const player = byKey.get(key);
+    if (!player) {
+      return null;
+    }
+
+    const next = values[key];
+    return {
+      ...player,
+      level: next ? next.level : player.level,
+      kd: next ? next.kd : player.kd
+    };
+  }).filter(Boolean);
+}
+
 function syncCurrentPlayersFromInputs() {
   const values = collectRowValues();
   currentPlayers = currentPlayers.map((player) => {
@@ -347,21 +416,6 @@ function syncCurrentPlayersFromInputs() {
       kd: next.kd
     };
   });
-}
-
-function movePlayer(sourceKey, targetKey) {
-  syncCurrentPlayersFromInputs();
-
-  const fromIndex = currentPlayers.findIndex((player) => player.key === sourceKey);
-  const toIndex = currentPlayers.findIndex((player) => player.key === targetKey);
-  if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
-    return;
-  }
-
-  const [movedPlayer] = currentPlayers.splice(fromIndex, 1);
-  currentPlayers.splice(toIndex, 0, movedPlayer);
-  renderRows(currentPlayers);
-  setSyncStatus("Order updated locally. Click Save Global Sync to publish.");
 }
 
 function collectRowOrder() {
@@ -416,7 +470,7 @@ async function loadPanelData() {
     currentPlayers = mergePlayersWithConfig(parsedPlayers, config);
     renderRows(currentPlayers);
 
-    setSyncStatus(`Loaded ${currentPlayers.length} Players. Drag rows to reorder. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
+    setSyncStatus(`Loaded ${currentPlayers.length} Players. Drag with the :: handle to reorder. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load panel data";
 
@@ -464,7 +518,7 @@ async function onSaveClick() {
   setSyncStatus("Saving global sync...");
 
   try {
-    syncCurrentPlayersFromInputs();
+    syncCurrentPlayersFromDom();
     const players = collectRowValues();
     const order = collectRowOrder();
     const saved = await saveAdminConfig(token, { players, order });

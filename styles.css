@@ -1108,7 +1108,7 @@ body::after {
 }
 
 .admin-row:not(.admin-row-head) {
-  cursor: move;
+  cursor: default;
 }
 
 .admin-row.dragging {
@@ -1168,6 +1168,11 @@ body::after {
   font-weight: 800;
   letter-spacing: 0.08em;
   user-select: none;
+  cursor: grab;
+}
+
+.admin-drag-handle:active {
+  cursor: grabbing;
 }
 
 .admin-player-cell {
