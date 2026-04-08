@@ -69,6 +69,7 @@ function defaultGuildSettings(config) {
 
   return {
     ticketEnabled: typeof config.ticketEnabled === "boolean" ? config.ticketEnabled : true,
+    ticketPanelChannelId: "",
     ticketCategoryId: String(config.defaultTicketCategoryId || "").trim(),
     ticketLogChannelId: String(config.defaultTicketLogChannelId || "").trim(),
     ticketPingRoleIds: defaultPingRoles,
@@ -97,6 +98,7 @@ function sanitizeGuildSettings(raw, defaults) {
 
   return {
     ticketEnabled: typeof input.ticketEnabled === "boolean" ? input.ticketEnabled : defaults.ticketEnabled,
+    ticketPanelChannelId: String(input.ticketPanelChannelId || defaults.ticketPanelChannelId || "").trim(),
     ticketCategoryId: String(input.ticketCategoryId || defaults.ticketCategoryId || "").trim(),
     ticketLogChannelId: String(input.ticketLogChannelId || defaults.ticketLogChannelId || "").trim(),
     ticketPingRoleIds: uniqueIds(input.ticketPingRoleIds || defaults.ticketPingRoleIds),
