@@ -37,6 +37,8 @@ const TICKET_STATUS_PREFIX = "ticket_status:";
 const TICKET_CLOSE_BUTTON_ID = "ticket_close";
 const TICKET_CLOSE_MODAL_ID = "ticket_close_modal";
 const LEADERBOARD_NAV_PREFIX = "lbnav";
+const LFG_QUEUE_TTL_SECONDS = 60 * 60;
+const LFG_STATUS_LABEL = "Looking for 1v1";
 
 const DEFAULT_FOOTER = "Ascend Entrenched";
 const BOT_START_TIME = Date.now();
@@ -112,6 +114,18 @@ function durationLabel(ms) {
   return `${hours}h ${minutes}m ${seconds}s`;
 }
 
+function shortDurationLabel(ms) {
+  const safeMs = Math.max(0, Number(ms) || 0);
+  const totalSeconds = Math.floor(safeMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes <= 0) {
+    return `${seconds}s`;
+  }
+
+  return `${minutes}m ${seconds}s`;
+}
+
 function resolveBaseOrigin(urlValue) {
   const raw = String(urlValue || "").trim();
   if (!raw) {
@@ -175,6 +189,42 @@ async function fetchJsonStatus(url, timeoutMs = 8000) {
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+async function requestLfgQueue(context, action, payload = null) {
+  const endpoint = String(context?.config?.lfgQueueApiUrl || "").trim();
+  const apiToken = String(context?.config?.websiteApiToken || "").trim();
+
+  if (!endpoint) {
+    throw new Error("LFG queue API is not configured. Set LFG_QUEUE_API_URL or WEBSITE_HOME_URL.");
+  }
+
+  if (!apiToken) {
+    throw new Error("WEBSITE_API_TOKEN is not configured for bot queue sync.");
+  }
+
+  const method = action === "leave"
+    ? "DELETE"
+    : action === "status"
+      ? "GET"
+      : "POST";
+
+  const response = await fetch(endpoint, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-token": apiToken
+    },
+    body: method === "GET" ? undefined : JSON.stringify(payload || {}),
+    cache: "no-store"
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data?.ok === false) {
+    throw new Error(data?.error || `LFG queue request failed (HTTP ${response.status})`);
+  }
+
+  return Array.isArray(data?.entries) ? data.entries : [];
 }
 
 function isValidHexColor(value) {
@@ -2025,6 +2075,21 @@ const slashCommandBuilders = [
         .setMaxLength(300)
     ),
   new SlashCommandBuilder()
+    .setName("1v1")
+    .setDescription("Join live Looking for 1v1 web queue")
+    .setDMPermission(false)
+    .addStringOption((option) =>
+      option
+        .setName("action")
+        .setDescription("Queue action")
+        .setRequired(false)
+        .addChoices(
+          { name: "Join queue", value: "join" },
+          { name: "Leave queue", value: "leave" },
+          { name: "Queue status", value: "status" }
+        )
+    ),
+  new SlashCommandBuilder()
     .setName("ticketpanel")
     .setDescription("Post the Create Ticket panel")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
@@ -2626,6 +2691,83 @@ async function handleSetWelcomeCommand(interaction, context) {
   await interaction.reply({ embeds: [embed], ephemeral: true });
 }
 
+async function handleOneVsOneCommand(interaction, context) {
+  if (!interaction.inGuild()) {
+    await interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+    return;
+  }
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const action = String(interaction.options.getString("action") || "join").trim().toLowerCase();
+
+  try {
+    if (action === "leave") {
+      const entries = await requestLfgQueue(context, "leave", { userId: interaction.user.id });
+      const embed = new EmbedBuilder()
+        .setTitle("1v1 Queue Updated")
+        .setColor(statusColor(settings, "eliminated"))
+        .setDescription("You were removed from the live 1v1 queue.")
+        .addFields({ name: "Active Queue", value: String(entries.length), inline: true })
+        .setFooter({ text: footerText(settings) })
+        .setTimestamp(new Date());
+
+      await interaction.reply({ embeds: [embed], ephemeral: true });
+      return;
+    }
+
+    if (action === "status") {
+      const entries = await requestLfgQueue(context, "status");
+      const current = entries.find((entry) => String(entry?.userId || "") === String(interaction.user.id));
+      const remaining = current
+        ? shortDurationLabel(Number(current.expiresAt || 0) - Date.now())
+        : "Not in queue";
+
+      const embed = new EmbedBuilder()
+        .setTitle("1v1 Queue Status")
+        .setColor(statusColor(settings, current ? "active" : "info"))
+        .setDescription(current ? `${LFG_STATUS_LABEL} (${remaining} left)` : "You are not currently queued.")
+        .addFields({ name: "Active Queue", value: String(entries.length), inline: true })
+        .setFooter({ text: footerText(settings) })
+        .setTimestamp(new Date());
+
+      await interaction.reply({ embeds: [embed], ephemeral: true });
+      return;
+    }
+
+    const entries = await requestLfgQueue(context, "join", {
+      userId: interaction.user.id,
+      username: interaction.user.username,
+      guildId: interaction.guild.id,
+      guildName: interaction.guild.name,
+      status: LFG_STATUS_LABEL,
+      ttlSeconds: LFG_QUEUE_TTL_SECONDS
+    });
+
+    const current = entries.find((entry) => String(entry?.userId || "") === String(interaction.user.id));
+    const remaining = current
+      ? shortDurationLabel(Number(current.expiresAt || 0) - Date.now())
+      : "60m";
+
+    const embed = new EmbedBuilder()
+      .setTitle("1v1 Queue Active")
+      .setColor(statusColor(settings, "active"))
+      .setDescription(`You are now **${LFG_STATUS_LABEL}** on the web live feed.`)
+      .addFields(
+        { name: "Duration", value: remaining, inline: true },
+        { name: "Active Queue", value: String(entries.length), inline: true }
+      )
+      .setFooter({ text: footerText(settings) })
+      .setTimestamp(new Date());
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+  } catch (error) {
+    await interaction.reply({
+      content: `Failed to update 1v1 queue: ${error instanceof Error ? error.message : "Unknown error"}`,
+      ephemeral: true
+    });
+  }
+}
+
 async function handlePollCommand(interaction, context) {
   const settings = getGuildSettings(interaction.guild.id, context.config);
   const question = interaction.options.getString("question", true).trim();
@@ -2920,6 +3062,11 @@ async function handleSlashCommand(interaction, context) {
 
   if (interaction.commandName === "eightball") {
     await handleEightBallCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "1v1") {
+    await handleOneVsOneCommand(interaction, context);
     return;
   }
 

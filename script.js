@@ -180,7 +180,9 @@ const TOP_PLAYER_OVERRIDES = {
 const FULL_BODY_SIZE = "720x720";
 const DISBANDED_FACTIONS = new Set(["TWL"]);
 const WEB_SYNC_ENDPOINT = "/api/leaderboard-config";
+const LFG_FEED_ENDPOINT = "/api/lfg-queue";
 const OPS_SYNC_INTERVAL_MS = 90000;
+const LFG_SYNC_INTERVAL_MS = 15000;
 const OPS_MOTD_INTERVAL_MS = 8000;
 const FACTION_NEWS_ROTATE_MS = 7000;
 const NEWS_FEED_FILES = ["new.txt", "news.txt"];
@@ -217,6 +219,7 @@ const factionFlagMap = new Map([
 let opsHudNodes = null;
 let opsHudClockIntervalId = null;
 let opsHudSyncIntervalId = null;
+let lfgSyncIntervalId = null;
 let opsHudMotdIntervalId = null;
 let opsHudMotdIndex = 0;
 let factionNewsRotateIntervalId = null;
@@ -639,10 +642,19 @@ function ensureOpsHud() {
   section.innerHTML = `
     <div class="ops-hud-head">
       <h2>Ascend Entrenched Command Grid</h2>
-      <div class="ops-hud-actions">
-        <a class="ops-hud-link" href="leaderboard.html">Leaderboard</a>
-        <a class="ops-hud-link" href="war-room.html">War Room</a>
-        <button type="button" id="opsHudRefresh" class="ops-hud-link">Refresh Sync</button>
+      <div class="ops-hud-right">
+        <div class="ops-hud-actions">
+          <a class="ops-hud-link" href="leaderboard.html">Leaderboard</a>
+          <a class="ops-hud-link" href="war-room.html">War Room</a>
+          <button type="button" id="opsHudRefresh" class="ops-hud-link">Refresh Sync</button>
+        </div>
+        <aside class="ops-lfg-box" aria-label="Live 1v1 queue">
+          <div class="ops-lfg-head">
+            <span>Live 1v1 Queue</span>
+            <strong id="opsLfgCount">0 online</strong>
+          </div>
+          <div id="opsLfgList" class="ops-lfg-list">No one is looking for 1v1 yet.</div>
+        </aside>
       </div>
     </div>
     <div class="ops-hud-grid">
@@ -675,7 +687,9 @@ function ensureOpsHud() {
     dataSource: section.querySelector("#opsHudDataSource"),
     clock: section.querySelector("#opsHudClock"),
     motd: section.querySelector("#opsHudMotd"),
-    refreshButton: section.querySelector("#opsHudRefresh")
+    refreshButton: section.querySelector("#opsHudRefresh"),
+    lfgCount: section.querySelector("#opsLfgCount"),
+    lfgList: section.querySelector("#opsLfgList")
   };
 
   if (opsHudNodes.refreshButton) {
@@ -763,6 +777,74 @@ async function runOpsSyncCheck(force = false) {
   }
 }
 
+function formatLfgTimeRemaining(expiresAt) {
+  const remainingMs = Math.max(0, Number(expiresAt || 0) - Date.now());
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes <= 0) {
+    return `${seconds}s`;
+  }
+
+  return `${minutes}m ${seconds}s`;
+}
+
+function renderLfgQueue(entries) {
+  const nodes = ensureOpsHud();
+  if (!nodes?.lfgCount || !nodes?.lfgList) {
+    return;
+  }
+
+  const active = Array.isArray(entries)
+    ? entries.filter((entry) => Number(entry?.expiresAt || 0) > Date.now())
+    : [];
+
+  nodes.lfgCount.textContent = `${active.length} online`;
+
+  if (!active.length) {
+    nodes.lfgList.textContent = "No one is looking for 1v1 yet.";
+    return;
+  }
+
+  nodes.lfgList.innerHTML = active.slice(0, 7).map((entry) => {
+    const username = escapeHtml(entry?.username || "Unknown");
+    const timeLeft = formatLfgTimeRemaining(entry?.expiresAt);
+    return `
+      <div class="ops-lfg-row">
+        <strong>${username}</strong>
+        <span class="ops-lfg-status">looking for 1v1</span>
+        <small>${timeLeft} left</small>
+      </div>
+    `;
+  }).join("");
+}
+
+async function runLfgQueueSync() {
+  const nodes = ensureOpsHud();
+  if (!nodes?.lfgList) {
+    return;
+  }
+
+  try {
+    const response = await fetch(LFG_FEED_ENDPOINT, { cache: "no-store" });
+    if (!response.ok) {
+      nodes.lfgList.textContent = `Queue offline (HTTP ${response.status})`;
+      if (nodes.lfgCount) {
+        nodes.lfgCount.textContent = "offline";
+      }
+      return;
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    renderLfgQueue(Array.isArray(payload?.entries) ? payload.entries : []);
+  } catch {
+    nodes.lfgList.textContent = "Queue offline (network).";
+    if (nodes.lfgCount) {
+      nodes.lfgCount.textContent = "offline";
+    }
+  }
+}
+
 function startOpsHud() {
   const nodes = ensureOpsHud();
   if (!nodes) {
@@ -771,6 +853,7 @@ function startOpsHud() {
 
   updateOpsHudClock();
   runOpsSyncCheck();
+  runLfgQueueSync();
   startOpsHudMotdRotation();
 
   if (opsHudClockIntervalId) {
@@ -784,6 +867,12 @@ function startOpsHud() {
   }
 
   opsHudSyncIntervalId = window.setInterval(() => runOpsSyncCheck(), OPS_SYNC_INTERVAL_MS);
+
+  if (lfgSyncIntervalId) {
+    clearInterval(lfgSyncIntervalId);
+  }
+
+  lfgSyncIntervalId = window.setInterval(() => runLfgQueueSync(), LFG_SYNC_INTERVAL_MS);
 }
 
 function ensureFactionPulseMount() {

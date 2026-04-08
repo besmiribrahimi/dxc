@@ -72,6 +72,27 @@ function resolveLeaderboardApiUrl() {
   return `${websiteHome}/api/leaderboard-config`;
 }
 
+function resolveWebsiteHomeUrl() {
+  return normalizeBaseUrl(firstEnv([
+    "WEBSITE_HOME_URL",
+    "WEBSITE_HOME-URL"
+  ]));
+}
+
+function resolveLfgQueueApiUrl() {
+  const direct = firstEnv(["LFG_QUEUE_API_URL"]);
+  if (direct) {
+    return direct;
+  }
+
+  const websiteHome = resolveWebsiteHomeUrl();
+  if (!websiteHome) {
+    return "";
+  }
+
+  return `${websiteHome}/api/lfg-queue`;
+}
+
 const discordToken = firstEnv(["DISCORD_BOT_TOKEN", "DISCORD_TOKEN"]);
 if (!discordToken) {
   throw new Error("Missing required environment variable: DISCORD_BOT_TOKEN (or DISCORD_TOKEN)");
@@ -88,6 +109,9 @@ module.exports = {
   discordToken,
   discordChannelId,
   discordGuildId: firstEnv(["DISCORD_GUILD_ID", "GUILD_ID"]),
+  websiteHomeUrl: resolveWebsiteHomeUrl(),
+  websiteApiToken: firstEnv(["WEBSITE_API_TOKEN", "ADMIN_PANEL_SECRET"]),
+  lfgQueueApiUrl: resolveLfgQueueApiUrl(),
   leaderboardApiUrl: resolveLeaderboardApiUrl(),
   leaderboardChannelId: firstEnv(["LEADERBOARD_CHANNEL_ID"]),
   leaderboardAutoPostEnabled: ["true", "1", "on", "yes"].includes(String(process.env.LEADERBOARD_AUTO_POST_ENABLED || "").trim().toLowerCase()),

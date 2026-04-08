@@ -749,10 +749,100 @@ body::after {
   font-size: clamp(1.04rem, 2vw, 1.4rem);
 }
 
+.ops-hud-right {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.56rem;
+  flex-wrap: wrap;
+}
+
 .ops-hud-actions {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+}
+
+.ops-lfg-box {
+  min-width: 260px;
+  max-width: 340px;
+  border: 1px solid rgba(74, 222, 128, 0.38);
+  border-radius: 11px;
+  background: linear-gradient(140deg, rgba(9, 26, 18, 0.88), rgba(8, 24, 18, 0.94));
+  box-shadow: inset 0 1px 0 rgba(74, 222, 128, 0.12);
+  padding: 0.44rem 0.52rem;
+}
+
+.ops-lfg-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ops-lfg-head span {
+  color: #bbf7d0;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-weight: 700;
+}
+
+.ops-lfg-head strong {
+  color: #86efac;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ops-lfg-list {
+  margin-top: 0.36rem;
+  display: grid;
+  gap: 0.32rem;
+  color: #d4fce1;
+  font-size: 0.76rem;
+}
+
+.ops-lfg-row {
+  border: 1px solid rgba(74, 222, 128, 0.24);
+  border-radius: 8px;
+  background: rgba(8, 20, 14, 0.74);
+  padding: 0.28rem 0.38rem;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.ops-lfg-row strong {
+  color: #f0fdf4;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ops-lfg-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 21px;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 222, 128, 0.46);
+  background: rgba(22, 101, 52, 0.48);
+  color: #86efac;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0 0.38rem;
+}
+
+.ops-lfg-row small {
+  color: #bbf7d0;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
 }
 
 .ops-hud-link {
@@ -2514,6 +2604,17 @@ body.war-room-page::after {
   .ops-hud-head {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .ops-hud-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .ops-lfg-box {
+    min-width: 0;
+    width: 100%;
+    max-width: none;
   }
 
   .ops-hud-grid {
