@@ -39,6 +39,20 @@ const TICKET_CLOSE_MODAL_ID = "ticket_close_modal";
 const LEADERBOARD_NAV_PREFIX = "lbnav";
 
 const DEFAULT_FOOTER = "Ascend Entrenched";
+const BOT_START_TIME = Date.now();
+const EIGHTBALL_RESPONSES = [
+  "Yes. Ascend Entrenched approves.",
+  "No. Hold the line and ask again.",
+  "Maybe. Intelligence is still incoming.",
+  "Absolutely. Push now.",
+  "Not now. Regroup first.",
+  "Signs point to yes.",
+  "Outcome uncertain. Recheck after sync.",
+  "Very likely.",
+  "Chances are low.",
+  "Ask again when the trenches settle."
+];
+const POLL_REACTIONS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"];
 const TICKET_STATUS_CHOICES = [
   { name: "Open", value: "open" },
   { name: "Waiting User", value: "waiting_user" },
@@ -64,6 +78,103 @@ function clampInt(value, min, max, fallback) {
   }
 
   return Math.max(min, Math.min(max, numeric));
+}
+
+function randomItem(items, fallback = "") {
+  if (!Array.isArray(items) || !items.length) {
+    return fallback;
+  }
+
+  const index = Math.floor(Math.random() * items.length);
+  return items[index];
+}
+
+function splitPipeOptions(input, { min = 2, max = 6 } = {}) {
+  const values = String(input || "")
+    .split("|")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  const unique = [...new Set(values)];
+  if (unique.length < min || unique.length > max) {
+    return null;
+  }
+
+  return unique;
+}
+
+function durationLabel(ms) {
+  const safe = Math.max(0, Number(ms) || 0);
+  const totalSeconds = Math.floor(safe / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours}h ${minutes}m ${seconds}s`;
+}
+
+function resolveBaseOrigin(urlValue) {
+  const raw = String(urlValue || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return "";
+  }
+}
+
+async function fetchJsonStatus(url, timeoutMs = 8000) {
+  const target = String(url || "").trim();
+  if (!target) {
+    return {
+      ok: false,
+      status: null,
+      durationMs: 0,
+      payload: null,
+      error: "URL is not configured"
+    };
+  }
+
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(target, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      cache: "no-store"
+    });
+
+    const durationMs = Date.now() - startedAt;
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      durationMs,
+      payload,
+      error: response.ok ? "" : `HTTP ${response.status}`
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: null,
+      durationMs: Date.now() - startedAt,
+      payload: null,
+      error: error instanceof Error ? error.message : "Unknown fetch error"
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function isValidHexColor(value) {
@@ -1680,6 +1791,143 @@ const slashCommandBuilders = [
     .setName("queue")
     .setDescription("Show webhook queue status"),
   new SlashCommandBuilder()
+    .setName("status")
+    .setDescription("Ascend Entrenched runtime status overview")
+    .setDMPermission(false),
+  new SlashCommandBuilder()
+    .setName("webstatus")
+    .setDescription("Check website and leaderboard API health")
+    .setDMPermission(false)
+    .addStringOption((option) =>
+      option
+        .setName("endpoint")
+        .setDescription("Optional endpoint override to check")
+    ),
+  new SlashCommandBuilder()
+    .setName("syncaudit")
+    .setDescription("Audit leaderboard sync freshness and auto-post state")
+    .setDMPermission(false),
+  new SlashCommandBuilder()
+    .setName("refreshcommands")
+    .setDescription("Force refresh slash command registration")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false),
+  new SlashCommandBuilder()
+    .setName("configcheck")
+    .setDescription("Validate Ascend Entrenched server setup")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false),
+  new SlashCommandBuilder()
+    .setName("autopoststatus")
+    .setDescription("Show auto-post scheduler state")
+    .setDMPermission(false),
+  new SlashCommandBuilder()
+    .setName("hqpost")
+    .setDescription("Post an Ascend Entrenched HQ announcement")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false)
+    .addStringOption((option) =>
+      option
+        .setName("message")
+        .setDescription("Announcement message")
+        .setRequired(true)
+        .setMaxLength(1800)
+    )
+    .addChannelOption((option) =>
+      option
+        .setName("channel")
+        .setDescription("Target channel, defaults to current")
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+    )
+    .addBooleanOption((option) =>
+      option
+        .setName("pin")
+        .setDescription("Try to pin the announcement")
+    ),
+  new SlashCommandBuilder()
+    .setName("poll")
+    .setDescription("Create a quick reaction poll")
+    .setDMPermission(false)
+    .addStringOption((option) =>
+      option
+        .setName("question")
+        .setDescription("Poll question")
+        .setRequired(true)
+        .setMaxLength(200)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("options")
+        .setDescription("Options separated by | (2-6)")
+        .setRequired(true)
+        .setMaxLength(400)
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("duration_minutes")
+        .setDescription("Voting duration for display")
+        .setMinValue(1)
+        .setMaxValue(10080)
+    ),
+  new SlashCommandBuilder()
+    .setName("serverintel")
+    .setDescription("Show server intelligence snapshot")
+    .setDMPermission(false),
+  new SlashCommandBuilder()
+    .setName("avatar")
+    .setDescription("Show a user's avatar")
+    .setDMPermission(false)
+    .addUserOption((option) =>
+      option
+        .setName("user")
+        .setDescription("User to inspect")
+        .setRequired(false)
+    ),
+  new SlashCommandBuilder()
+    .setName("coinflip")
+    .setDescription("Flip a coin")
+    .setDMPermission(false),
+  new SlashCommandBuilder()
+    .setName("roll")
+    .setDescription("Roll dice")
+    .setDMPermission(false)
+    .addIntegerOption((option) =>
+      option
+        .setName("sides")
+        .setDescription("Dice sides")
+        .setMinValue(2)
+        .setMaxValue(1000)
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("count")
+        .setDescription("Number of dice")
+        .setMinValue(1)
+        .setMaxValue(10)
+    ),
+  new SlashCommandBuilder()
+    .setName("choose")
+    .setDescription("Pick one option for you")
+    .setDMPermission(false)
+    .addStringOption((option) =>
+      option
+        .setName("options")
+        .setDescription("Choices separated by |")
+        .setRequired(true)
+        .setMaxLength(600)
+    ),
+  new SlashCommandBuilder()
+    .setName("eightball")
+    .setDescription("Ask the Ascend Entrenched 8-ball")
+    .setDMPermission(false)
+    .addStringOption((option) =>
+      option
+        .setName("question")
+        .setDescription("Your question")
+        .setRequired(true)
+        .setMaxLength(300)
+    ),
+  new SlashCommandBuilder()
     .setName("ticketpanel")
     .setDescription("Post the Create Ticket panel")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
@@ -1914,6 +2162,423 @@ function getMuteDurationMs(minutes) {
   return safeMinutes * 60 * 1000;
 }
 
+async function handleStatusCommand(interaction, context) {
+  const uptimeMs = Date.now() - BOT_START_TIME;
+  const wsPing = Math.round(interaction.client.ws.ping || 0);
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+
+  const embed = new EmbedBuilder()
+    .setTitle("Ascend Entrenched Status")
+    .setColor(statusColor(settings, "active"))
+    .addFields(
+      { name: "Bot Uptime", value: durationLabel(uptimeMs), inline: true },
+      { name: "WS Ping", value: `${wsPing} ms`, inline: true },
+      { name: "Queue", value: `${context.updateQueue.size()} pending`, inline: true },
+      { name: "Guilds", value: String(interaction.client.guilds.cache.size), inline: true },
+      { name: "Leaderboard Endpoint", value: settings.leaderboardEndpoint || context.config.leaderboardApiUrl || "Not configured", inline: false },
+      { name: "Brand", value: "Ascend Entrenched Operational", inline: false }
+    )
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleWebStatusCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const endpointInput = interaction.options.getString("endpoint");
+  const resolvedEndpoint = resolveLeaderboardEndpoint(
+    endpointInput || settings.leaderboardEndpoint || context.config.leaderboardApiUrl
+  );
+
+  const leaderboardCheck = await fetchJsonStatus(resolvedEndpoint);
+  const origin = resolveBaseOrigin(resolvedEndpoint);
+  const homepageCheck = origin ? await fetchJsonStatus(origin) : {
+    ok: false,
+    status: null,
+    durationMs: 0,
+    payload: null,
+    error: "No origin URL"
+  };
+
+  const embed = new EmbedBuilder()
+    .setTitle("Ascend Entrenched Web/API Check")
+    .setColor(statusColor(settings, leaderboardCheck.ok ? "active" : "eliminated"))
+    .addFields(
+      {
+        name: "Leaderboard API",
+        value: [
+          `URL: ${resolvedEndpoint || "Not configured"}`,
+          `Status: ${leaderboardCheck.ok ? "Online" : "Issue"}`,
+          `HTTP: ${leaderboardCheck.status ?? "N/A"}`,
+          `Latency: ${leaderboardCheck.durationMs} ms`,
+          `Updated At: ${leaderboardCheck.payload?.config?.updatedAt || "N/A"}`,
+          leaderboardCheck.error ? `Error: ${leaderboardCheck.error}` : ""
+        ].filter(Boolean).join("\n")
+      },
+      {
+        name: "Website Root",
+        value: [
+          `URL: ${origin || "Not available"}`,
+          `Status: ${homepageCheck.ok ? "Online" : "Unknown"}`,
+          `HTTP: ${homepageCheck.status ?? "N/A"}`,
+          `Latency: ${homepageCheck.durationMs} ms`,
+          homepageCheck.error ? `Error: ${homepageCheck.error}` : ""
+        ].filter(Boolean).join("\n")
+      }
+    )
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleSyncAuditCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const endpoint = settings.leaderboardEndpoint || context.config.leaderboardApiUrl;
+
+  await interaction.deferReply({ ephemeral: true });
+
+  try {
+    const leaderboard = await fetchLeaderboardData(endpoint);
+    const updatedAt = leaderboard.updatedAt ? new Date(leaderboard.updatedAt) : null;
+    const ageMs = updatedAt ? Date.now() - updatedAt.getTime() : null;
+    const isStale = ageMs !== null ? ageMs > (6 * 60 * 60 * 1000) : true;
+
+    const lastRunAt = settings.leaderboardAutoPostLastRunAt
+      ? new Date(settings.leaderboardAutoPostLastRunAt)
+      : null;
+    const intervalHours = Math.max(1, Number(settings.leaderboardAutoPostIntervalHours || 6));
+    const nextRunAt = lastRunAt
+      ? new Date(lastRunAt.getTime() + (intervalHours * 60 * 60 * 1000))
+      : null;
+
+    const embed = new EmbedBuilder()
+      .setTitle("Ascend Entrenched Sync Audit")
+      .setColor(statusColor(settings, isStale ? "eliminated" : "active"))
+      .addFields(
+        {
+          name: "Leaderboard Feed",
+          value: [
+            `Endpoint: ${leaderboard.endpoint}`,
+            `Entries: ${leaderboard.entries.length}`,
+            `Updated: ${updatedAt ? updatedAt.toLocaleString() : "Unknown"}`,
+            `Age: ${ageMs !== null ? durationLabel(ageMs) : "Unknown"}`,
+            `Freshness: ${isStale ? "Stale" : "Fresh"}`
+          ].join("\n")
+        },
+        {
+          name: "Auto Post",
+          value: [
+            `Enabled: ${settings.leaderboardAutoPostEnabled ? "Yes" : "No"}`,
+            `Channel: ${settings.leaderboardChannelId ? `<#${settings.leaderboardChannelId}>` : "Not set"}`,
+            `Interval: ${intervalHours} hour(s)`,
+            `Last Run: ${lastRunAt ? lastRunAt.toLocaleString() : "Never"}`,
+            `Next Due: ${nextRunAt ? nextRunAt.toLocaleString() : "Pending first run"}`
+          ].join("\n")
+        }
+      )
+      .setFooter({ text: footerText(settings) })
+      .setTimestamp(new Date());
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    await interaction.editReply({
+      content: `Sync audit failed: ${error instanceof Error ? error.message : "Unknown error"}`
+    });
+  }
+}
+
+async function handleRefreshCommandsCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+
+  await interaction.deferReply({ ephemeral: true });
+
+  try {
+    const registration = await registerSlashCommands(interaction.client, context.config);
+    const scopeText = registration.scope === "guild"
+      ? `Guild (${registration.guildId})`
+      : "Global";
+
+    const embed = new EmbedBuilder()
+      .setTitle("Ascend Entrenched Command Refresh")
+      .setColor(statusColor(settings, "active"))
+      .setDescription("Slash commands were refreshed successfully.")
+      .addFields(
+        { name: "Scope", value: scopeText, inline: true },
+        { name: "Command Count", value: String(registration.count), inline: true },
+        { name: "Warning", value: registration.warning || "None", inline: false }
+      )
+      .setFooter({ text: footerText(settings) })
+      .setTimestamp(new Date());
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error) {
+    await interaction.editReply({
+      content: `Command refresh failed: ${error instanceof Error ? error.message : "Unknown error"}`
+    });
+  }
+}
+
+async function handleConfigCheckCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const appConfig = applicationConfig(context);
+
+  const checks = [
+    { label: "Leaderboard endpoint", ok: Boolean(settings.leaderboardEndpoint || context.config.leaderboardApiUrl) },
+    { label: "Leaderboard channel", ok: Boolean(settings.leaderboardChannelId) },
+    { label: "Ticket enabled", ok: Boolean(settings.ticketEnabled) },
+    { label: "Ticket category", ok: Boolean(settings.ticketCategoryId) },
+    { label: "Applications channel", ok: Boolean(appConfig.channelId) },
+    { label: "Application reviewer role", ok: Boolean(appConfig.reviewerRoleId) },
+    { label: "Application accepted role", ok: Boolean(appConfig.acceptedRoleId) }
+  ];
+
+  const passed = checks.filter((item) => item.ok).length;
+  const failed = checks.length - passed;
+
+  const embed = new EmbedBuilder()
+    .setTitle("Ascend Entrenched Config Check")
+    .setColor(statusColor(settings, failed ? "eliminated" : "active"))
+    .setDescription(checks.map((item) => `${item.ok ? "[OK]" : "[WARN]"} ${item.label}`).join("\n"))
+    .addFields(
+      { name: "Passed", value: String(passed), inline: true },
+      { name: "Warnings", value: String(failed), inline: true }
+    )
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleAutoPostStatusCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const intervalHours = Math.max(1, Number(settings.leaderboardAutoPostIntervalHours || 6));
+  const lastRunAt = settings.leaderboardAutoPostLastRunAt
+    ? new Date(settings.leaderboardAutoPostLastRunAt)
+    : null;
+  const nextDueAt = lastRunAt
+    ? new Date(lastRunAt.getTime() + (intervalHours * 60 * 60 * 1000))
+    : null;
+
+  const embed = new EmbedBuilder()
+    .setTitle("Ascend Entrenched Auto Post Status")
+    .setColor(statusColor(settings, settings.leaderboardAutoPostEnabled ? "active" : "eliminated"))
+    .addFields(
+      { name: "Enabled", value: settings.leaderboardAutoPostEnabled ? "Yes" : "No", inline: true },
+      { name: "Interval", value: `${intervalHours} hour(s)`, inline: true },
+      { name: "Channel", value: settings.leaderboardChannelId ? `<#${settings.leaderboardChannelId}>` : "Not set", inline: true },
+      { name: "Last Run", value: lastRunAt ? lastRunAt.toLocaleString() : "Never", inline: false },
+      { name: "Next Due", value: nextDueAt ? nextDueAt.toLocaleString() : "Pending first run", inline: false }
+    )
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleHqPostCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const channel = interaction.options.getChannel("channel");
+  const message = interaction.options.getString("message", true).trim();
+  const pin = interaction.options.getBoolean("pin") === true;
+
+  const targetChannel = channel || interaction.channel;
+  if (!targetChannel || !targetChannel.isTextBased()) {
+    await interaction.reply({
+      content: "Target channel is not a text channel.",
+      ephemeral: true
+    });
+    return;
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle("Ascend Entrenched HQ Broadcast")
+    .setColor(statusColor(settings, "active"))
+    .setDescription(message)
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  const sent = await targetChannel.send({ embeds: [embed] });
+  if (pin) {
+    await sent.pin().catch(() => {});
+  }
+
+  await interaction.reply({
+    content: `Broadcast sent to ${targetChannel}.${pin ? " Message pinned if permissions allowed." : ""}`,
+    ephemeral: true
+  });
+}
+
+async function handlePollCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const question = interaction.options.getString("question", true).trim();
+  const optionsRaw = interaction.options.getString("options", true);
+  const durationMinutes = clampInt(interaction.options.getInteger("duration_minutes"), 1, 10080, 60);
+  const options = splitPipeOptions(optionsRaw, { min: 2, max: 6 });
+
+  if (!options) {
+    await interaction.reply({
+      content: "Provide 2 to 6 options separated by |, for example: yes | no | maybe",
+      ephemeral: true
+    });
+    return;
+  }
+
+  if (!interaction.channel || !interaction.channel.isTextBased()) {
+    await interaction.reply({
+      content: "This command requires a text channel.",
+      ephemeral: true
+    });
+    return;
+  }
+
+  const lines = options.map((choice, index) => `${POLL_REACTIONS[index]} ${choice}`);
+  const closesAtUnix = Math.floor((Date.now() + (durationMinutes * 60 * 1000)) / 1000);
+
+  const embed = new EmbedBuilder()
+    .setTitle("Ascend Entrenched Poll")
+    .setColor(statusColor(settings, "active"))
+    .setDescription(`**${question}**\n\n${lines.join("\n")}`)
+    .addFields({
+      name: "Voting Window",
+      value: `Closes <t:${closesAtUnix}:R>`
+    })
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  const pollMessage = await interaction.channel.send({ embeds: [embed] });
+  await Promise.all(lines.map((_, index) => pollMessage.react(POLL_REACTIONS[index]).catch(() => null)));
+
+  await interaction.reply({
+    content: `Poll posted in ${interaction.channel}.`,
+    ephemeral: true
+  });
+}
+
+async function handleServerIntelCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const guild = interaction.guild;
+  const createdUnix = Math.floor(guild.createdTimestamp / 1000);
+
+  const embed = new EmbedBuilder()
+    .setTitle("Ascend Entrenched Server Intel")
+    .setColor(statusColor(settings, "active"))
+    .addFields(
+      { name: "Server", value: guild.name, inline: true },
+      { name: "Members", value: String(guild.memberCount), inline: true },
+      { name: "Channels", value: String(guild.channels.cache.size), inline: true },
+      { name: "Roles", value: String(guild.roles.cache.size), inline: true },
+      { name: "Created", value: `<t:${createdUnix}:F>`, inline: false }
+    )
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  if (guild.iconURL()) {
+    embed.setThumbnail(guild.iconURL({ size: 512 }));
+  }
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleAvatarCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const targetUser = interaction.options.getUser("user") || interaction.user;
+
+  const embed = new EmbedBuilder()
+    .setTitle(`Ascend Entrenched Avatar | ${targetUser.tag}`)
+    .setColor(statusColor(settings, "active"))
+    .setImage(targetUser.displayAvatarURL({ size: 1024 }))
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleCoinflipCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const result = Math.random() < 0.5 ? "Heads" : "Tails";
+
+  await interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setTitle("Ascend Entrenched Coin Flip")
+        .setColor(statusColor(settings, "active"))
+        .setDescription(`Result: **${result}**`)
+        .setFooter({ text: footerText(settings) })
+        .setTimestamp(new Date())
+    ],
+    ephemeral: true
+  });
+}
+
+async function handleRollCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const sides = clampInt(interaction.options.getInteger("sides"), 2, 1000, 100);
+  const count = clampInt(interaction.options.getInteger("count"), 1, 10, 1);
+  const rolls = Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
+  const total = rolls.reduce((sum, value) => sum + value, 0);
+
+  await interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setTitle("Ascend Entrenched Dice Roll")
+        .setColor(statusColor(settings, "active"))
+        .setDescription(`d${sides} x${count} -> ${rolls.join(", ")}`)
+        .addFields({ name: "Total", value: String(total), inline: true })
+        .setFooter({ text: footerText(settings) })
+        .setTimestamp(new Date())
+    ],
+    ephemeral: true
+  });
+}
+
+async function handleChooseCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const options = splitPipeOptions(interaction.options.getString("options", true), { min: 2, max: 10 });
+  if (!options) {
+    await interaction.reply({
+      content: "Provide 2 to 10 choices separated by |, for example: push | defend | regroup",
+      ephemeral: true
+    });
+    return;
+  }
+
+  const chosen = randomItem(options, options[0]);
+  await interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setTitle("Ascend Entrenched Decision")
+        .setColor(statusColor(settings, "active"))
+        .setDescription(`Chosen option: **${chosen}**`)
+        .setFooter({ text: footerText(settings) })
+        .setTimestamp(new Date())
+    ],
+    ephemeral: true
+  });
+}
+
+async function handleEightBallCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const question = interaction.options.getString("question", true).trim();
+  const answer = randomItem(EIGHTBALL_RESPONSES, "Intelligence unavailable.");
+
+  await interaction.reply({
+    embeds: [
+      new EmbedBuilder()
+        .setTitle("Ascend Entrenched 8-Ball")
+        .setColor(statusColor(settings, "active"))
+        .addFields(
+          { name: "Question", value: question },
+          { name: "Answer", value: answer }
+        )
+        .setFooter({ text: footerText(settings) })
+        .setTimestamp(new Date())
+    ],
+    ephemeral: true
+  });
+}
+
 async function handleSlashCommand(interaction, context) {
   if (await handleApplyDecisionButton(interaction, context)) {
     return;
@@ -1969,6 +2634,76 @@ async function handleSlashCommand(interaction, context) {
       content: `Queue size: ${context.updateQueue.size()} | Rate: 1 message / ${context.config.queueIntervalMs} ms`,
       ephemeral: true
     });
+    return;
+  }
+
+  if (interaction.commandName === "status") {
+    await handleStatusCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "webstatus") {
+    await handleWebStatusCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "syncaudit") {
+    await handleSyncAuditCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "refreshcommands") {
+    await handleRefreshCommandsCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "configcheck") {
+    await handleConfigCheckCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "autopoststatus") {
+    await handleAutoPostStatusCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "hqpost") {
+    await handleHqPostCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "poll") {
+    await handlePollCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "serverintel") {
+    await handleServerIntelCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "avatar") {
+    await handleAvatarCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "coinflip") {
+    await handleCoinflipCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "roll") {
+    await handleRollCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "choose") {
+    await handleChooseCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "eightball") {
+    await handleEightBallCommand(interaction, context);
     return;
   }
 

@@ -29,8 +29,6 @@ const MAP_HOTSPOT_LAYOUT = [
 ];
 
 let warRoomClockIntervalId = null;
-let selectedHotspotToken = "";
-
 function clampLevel(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
@@ -414,79 +412,20 @@ function setHotspotInfo(token, intelMap, mode = "Hover") {
   `;
 }
 
+function resetHotspotInfo() {
+  if (!warRoomHotspotInfoNode) {
+    return;
+  }
+
+  warRoomHotspotInfoNode.innerHTML = "<strong>Hover a map hotspot</strong><p>Move over a faction region to inspect live points and top operator.</p>";
+}
+
 function renderMapHotspots(factions, intelMap) {
-  if (!warRoomHotspotsNode || !warRoomHotspotInfoNode) {
+  if (!warRoomHotspotsNode) {
     return;
   }
 
-  const maxScore = Math.max(1, ...factions.map((faction) => faction.score));
-
-  warRoomHotspotsNode.innerHTML = MAP_HOTSPOT_LAYOUT.map((spot) => {
-    const details = intelMap.get(spot.token);
-    const isActive = Boolean(details);
-    const strength = isActive
-      ? Math.max(18, Math.round((details.score / maxScore) * 100))
-      : 0;
-
-    return `
-      <button
-        type="button"
-        class="warroom-hotspot${isActive ? "" : " inactive"}"
-        style="left:${spot.x}%;top:${spot.y}%;--strength:${strength}%"
-        data-token="${spot.token}"
-        aria-label="${spot.label} hotspot"
-      >
-        <span class="warroom-hotspot-ping"></span>
-        <span class="warroom-hotspot-tag">${spot.token}</span>
-      </button>
-    `;
-  }).join("");
-
-  const buttons = [...warRoomHotspotsNode.querySelectorAll(".warroom-hotspot")];
-  const activeButtons = buttons.filter((button) => !button.classList.contains("inactive"));
-
-  if (!activeButtons.length) {
-    warRoomHotspotInfoNode.innerHTML = "<strong>No hotspot intel</strong><p>No active factions are available from current data.</p>";
-    return;
-  }
-
-  const defaultToken = (factions[0] && factions[0].token) || activeButtons[0].dataset.token;
-  selectedHotspotToken = defaultToken;
-
-  const applySelection = (token) => {
-    buttons.forEach((button) => {
-      button.classList.toggle("selected", button.dataset.token === token);
-    });
-  };
-
-  applySelection(selectedHotspotToken);
-  setHotspotInfo(selectedHotspotToken, intelMap, "Selected");
-
-  buttons.forEach((button) => {
-    const { token } = button.dataset;
-
-    button.addEventListener("mouseenter", () => {
-      setHotspotInfo(token, intelMap, "Hover");
-    });
-
-    button.addEventListener("focus", () => {
-      setHotspotInfo(token, intelMap, "Focus");
-    });
-
-    button.addEventListener("mouseleave", () => {
-      setHotspotInfo(selectedHotspotToken, intelMap, "Selected");
-    });
-
-    button.addEventListener("blur", () => {
-      setHotspotInfo(selectedHotspotToken, intelMap, "Selected");
-    });
-
-    button.addEventListener("click", () => {
-      selectedHotspotToken = token;
-      applySelection(token);
-      setHotspotInfo(token, intelMap, "Selected");
-    });
-  });
+  warRoomHotspotsNode.innerHTML = "";
 }
 
 async function initWarRoomPage() {

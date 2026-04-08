@@ -1655,7 +1655,7 @@ body.war-room-page::after {
   border: 0;
   background: transparent;
   padding: 0;
-  cursor: pointer;
+  cursor: default;
   display: inline-grid;
   justify-items: center;
   gap: 0.16rem;
@@ -1686,8 +1686,7 @@ body.war-room-page::after {
 }
 
 .warroom-hotspot:hover .warroom-hotspot-ping,
-.warroom-hotspot:focus-visible .warroom-hotspot-ping,
-.warroom-hotspot.selected .warroom-hotspot-ping {
+.warroom-hotspot:focus-visible .warroom-hotspot-ping {
   transform: scale(1.16);
   border-color: rgba(255, 241, 242, 1);
   box-shadow: 0 0 0 9px rgba(248, 113, 113, 0.28), 0 0 16px rgba(248, 113, 113, 0.5);
@@ -1695,11 +1694,6 @@ body.war-room-page::after {
 
 .warroom-hotspot:focus-visible {
   outline: none;
-}
-
-.warroom-hotspot.selected .warroom-hotspot-tag {
-  border-color: rgba(191, 219, 254, 0.9);
-  background: rgba(30, 64, 175, 0.72);
 }
 
 .warroom-hotspot.inactive {

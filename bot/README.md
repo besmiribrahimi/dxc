@@ -71,6 +71,17 @@ npm run dev
 
 - `/ping` - latency check
 - `/queue` - webhook queue status
+- `/status` - Ascend Entrenched runtime status
+- `/webstatus endpoint?` - website and API health checks
+- `/syncaudit` - leaderboard freshness + auto-post audit
+- `/refreshcommands` - force slash command registration refresh
+- `/configcheck` - validate server setup values
+- `/autopoststatus` - show scheduler state and next due
+- `/hqpost message channel? pin?` - post branded announcement
+- `/poll question options duration_minutes?` - create reaction poll
+- `/serverintel` - server intelligence snapshot
+- `/avatar user?` - show user avatar
+- `/coinflip`, `/roll sides? count?`, `/choose options`, `/eightball question` - fun utilities
 - `/ticketpanel` - post ticket button panel
 - `/applypanel` - post application button panel
 - `/applysetup channel? reviewer_role? accepted_role?` - configure application review flow
