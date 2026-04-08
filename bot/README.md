@@ -64,6 +64,8 @@ npm run dev
 - Country
 - Faction
 4. Bot posts application embed to configured applications channel
+5. Reviewer clicks `Accept` or `Reject`
+6. Accepted applicants can receive configured accepted role
 
 ## Commands
 
@@ -71,6 +73,7 @@ npm run dev
 - `/queue` - webhook queue status
 - `/ticketpanel` - post ticket button panel
 - `/applypanel` - post application button panel
+- `/applysetup channel? reviewer_role? accepted_role?` - configure application review flow
 - `/ticketupdate note status?` - follow-up + optional status change
 - `/userinfo user` - Roblox/faction/country/matches/leaderboard status
 - `/leaderboard limit? page_size? post?` - synced paginated leaderboard
@@ -85,6 +88,7 @@ npm run dev
 - `/setup ticket_access action role`
 - `/setup leaderboard channel endpoint auto_post every_hours`
 - `/setup style info_color winner_color active_color eliminated_color highlight_color footer highlight_enabled`
+- `/applysetup channel reviewer_role accepted_role`
 
 Examples:
 - `/setup tickets enabled:true ping_role:@Staff reviewer_role:@Admins`
@@ -92,6 +96,7 @@ Examples:
 - `/setup leaderboard endpoint:https://dxc-chi.vercel.app`
 - `/setup leaderboard channel:#leaderboard auto_post:true every_hours:6`
 - `/setup style winner_color:#FFD700 active_color:#C8A2C8`
+- `/applysetup channel:#applications reviewer_role:@Reviewers accepted_role:@Member`
 
 Auto-post notes:
 - `auto_post:true` enables scheduled posting in the configured leaderboard channel.

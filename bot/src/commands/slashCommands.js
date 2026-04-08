@@ -32,6 +32,7 @@ const TICKET_CREATE_BUTTON_ID = "ticket_create";
 const TICKET_CREATE_MODAL_ID = "ticket_create_modal";
 const APPLY_CREATE_BUTTON_ID = "apply_create";
 const APPLY_CREATE_MODAL_ID = "apply_create_modal";
+const APPLY_DECISION_PREFIX = "apply_decide";
 const TICKET_STATUS_PREFIX = "ticket_status:";
 const TICKET_CLOSE_BUTTON_ID = "ticket_close";
 const TICKET_CLOSE_MODAL_ID = "ticket_close_modal";
@@ -223,6 +224,71 @@ function hasReviewerAccess(member, settings) {
   }
 
   return roles.some((roleId) => member.roles?.cache?.has(roleId));
+}
+
+function applicationConfig(context) {
+  return {
+    channelId: String(context?.config?.applicationsChannelId || "").trim(),
+    reviewerRoleId: String(context?.config?.applicationsReviewerRoleId || "").trim(),
+    acceptedRoleId: String(context?.config?.applicationsAcceptedRoleId || "").trim()
+  };
+}
+
+function hasApplicationReviewerAccess(member, reviewerRoleId) {
+  if (!member) {
+    return false;
+  }
+
+  if (member.permissions?.has(PermissionFlagsBits.ManageGuild)) {
+    return true;
+  }
+
+  const safeReviewerRoleId = String(reviewerRoleId || "").trim();
+  if (!safeReviewerRoleId) {
+    return false;
+  }
+
+  return member.roles?.cache?.has(safeReviewerRoleId) || false;
+}
+
+function buildApplyDecisionRows(applicantId, disabled = false) {
+  const safeApplicantId = String(applicantId || "").trim();
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${APPLY_DECISION_PREFIX}:accept:${safeApplicantId}`)
+        .setLabel("Accept")
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(disabled),
+      new ButtonBuilder()
+        .setCustomId(`${APPLY_DECISION_PREFIX}:reject:${safeApplicantId}`)
+        .setLabel("Reject")
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(disabled)
+    )
+  ];
+}
+
+function buildApplySetupEmbed(settings, configState) {
+  return new EmbedBuilder()
+    .setTitle("Application Setup")
+    .setColor(statusColor(settings, "active"))
+    .addFields(
+      {
+        name: "Applications Channel",
+        value: configState.channelId ? `<#${configState.channelId}>` : "Not set"
+      },
+      {
+        name: "Reviewer Role",
+        value: configState.reviewerRoleId ? `<@&${configState.reviewerRoleId}>` : "Not set"
+      },
+      {
+        name: "Accepted Role",
+        value: configState.acceptedRoleId ? `<@&${configState.acceptedRoleId}>` : "Not set"
+      }
+    )
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
 }
 
 function buildRoleMentions(roleIds) {
@@ -796,15 +862,21 @@ async function handleApplyCreateModal(interaction, context) {
   }
 
   const settings = getGuildSettings(interaction.guild.id, context.config);
+  const appConfig = applicationConfig(context);
   const roblox = interaction.fields.getTextInputValue("apply_roblox").trim();
   const country = interaction.fields.getTextInputValue("apply_country").trim();
   const faction = interaction.fields.getTextInputValue("apply_faction").trim();
 
-  const configuredChannelId = String(context.config.applicationsChannelId || "").trim();
-  const targetChannel = configuredChannelId
-    ? interaction.guild.channels.cache.get(configuredChannelId)
-      || await interaction.guild.channels.fetch(configuredChannelId).catch(() => null)
-    : interaction.channel;
+  if (!appConfig.channelId) {
+    await interaction.reply({
+      content: "Applications channel is not configured. Ask an admin to run /applysetup channel:#channel.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const targetChannel = interaction.guild.channels.cache.get(appConfig.channelId)
+    || await interaction.guild.channels.fetch(appConfig.channelId).catch(() => null);
 
   if (!targetChannel || !targetChannel.isTextBased()) {
     await interaction.reply({
@@ -821,17 +893,18 @@ async function handleApplyCreateModal(interaction, context) {
       { name: "User", value: `<@${interaction.user.id}>`, inline: true },
       { name: "Roblox Username", value: roblox, inline: true },
       { name: "Country", value: country, inline: true },
-      { name: "Faction", value: faction, inline: true }
+      { name: "Faction", value: faction, inline: true },
+      { name: "Decision", value: "Pending review", inline: false }
     )
     .setFooter({ text: footerText(settings) })
     .setTimestamp(new Date());
 
-  const reviewerRoleId = String(context.config.applicationsReviewerRoleId || "").trim();
-  const reviewerMention = reviewerRoleId ? `<@&${reviewerRoleId}>` : null;
+  const reviewerMention = appConfig.reviewerRoleId ? `<@&${appConfig.reviewerRoleId}>` : null;
 
   await targetChannel.send({
     content: reviewerMention,
-    embeds: [applicationEmbed]
+    embeds: [applicationEmbed],
+    components: buildApplyDecisionRows(interaction.user.id, false)
   });
 
   upsertUserProfileFromTicket(interaction.guild.id, interaction.user.id, {
@@ -846,6 +919,144 @@ async function handleApplyCreateModal(interaction, context) {
   });
 
   return true;
+}
+
+async function handleApplyDecisionButton(interaction, context) {
+  if (!interaction.isButton() || !interaction.customId.startsWith(`${APPLY_DECISION_PREFIX}:`)) {
+    return false;
+  }
+
+  if (!interaction.inGuild()) {
+    await interaction.reply({
+      content: "This action can only be used in a server.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const [, decision, applicantIdRaw] = interaction.customId.split(":");
+  const applicantId = String(applicantIdRaw || "").trim();
+  if (!["accept", "reject"].includes(String(decision || "")) || !applicantId) {
+    await interaction.reply({
+      content: "Invalid application decision action.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const appConfig = applicationConfig(context);
+  if (!hasApplicationReviewerAccess(interaction.member, appConfig.reviewerRoleId)) {
+    await interaction.reply({
+      content: "You do not have permission to review applications.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const currentEmbed = interaction.message?.embeds?.[0];
+  if (!currentEmbed) {
+    await interaction.reply({ content: "Application embed is missing.", ephemeral: true });
+    return true;
+  }
+
+  const json = currentEmbed.toJSON();
+  const fields = Array.isArray(json.fields) ? [...json.fields] : [];
+  const decisionIndex = fields.findIndex((field) => String(field?.name || "").trim().toLowerCase() === "decision");
+  const currentDecision = decisionIndex >= 0 ? String(fields[decisionIndex].value || "") : "";
+  if (currentDecision && !/^pending/i.test(currentDecision)) {
+    await interaction.reply({
+      content: "This application has already been reviewed.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const accepted = decision === "accept";
+  const decisionValue = `${accepted ? "Accepted" : "Rejected"} by <@${interaction.user.id}> at <t:${Math.floor(Date.now() / 1000)}:f>`;
+  if (decisionIndex >= 0) {
+    fields[decisionIndex] = { ...fields[decisionIndex], value: decisionValue, inline: false };
+  } else {
+    fields.push({ name: "Decision", value: decisionValue, inline: false });
+  }
+
+  const nextEmbed = EmbedBuilder.from(json)
+    .setColor(statusColor(settings, accepted ? "resolved" : "eliminated"))
+    .setFields(fields);
+
+  let acceptedRoleResult = "";
+  if (accepted && appConfig.acceptedRoleId) {
+    const member = await interaction.guild.members.fetch(applicantId).catch(() => null);
+    if (member && !member.roles.cache.has(appConfig.acceptedRoleId)) {
+      await member.roles.add(appConfig.acceptedRoleId, `Application accepted by ${interaction.user.tag}`).catch(() => {});
+      acceptedRoleResult = ` Assigned <@&${appConfig.acceptedRoleId}>.`;
+    }
+  }
+
+  const applicantUser = await interaction.client.users.fetch(applicantId).catch(() => null);
+  if (applicantUser) {
+    await applicantUser.send(`Your application in ${interaction.guild.name} was ${accepted ? "accepted" : "rejected"}.`).catch(() => {});
+  }
+
+  await interaction.update({
+    embeds: [nextEmbed],
+    components: buildApplyDecisionRows(applicantId, true)
+  });
+
+  if (acceptedRoleResult) {
+    await interaction.followUp({
+      content: `Application ${accepted ? "accepted" : "rejected"}.${acceptedRoleResult}`,
+      ephemeral: true
+    });
+  }
+
+  return true;
+}
+
+async function handleApplySetupCommand(interaction, context) {
+  if (!interaction.inGuild()) {
+    await interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+    return;
+  }
+
+  const channel = interaction.options.getChannel("channel");
+  const reviewerRole = interaction.options.getRole("reviewer_role");
+  const acceptedRole = interaction.options.getRole("accepted_role");
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const current = applicationConfig(context);
+
+  if (!channel && !reviewerRole && !acceptedRole) {
+    await interaction.reply({
+      embeds: [buildApplySetupEmbed(settings, current)],
+      ephemeral: true
+    });
+    return;
+  }
+
+  const patch = {};
+  if (channel) {
+    patch.applicationsChannelId = channel.id;
+  }
+
+  if (reviewerRole) {
+    patch.applicationsReviewerRoleId = reviewerRole.id;
+  }
+
+  if (acceptedRole) {
+    patch.applicationsAcceptedRoleId = acceptedRole.id;
+  }
+
+  const saved = context.saveRuntimeSettings(patch);
+  context.config.applicationsChannelId = saved.applicationsChannelId;
+  context.config.applicationsReviewerRoleId = saved.applicationsReviewerRoleId;
+  context.config.applicationsAcceptedRoleId = saved.applicationsAcceptedRoleId;
+
+  await interaction.reply({
+    content: "Application setup updated.",
+    embeds: [buildApplySetupEmbed(settings, applicationConfig(context))],
+    ephemeral: true
+  });
 }
 
 function buildLeaderboardNavRows(requesterId, pageIndex, totalPages, limit, pageSize) {
@@ -1479,6 +1690,27 @@ const slashCommandBuilders = [
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false),
   new SlashCommandBuilder()
+    .setName("applysetup")
+    .setDescription("Configure applications channel and review roles")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false)
+    .addChannelOption((option) =>
+      option
+        .setName("channel")
+        .setDescription("Channel where new applications are sent")
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+    )
+    .addRoleOption((option) =>
+      option
+        .setName("reviewer_role")
+        .setDescription("Role allowed to accept/reject applications")
+    )
+    .addRoleOption((option) =>
+      option
+        .setName("accepted_role")
+        .setDescription("Role granted when an application is accepted")
+    ),
+  new SlashCommandBuilder()
     .setName("ticketupdate")
     .setDescription("Post a ticket follow-up note and optional status")
     .setDMPermission(false)
@@ -1683,6 +1915,10 @@ function getMuteDurationMs(minutes) {
 }
 
 async function handleSlashCommand(interaction, context) {
+  if (await handleApplyDecisionButton(interaction, context)) {
+    return;
+  }
+
   if (await handleApplyCreateButton(interaction)) {
     return;
   }
@@ -1766,11 +2002,15 @@ async function handleSlashCommand(interaction, context) {
 
   if (interaction.commandName === "applypanel") {
     const settings = getGuildSettings(interaction.guild.id, context.config);
+    const appConfig = applicationConfig(context);
     const panelEmbed = new EmbedBuilder()
       .setTitle("Ascend Entrenched Applications")
       .setColor(statusColor(settings, "active"))
-      .setDescription("Press **Apply Now** to submit your player application. This is separate from help tickets.")
-      .addFields({ name: "Required", value: "Roblox Username, Country, Faction" })
+      .setDescription("Press **Apply Now** to submit your player application. Staff will accept or reject it in the applications channel.")
+      .addFields(
+        { name: "Required", value: "Roblox Username, Country, Faction" },
+        { name: "Review Channel", value: appConfig.channelId ? `<#${appConfig.channelId}>` : "Not configured (use /applysetup)" }
+      )
       .setFooter({ text: footerText(settings) })
       .setTimestamp(new Date());
 
@@ -1859,6 +2099,11 @@ async function handleSlashCommand(interaction, context) {
 
   if (interaction.commandName === "setup") {
     await handleSetupCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "applysetup") {
+    await handleApplySetupCommand(interaction, context);
     return;
   }
 
