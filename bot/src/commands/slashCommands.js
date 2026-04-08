@@ -318,15 +318,18 @@ function statusColor(settings, status) {
   return hexToInt(settings?.colors?.info, "#C8A2C8");
 }
 
-function renderWelcomeMessageTemplate(template, { memberTag, memberMention, serverName, memberCount }) {
-  const raw = String(template || "").trim();
-  const fallback = "Welcome {user} to {server}! You are member #{membercount}.";
-  const source = raw || fallback;
+function buildWelcomeEmbedPreview({ memberMention, serverName, memberCount, autoRoleId }) {
+  const lines = [
+    `${memberMention || "New member"} just joined **${serverName || "the server"}**.`,
+    `You are member **#${memberCount || 0}**.`,
+    "Use /1v1 whenever you are looking for a match."
+  ];
 
-  return source
-    .replace(/\{user\}/gi, memberMention || memberTag || "New member")
-    .replace(/\{server\}/gi, serverName || "the server")
-    .replace(/\{membercount\}/gi, String(memberCount || 0));
+  if (autoRoleId) {
+    lines.splice(2, 0, `You have been assigned <@&${autoRoleId}>.`);
+  }
+
+  return lines.join("\n");
 }
 
 function buildTicketTopic(meta) {
@@ -501,33 +504,6 @@ function buildTicketActionRows(disabled = false) {
   return [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId(`${TICKET_STATUS_PREFIX}open`)
-        .setLabel("Open")
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(disabled),
-      new ButtonBuilder()
-        .setCustomId(`${TICKET_STATUS_PREFIX}waiting_user`)
-        .setLabel("Waiting User")
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(disabled),
-      new ButtonBuilder()
-        .setCustomId(`${TICKET_STATUS_PREFIX}in_review`)
-        .setLabel("In Review")
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(disabled),
-      new ButtonBuilder()
-        .setCustomId(`${TICKET_STATUS_PREFIX}escalated`)
-        .setLabel("Escalated")
-        .setStyle(ButtonStyle.Danger)
-        .setDisabled(disabled),
-      new ButtonBuilder()
-        .setCustomId(`${TICKET_STATUS_PREFIX}resolved`)
-        .setLabel("Resolved")
-        .setStyle(ButtonStyle.Success)
-        .setDisabled(disabled)
-    ),
-    new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
         .setCustomId(TICKET_CLOSE_BUTTON_ID)
         .setLabel("Close Ticket")
         .setStyle(ButtonStyle.Danger)
@@ -622,66 +598,11 @@ async function handleTicketCreateButton(interaction, context) {
     return true;
   }
 
-  const modal = new ModalBuilder()
-    .setCustomId(TICKET_CREATE_MODAL_ID)
-    .setTitle("Create Help Ticket");
-
-  const subjectInput = new TextInputBuilder()
-    .setCustomId("ticket_subject")
-    .setLabel("What do you need help with?")
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true)
-    .setMaxLength(100);
-
-  const detailsInput = new TextInputBuilder()
-    .setCustomId("ticket_details")
-    .setLabel("Describe your issue")
-    .setStyle(TextInputStyle.Paragraph)
-    .setRequired(true)
-    .setMaxLength(1000);
-
-  modal.addComponents(
-    new ActionRowBuilder().addComponents(subjectInput),
-    new ActionRowBuilder().addComponents(detailsInput)
-  );
-
-  await interaction.showModal(modal);
-  return true;
-}
-
-async function handleTicketCreateModal(interaction, context) {
-  if (!interaction.isModalSubmit() || interaction.customId !== TICKET_CREATE_MODAL_ID) {
-    return false;
-  }
-
-  if (!interaction.inGuild()) {
-    await interaction.reply({ content: "Tickets can only be created in a server.", ephemeral: true });
-    return true;
-  }
-
-  const settings = getGuildSettings(interaction.guild.id, context.config);
-  if (!canCreateTicket(interaction.member, settings)) {
-    await interaction.reply({
-      content: "Ticket creation is disabled for you in this server.",
-      ephemeral: true
-    });
-    return true;
-  }
-
-  const existing = await findOpenTicketForUser(interaction.guild, interaction.user.id);
-  if (existing) {
-    await interaction.reply({
-      content: `You already have an open ticket: ${existing}`,
-      ephemeral: true
-    });
-    return true;
-  }
-
-  const subject = interaction.fields.getTextInputValue("ticket_subject").trim();
-  const details = interaction.fields.getTextInputValue("ticket_details").trim();
+  const subject = `Support Request - ${interaction.user.username}`;
+  const details = `Ticket opened by <@${interaction.user.id}>.`;
 
   const ticketId = Date.now().toString(36);
-  const baseName = sanitizeChannelName(subject).slice(0, 40);
+  const baseName = sanitizeChannelName(interaction.user.username || "player").slice(0, 40);
   const channelName = `ticket-${baseName}-${ticketId.slice(-4)}`;
   const roleIds = reviewerRoleIds(settings);
   const overwrites = [
@@ -725,7 +646,15 @@ async function handleTicketCreateModal(interaction, context) {
     }),
     permissionOverwrites: overwrites,
     reason: `Ticket created by ${interaction.user.tag}`
-  });
+  }).catch(() => null);
+
+  if (!channel) {
+    await interaction.reply({
+      content: "Ticket creation failed. Verify my Manage Channels and Manage Roles permissions.",
+      ephemeral: true
+    });
+    return true;
+  }
 
   const ticketEmbed = buildTicketEmbed({
     settings,
@@ -762,6 +691,19 @@ async function handleTicketCreateModal(interaction, context) {
 
   await interaction.reply({
     content: `Help ticket created: ${channel}`,
+    ephemeral: true
+  });
+
+  return true;
+}
+
+async function handleTicketCreateModal(interaction) {
+  if (!interaction.isModalSubmit() || interaction.customId !== TICKET_CREATE_MODAL_ID) {
+    return false;
+  }
+
+  await interaction.reply({
+    content: "Ticket modal was retired. Press Create Help Ticket again to open a ticket instantly.",
     ephemeral: true
   });
 
@@ -858,19 +800,76 @@ async function handleTicketCloseButton(interaction, context) {
     return true;
   }
 
-  const modal = new ModalBuilder()
-    .setCustomId(TICKET_CLOSE_MODAL_ID)
-    .setTitle("Close Ticket");
+  const reason = `Closed by ${interaction.user.tag}`;
+  const meta = parseTicketTopic(interaction.channel.topic) || {};
+  const nextTopic = buildTicketTopic({
+    ...meta,
+    status: "closed"
+  });
 
-  const reasonInput = new TextInputBuilder()
-    .setCustomId("ticket_close_reason")
-    .setLabel("Reason (optional)")
-    .setStyle(TextInputStyle.Paragraph)
-    .setRequired(false)
-    .setMaxLength(500);
+  await interaction.channel.setTopic(nextTopic).catch(() => {});
 
-  modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
-  await interaction.showModal(modal);
+  if (meta.owner) {
+    await interaction.channel.permissionOverwrites.edit(meta.owner, {
+      SendMessages: false
+    }).catch(() => {});
+  }
+
+  const oldName = String(interaction.channel.name || "ticket");
+  if (!oldName.startsWith("closed-")) {
+    const nextName = `closed-${oldName}`.slice(0, 100);
+    await interaction.channel.setName(nextName).catch(() => {});
+  }
+
+  const closeEmbed = new EmbedBuilder()
+    .setTitle(`Ticket ${meta.ticket || "Closed"}`)
+    .setColor(statusColor(settings, "closed"))
+    .setDescription(`Ticket closed by <@${interaction.user.id}>`)
+    .addFields({
+      name: "Reason",
+      value: reason
+    })
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [closeEmbed], components: buildTicketActionRows(true) });
+
+  appendTicketAudit({
+    event: "ticket_closed",
+    guildId: interaction.guild.id,
+    channelId: interaction.channel.id,
+    ticketId: meta.ticket || "",
+    ownerId: meta.owner || "",
+    actorId: interaction.user.id,
+    reason
+  });
+
+  await sendTicketLog(
+    interaction.guild,
+    settings,
+    closeEmbed,
+    `Ticket <#${interaction.channel.id}> closed`
+  );
+
+  const ticketOwner = meta.owner
+    ? await interaction.client.users.fetch(meta.owner).catch(() => null)
+    : null;
+
+  if (ticketOwner) {
+    const ownerEmbed = new EmbedBuilder()
+      .setTitle("Ticket Closed")
+      .setColor(statusColor(settings, "closed"))
+      .setDescription(`Your ticket in **${interaction.guild.name}** was closed.`)
+      .addFields({
+        name: "Reason",
+        value: reason
+      })
+      .setFooter({ text: footerText(settings) })
+      .setTimestamp(new Date());
+
+    await ticketOwner.send({ embeds: [ownerEmbed] }).catch(() => {});
+  }
+
   return true;
 }
 
@@ -1423,7 +1422,7 @@ function buildSetupViewEmbed(settings) {
         name: "Welcome Settings",
         value: [
           `Channel: ${settings.welcomeChannelId ? `<#${settings.welcomeChannelId}>` : "Not set"}`,
-          `Message: ${settings.welcomeMessage || "Not set"}`
+          `Auto Role: ${settings.autoRoleId ? `<@&${settings.autoRoleId}>` : "Not set"}`
         ].join("\n")
       },
       {
@@ -2135,21 +2134,58 @@ const slashCommandBuilders = [
     ),
   new SlashCommandBuilder()
     .setName("setwelcome")
-    .setDescription("Set welcome channel and join message")
+    .setDescription("Set welcome channel for the bot-designed join embed")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false)
     .addChannelOption((option) =>
       option
         .setName("channel")
         .setDescription("Channel where welcome message will be sent")
+        .setRequired(true)
         .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-    )
-    .addStringOption((option) =>
-      option
-        .setName("message")
-        .setDescription("Welcome message template. Use {user}, {server}, {membercount}")
-        .setMaxLength(1024)
     ),
+  new SlashCommandBuilder()
+    .setName("autorole")
+    .setDescription("Set role assigned automatically when a member joins")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false)
+    .addRoleOption((option) =>
+      option
+        .setName("role")
+        .setDescription("Role to auto assign on join")
+        .setRequired(true)
+    ),
+  new SlashCommandBuilder()
+    .setName("sendinfo")
+    .setDescription("Post the newcomer info embed in a channel")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false)
+    .addChannelOption((option) =>
+      option
+        .setName("channel")
+        .setDescription("Channel where info message will be posted")
+        .setRequired(true)
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+    ),
+  new SlashCommandBuilder()
+    .setName("setautorole")
+    .setDescription("Alias for /autorole")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false)
+    .addRoleOption((option) =>
+      option
+        .setName("role")
+        .setDescription("Role to auto assign on join")
+        .setRequired(true)
+    ),
+  new SlashCommandBuilder()
+    .setName("info")
+    .setDescription("Show quick server onboarding info")
+    .setDMPermission(false),
+  new SlashCommandBuilder()
+    .setName("help")
+    .setDescription("Show available bot commands")
+    .setDMPermission(false),
   new SlashCommandBuilder()
     .setName("ticketupdate")
     .setDescription("Post a ticket follow-up note and optional status")
@@ -2522,7 +2558,6 @@ async function handleConfigCheckCommand(interaction, context) {
     { label: "Ticket enabled", ok: Boolean(settings.ticketEnabled) },
     { label: "Ticket category", ok: Boolean(settings.ticketCategoryId) },
     { label: "Welcome channel", ok: Boolean(settings.welcomeChannelId) },
-    { label: "Welcome message", ok: Boolean(String(settings.welcomeMessage || "").trim()) },
     { label: "Applications channel", ok: Boolean(appConfig.channelId) },
     { label: "Application reviewer role", ok: Boolean(appConfig.reviewerRoleId) },
     { label: "Application accepted role", ok: Boolean(appConfig.acceptedRoleId) }
@@ -2611,57 +2646,13 @@ async function handleSetWelcomeCommand(interaction, context) {
   }
 
   const guildId = interaction.guild.id;
-  const settings = getGuildSettings(guildId, context.config);
-  const channel = interaction.options.getChannel("channel");
-  const message = interaction.options.getString("message");
-
-  if (!channel && !message) {
-    const preview = renderWelcomeMessageTemplate(settings.welcomeMessage, {
-      memberTag: interaction.user.tag,
-      memberMention: `<@${interaction.user.id}>`,
-      serverName: interaction.guild.name,
-      memberCount: interaction.guild.memberCount
-    });
-
-    const embed = new EmbedBuilder()
-      .setTitle("Welcome Setup")
-      .setColor(statusColor(settings, "active"))
-      .addFields(
-        {
-          name: "Channel",
-          value: settings.welcomeChannelId ? `<#${settings.welcomeChannelId}>` : "Not set"
-        },
-        {
-          name: "Template",
-          value: settings.welcomeMessage || "Not set"
-        },
-        {
-          name: "Preview",
-          value: preview.slice(0, 1024)
-        }
-      )
-      .setFooter({ text: footerText(settings) })
-      .setTimestamp(new Date());
-
-    await interaction.reply({ embeds: [embed], ephemeral: true });
-    return;
-  }
-
-  const patch = {};
-  if (channel) {
-    patch.welcomeChannelId = channel.id;
-  }
-
-  if (typeof message === "string") {
-    patch.welcomeMessage = String(message).trim().slice(0, 1024);
-  }
-
-  const next = patchGuildSettings(guildId, patch, context.config);
-  const preview = renderWelcomeMessageTemplate(next.welcomeMessage, {
-    memberTag: interaction.user.tag,
+  const channel = interaction.options.getChannel("channel", true);
+  const next = patchGuildSettings(guildId, { welcomeChannelId: channel.id }, context.config);
+  const preview = buildWelcomeEmbedPreview({
     memberMention: `<@${interaction.user.id}>`,
     serverName: interaction.guild.name,
-    memberCount: interaction.guild.memberCount
+    memberCount: interaction.guild.memberCount,
+    autoRoleId: next.autoRoleId
   });
 
   const embed = new EmbedBuilder()
@@ -2673,19 +2664,204 @@ async function handleSetWelcomeCommand(interaction, context) {
         value: next.welcomeChannelId ? `<#${next.welcomeChannelId}>` : "Not set"
       },
       {
-        name: "Template",
-        value: next.welcomeMessage || "Not set"
+        name: "Auto Role",
+        value: next.autoRoleId ? `<@&${next.autoRoleId}>` : "Not set"
       },
       {
         name: "Preview",
         value: preview.slice(0, 1024)
-      },
-      {
-        name: "Template Variables",
-        value: "{user}, {server}, {membercount}"
       }
     )
     .setFooter({ text: footerText(next) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleAutoRoleCommand(interaction, context) {
+  if (!interaction.inGuild()) {
+    await interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+    return;
+  }
+
+  const role = interaction.options.getRole("role", true);
+  if (role.managed) {
+    await interaction.reply({
+      content: "Managed integration roles cannot be set as auto roles.",
+      ephemeral: true
+    });
+    return;
+  }
+
+  const me = interaction.guild.members.me || await interaction.guild.members.fetchMe().catch(() => null);
+  if (!me || role.position >= me.roles.highest.position) {
+    await interaction.reply({
+      content: "I cannot assign that role due to role hierarchy. Move my role above it and try again.",
+      ephemeral: true
+    });
+    return;
+  }
+
+  const next = patchGuildSettings(interaction.guild.id, { autoRoleId: role.id }, context.config);
+  const embed = new EmbedBuilder()
+    .setTitle("Auto Role Updated")
+    .setColor(statusColor(next, "active"))
+    .setDescription(`New members will now receive <@&${role.id}> when they join.`)
+    .setFooter({ text: footerText(next) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleSendInfoCommand(interaction, context) {
+  if (!interaction.inGuild()) {
+    await interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+    return;
+  }
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const appConfig = applicationConfig(context);
+  const channel = interaction.options.getChannel("channel", true);
+
+  if (!channel.isTextBased()) {
+    await interaction.reply({
+      content: "Target channel is not a text channel.",
+      ephemeral: true
+    });
+    return;
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle("Ascend Entrenched - New Member Intel")
+    .setColor(statusColor(settings, "active"))
+    .setDescription("Welcome to Ascend Entrenched. Follow this quick guide to get started fast.")
+    .addFields(
+      {
+        name: "Start Here",
+        value: [
+          "1) Read the rules and announcements.",
+          "2) Introduce yourself in the community channels.",
+          "3) Use /1v1 whenever you are looking for a match."
+        ].join("\n")
+      },
+      {
+        name: "Applications",
+        value: appConfig.channelId
+          ? `Application updates are handled in <#${appConfig.channelId}>.`
+          : "Ask staff where applications are currently handled."
+      },
+      {
+        name: "Support",
+        value: settings.ticketPanelChannelId
+          ? `Open a ticket from <#${settings.ticketPanelChannelId}> if you need help.`
+          : "Use the ticket panel to contact staff if you need help."
+      },
+      {
+        name: "Welcome Channel",
+        value: settings.welcomeChannelId ? `<#${settings.welcomeChannelId}>` : "Not set",
+        inline: true
+      },
+      {
+        name: "Auto Role",
+        value: settings.autoRoleId ? `<@&${settings.autoRoleId}>` : "Not set",
+        inline: true
+      }
+    )
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  await channel.send({ embeds: [embed] });
+  await interaction.reply({
+    content: `Info message sent to ${channel}.`,
+    ephemeral: true
+  });
+}
+
+async function handleInfoCommand(interaction, context) {
+  if (!interaction.inGuild()) {
+    await interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+    return;
+  }
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const appConfig = applicationConfig(context);
+
+  const embed = new EmbedBuilder()
+    .setTitle("Ascend Entrenched Info")
+    .setColor(statusColor(settings, "active"))
+    .setDescription("Quick guide for members and staff.")
+    .addFields(
+      {
+        name: "Core Commands",
+        value: [
+          "/1v1 - Join or leave live queue",
+          "/leaderboard - View synced leaderboard",
+          "/userinfo - Player profile snapshot",
+          "/help - Full command list"
+        ].join("\n")
+      },
+      {
+        name: "Support",
+        value: settings.ticketPanelChannelId
+          ? `Open support tickets from <#${settings.ticketPanelChannelId}>.`
+          : "Ticket panel channel is not configured yet."
+      },
+      {
+        name: "Applications",
+        value: appConfig.channelId
+          ? `Application reviews are posted in <#${appConfig.channelId}>.`
+          : "Application review channel is not configured yet."
+      },
+      {
+        name: "Auto Role",
+        value: settings.autoRoleId ? `<@&${settings.autoRoleId}>` : "Not set"
+      }
+    )
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleHelpCommand(interaction, context) {
+  if (!interaction.inGuild()) {
+    await interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+    return;
+  }
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const embed = new EmbedBuilder()
+    .setTitle("Ascend Entrenched Command Help")
+    .setColor(statusColor(settings, "active"))
+    .addFields(
+      {
+        name: "Setup",
+        value: [
+          "/setupapply, /setupticket",
+          "/setwelcome, /autorole, /setautorole",
+          "/sendinfo, /ticketpanel, /applypanel"
+        ].join("\n")
+      },
+      {
+        name: "Community",
+        value: [
+          "/1v1, /leaderboard, /userinfo",
+          "/info, /status, /serverintel"
+        ].join("\n")
+      },
+      {
+        name: "Utility",
+        value: [
+          "/help, /webstatus, /syncaudit",
+          "/poll, /choose, /roll, /coinflip, /eightball"
+        ].join("\n")
+      },
+      {
+        name: "If Commands Missing",
+        value: "Run /refreshcommands and restart the bot once to force command sync."
+      }
+    )
+    .setFooter({ text: footerText(settings) })
     .setTimestamp(new Date());
 
   await interaction.reply({ embeds: [embed], ephemeral: true });
@@ -3082,9 +3258,9 @@ async function handleSlashCommand(interaction, context) {
     const panelEmbed = new EmbedBuilder()
       .setTitle("Ascend Entrenched Tickets")
       .setColor(statusColor(settings, "active"))
-      .setDescription("Press **Create Help Ticket** to open a private support ticket with staff.")
+      .setDescription("Press **Create Help Ticket** to instantly open a private support ticket with staff.")
       .addFields(
-        { name: "Required", value: "Issue Subject and Details" },
+        { name: "Flow", value: "One click to create ticket. Staff closes with Close Ticket button." },
         { name: "Status", value: settings.ticketEnabled ? "Ticket creation enabled" : "Ticket creation disabled" }
       )
       .setFooter({ text: footerText(settings) })
@@ -3258,6 +3434,31 @@ async function handleSlashCommand(interaction, context) {
 
   if (interaction.commandName === "setwelcome") {
     await handleSetWelcomeCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "autorole") {
+    await handleAutoRoleCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "setautorole") {
+    await handleAutoRoleCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "sendinfo") {
+    await handleSendInfoCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "info") {
+    await handleInfoCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "help") {
+    await handleHelpCommand(interaction, context);
     return;
   }
 

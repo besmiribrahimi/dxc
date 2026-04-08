@@ -54,17 +54,21 @@ function welcomeColor(settings) {
   return Number.parseInt(safe.slice(1), 16);
 }
 
-function renderWelcomeMessage(template, member) {
+function buildWelcomeDescription(member, autoRoleId) {
   const guildName = String(member?.guild?.name || "this server");
   const memberCount = Number(member?.guild?.memberCount || 0);
   const mention = `<@${member.id}>`;
-  const fallback = "Welcome {user} to {server}! You are member #{membercount}.";
-  const source = String(template || "").trim() || fallback;
+  const lines = [
+    `${mention} just joined **${guildName}**.`,
+    `You are member **#${memberCount}**.`,
+    "Use /1v1 whenever you are looking for a match."
+  ];
 
-  return source
-    .replace(/\{user\}/gi, mention)
-    .replace(/\{server\}/gi, guildName)
-    .replace(/\{membercount\}/gi, String(memberCount));
+  if (autoRoleId) {
+    lines.splice(2, 0, `Your starting role is <@&${autoRoleId}>.`);
+  }
+
+  return lines.join("\n");
 }
 
 async function handleAcceptedEvent(payload, eventType) {
@@ -181,6 +185,20 @@ async function start() {
   client.on("guildMemberAdd", async (member) => {
     try {
       const settings = getGuildSettings(member.guild.id, config);
+      const autoRoleId = String(settings?.autoRoleId || "").trim();
+
+      if (autoRoleId) {
+        const role = member.guild.roles.cache.get(autoRoleId)
+          || await member.guild.roles.fetch(autoRoleId).catch(() => null);
+
+        if (role && !role.managed) {
+          const me = member.guild.members.me || await member.guild.members.fetchMe().catch(() => null);
+          if (me && role.position < me.roles.highest.position) {
+            await member.roles.add(role.id, "Auto role on member join").catch(() => null);
+          }
+        }
+      }
+
       const channelId = String(settings?.welcomeChannelId || "").trim();
       if (!channelId) {
         return;
@@ -193,7 +211,7 @@ async function start() {
         return;
       }
 
-      const description = renderWelcomeMessage(settings?.welcomeMessage, member);
+      const description = buildWelcomeDescription(member, autoRoleId);
       const embed = new EmbedBuilder()
         .setTitle(`Welcome to ${member.guild.name}`)
         .setColor(welcomeColor(settings))
