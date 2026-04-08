@@ -82,6 +82,28 @@ function clampKd(value) {
   return Math.max(0, Math.min(9.9, Number(numeric.toFixed(1))));
 }
 
+function normalizeFactionValue(faction) {
+  if (typeof sanitizeFactionValue === "function") {
+    return sanitizeFactionValue(faction);
+  }
+
+  const normalized = String(faction || "").replace(/\s+/g, " ").trim().toUpperCase();
+  if (!normalized || normalized === "N/A") {
+    return "N/A";
+  }
+
+  const tokens = normalized
+    .split(/[\/,&|]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (!tokens.length) {
+    return "N/A";
+  }
+
+  return [...new Set(tokens)].join("/");
+}
+
 function setLoginStatus(message, isError = false) {
   if (!loginStatusNode) {
     return;
@@ -238,19 +260,6 @@ function formatSyncTime(isoValue) {
   return date.toLocaleString();
 }
 
-function buildFactionMarkup(player) {
-  if (typeof buildFactionChipHtml === "function") {
-    return buildFactionChipHtml(player.faction, {
-      chipClass: "admin-faction-chip",
-      maxItems: 3,
-      includeGroupWrapper: true,
-      groupClass: "admin-faction-group"
-    });
-  }
-
-  return `<span class="admin-faction-chip">${safeText(player.faction)}</span>`;
-}
-
 function normalizeOrderKeys(rawOrder, validKeys) {
   const valid = new Set(validKeys);
   const seen = new Set();
@@ -292,7 +301,9 @@ function renderRows(players) {
         <img class="admin-avatar" src="${avatarUrl}" alt="${safeText(player.name)} avatar" loading="lazy" referrerpolicy="no-referrer">
         <strong>${safeText(player.name)}</strong>
       </span>
-      <span class="admin-faction-cell">${buildFactionMarkup(player)}</span>
+      <span>
+        <input class="admin-faction-input" data-player-key="${safeText(player.key)}" type="text" maxlength="36" value="${safeText(normalizeFactionValue(player.faction))}" placeholder="AH/URF">
+      </span>
       <span class="admin-country">${safeText(country)}</span>
       <span>
         <select class="admin-level-select" data-player-key="${safeText(player.key)}">
@@ -406,6 +417,7 @@ function mergePlayersWithConfig(players, config) {
         ...player,
         sourceIndex,
         key,
+        faction: normalizeFactionValue(override.faction ?? player.faction),
         level: clampLevel(override.level ?? defaults.level),
         kd: clampKd(override.kd ?? defaults.kd)
       };
@@ -449,6 +461,7 @@ function syncCurrentPlayersFromDom() {
     const next = values[key];
     return {
       ...player,
+      faction: next ? next.faction : player.faction,
       level: next ? next.level : player.level,
       kd: next ? next.kd : player.kd
     };
@@ -465,6 +478,7 @@ function syncCurrentPlayersFromInputs() {
 
     return {
       ...player,
+      faction: next.faction,
       level: next.level,
       kd: next.kd
     };
@@ -487,13 +501,15 @@ function collectRowValues() {
       return;
     }
 
+    const factionNode = row.querySelector(".admin-faction-input");
     const levelNode = row.querySelector(".admin-level-select");
     const kdNode = row.querySelector(".admin-kd-input");
 
+    const faction = normalizeFactionValue(factionNode ? factionNode.value : "N/A");
     const level = clampLevel(levelNode ? levelNode.value : 1);
     const kd = clampKd(kdNode ? kdNode.value : 1.0);
 
-    result[key] = { level, kd };
+    result[key] = { faction, level, kd };
   });
 
   return result;

@@ -24,6 +24,24 @@ function clampKd(value) {
   return Math.max(0, Math.min(9.9, Number(numeric.toFixed(1))));
 }
 
+function normalizeFaction(value) {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim().toUpperCase();
+  if (!normalized || normalized === "N/A") {
+    return "N/A";
+  }
+
+  const tokens = normalized
+    .split(/[\/,&|]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (!tokens.length) {
+    return "N/A";
+  }
+
+  return [...new Set(tokens)].join("/");
+}
+
 function normalizePlayers(rawPlayers) {
   const source = rawPlayers && typeof rawPlayers === "object" ? rawPlayers : {};
   const normalized = {};
@@ -36,6 +54,7 @@ function normalizePlayers(rawPlayers) {
 
     const stats = rawStats && typeof rawStats === "object" ? rawStats : {};
     normalized[key] = {
+      faction: normalizeFaction(stats.faction),
       level: clampLevel(stats.level),
       kd: clampKd(stats.kd)
     };

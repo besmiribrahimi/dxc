@@ -51,7 +51,6 @@ const fallbackPlayerLines = [
 const avatarIdMap = new Map([
   ["1xoji", 3879584970],
   ["20sovietso21", 1626472826],
-  ["besilikekesi", 3144496991],
   ["bananaprouni", 2483811288],
   ["besiliekkesi", 3144496991],
   ["blesk_bleskac", 1459210694],

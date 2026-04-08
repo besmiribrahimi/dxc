@@ -2379,6 +2379,7 @@ body.war-room-page::after {
 }
 
 .admin-login-form input,
+.admin-faction-input,
 .admin-level-select,
 .admin-kd-input {
   min-height: 42px;
@@ -2429,6 +2430,7 @@ body.war-room-page::after {
 }
 
 .admin-login-form input:focus-visible,
+.admin-faction-input:focus-visible,
 .admin-level-select:focus-visible,
 .admin-kd-input:focus-visible {
   outline: 1px solid rgba(147, 197, 253, 0.85);

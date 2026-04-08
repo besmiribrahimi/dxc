@@ -35,6 +35,33 @@ function getLeaderboardStats(playerName) {
   return { level, kd };
 }
 
+function normalizeFactionOverride(value) {
+  if (value == null) {
+    return "";
+  }
+
+  if (typeof sanitizeFactionValue === "function") {
+    const sanitized = sanitizeFactionValue(value);
+    return sanitized === "N/A" ? "" : sanitized;
+  }
+
+  const normalized = String(value || "").replace(/\s+/g, " ").trim().toUpperCase();
+  if (!normalized || normalized === "N/A") {
+    return "";
+  }
+
+  const tokens = normalized
+    .split(/[\/,&|]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (!tokens.length) {
+    return "";
+  }
+
+  return [...new Set(tokens)].join("/");
+}
+
 function normalizeConfigPlayers(config) {
   const raw = config?.players;
   if (!raw || typeof raw !== "object") {
@@ -49,6 +76,7 @@ function normalizeConfigPlayers(config) {
     }
 
     output[key] = {
+      faction: normalizeFactionOverride(stats?.faction),
       level: clampLevel(stats?.level),
       kd: Number(clampKd(stats?.kd).toFixed(1))
     };
@@ -270,6 +298,9 @@ async function initLeaderboardPage() {
       player.level = override?.level ?? stats.level;
       player.wins = player.level;
       player.kd = override?.kd ?? stats.kd;
+      if (override?.faction) {
+        player.faction = override.faction;
+      }
       return player;
     });
 
