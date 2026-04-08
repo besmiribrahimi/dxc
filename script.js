@@ -51,6 +51,7 @@ const fallbackPlayerLines = [
 const avatarIdMap = new Map([
   ["1xoji", 3879584970],
   ["20sovietso21", 1626472826],
+  ["besilikekesi", 3144496991],
   ["bananaprouni", 2483811288],
   ["besiliekkesi", 3144496991],
   ["blesk_bleskac", 1459210694],
@@ -127,6 +128,7 @@ const staticAvatarUrlMap = new Map([
   ["2483811288", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-477404A853E778126C94AF455D693B54-Png"],
   ["2651722374", "https://t1.rbxcdn.com/30DAY-AvatarHeadshot-DBB88EB7E4035468F0867223EC737DA1-Png"],
   ["2917331399", "https://t6.rbxcdn.com/30DAY-AvatarHeadshot-F79E43180E8E4947F02DDE884FDCD457-Png"],
+  ["3144496991", "https://t2.rbxcdn.com/30DAY-AvatarHeadshot-B9B3A152385F34DCCD631B98432A9610-Png"],
   ["3033171704", "https://t5.rbxcdn.com/30DAY-AvatarHeadshot-8A335F2409C1F447F76FED8B3CCCC263-Png"],
   ["3183519478", "https://t2.rbxcdn.com/30DAY-AvatarHeadshot-0BF68FADFCF9B921FC689FB4667CCF4C-Png"],
   ["3522921507", "https://t3.rbxcdn.com/30DAY-AvatarHeadshot-67B50DFFE50C017B26B451758CCD41D2-Png"],
