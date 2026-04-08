@@ -42,7 +42,7 @@ async function handleAcceptedEvent(payload, eventType) {
 }
 
 async function start() {
-  client.once("ready", async () => {
+  client.once("clientReady", async () => {
     console.log(`Discord bot online as ${client.user.tag}`);
 
     try {
@@ -51,6 +51,10 @@ async function start() {
         console.log(`Registered ${registration.count} slash commands in guild ${registration.guildId}`);
       } else {
         console.log(`Registered ${registration.count} global slash commands`);
+      }
+
+      if (registration.warning) {
+        console.warn(`[Slash Command Registration Warning] ${registration.warning}`);
       }
     } catch (error) {
       console.error("[Slash Command Registration Error]", error);

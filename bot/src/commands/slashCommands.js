@@ -55,8 +55,26 @@ async function registerSlashCommands(client, config) {
   }
 
   if (config.discordGuildId) {
-    await client.application.commands.set(slashCommands, config.discordGuildId);
-    return { scope: "guild", guildId: config.discordGuildId, count: slashCommands.length };
+    try {
+      await client.application.commands.set(slashCommands, config.discordGuildId);
+      return { scope: "guild", guildId: config.discordGuildId, count: slashCommands.length };
+    } catch (error) {
+      const code = Number(error?.code || 0);
+      const shouldFallback = code === 50001 || Number(error?.status || 0) === 403;
+
+      if (!shouldFallback) {
+        throw error;
+      }
+
+      // If guild registration fails (usually missing access or wrong guild ID),
+      // fall back to global registration so commands still appear eventually.
+      await client.application.commands.set(slashCommands);
+      return {
+        scope: "global",
+        count: slashCommands.length,
+        warning: `Guild registration failed for ${config.discordGuildId}; fallback to global commands.`
+      };
+    }
   }
 
   await client.application.commands.set(slashCommands);
