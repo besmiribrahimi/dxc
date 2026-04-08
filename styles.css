@@ -113,6 +113,46 @@ body::after {
   outline: none;
 }
 
+.official-discord-fab {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 130;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.44rem;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.42);
+  background: linear-gradient(120deg, rgba(88, 101, 242, 0.42), rgba(37, 99, 235, 0.32));
+  color: #edf3ff;
+  text-decoration: none;
+  font-family: "Exo 2", sans-serif;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 0.24rem 0.72rem;
+  box-shadow: 0 10px 20px rgba(5, 9, 20, 0.42), 0 0 18px rgba(88, 101, 242, 0.28);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.official-discord-fab:hover,
+.official-discord-fab:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(147, 197, 253, 0.76);
+  box-shadow: 0 14px 24px rgba(5, 9, 20, 0.5), 0 0 22px rgba(88, 101, 242, 0.4);
+  outline: none;
+}
+
+.official-discord-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex-shrink: 0;
+}
+
 .hero::before {
   content: "";
   position: absolute;
@@ -2582,6 +2622,20 @@ body.war-room-page::after {
     left: 0.7rem;
     width: 42px;
     height: 42px;
+  }
+
+  .official-discord-fab {
+    top: 0.66rem;
+    right: 0.66rem;
+    min-height: 36px;
+    padding: 0.22rem 0.56rem;
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+  }
+
+  .official-discord-icon {
+    width: 16px;
+    height: 16px;
   }
 
   .content {
