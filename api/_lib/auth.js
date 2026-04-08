@@ -5,7 +5,12 @@ function firstEnv(names) {
   for (const name of names) {
     const value = process.env[name];
     if (typeof value === "string" && value.trim()) {
-      return value.trim();
+      const trimmed = value.trim();
+      if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+        return trimmed.slice(1, -1).trim();
+      }
+
+      return trimmed;
     }
   }
 
@@ -22,11 +27,16 @@ function isProductionEnvironment() {
 }
 
 function getAdminTestPassword() {
+  const explicit = firstEnv(["ADMIN_PANEL_TEST_PASSWORD"]);
+  if (explicit) {
+    return explicit;
+  }
+
   if (isProductionEnvironment()) {
     return "";
   }
 
-  return firstEnv(["ADMIN_PANEL_TEST_PASSWORD"]) || TEMP_ADMIN_PASSWORD_DEFAULT;
+  return TEMP_ADMIN_PASSWORD_DEFAULT;
 }
 
 function getAdminSecret() {
