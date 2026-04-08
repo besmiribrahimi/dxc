@@ -218,6 +218,9 @@ const factionFlagMap = new Map([
   ["TWA", "faction_flags/TWA.png"],
   ["URF", "faction_flags/URF.png"]
 ]);
+const factionTokenAliasMap = new Map([
+  ["CSZK", "CZSK"]
+]);
 
 let opsHudNodes = null;
 let opsHudClockIntervalId = null;
@@ -257,6 +260,7 @@ function splitFactionTokens(faction) {
   const filteredTokens = normalized
     .split(/[\/,&|]+/)
     .map((part) => normalizeText(part).toUpperCase())
+    .map((token) => factionTokenAliasMap.get(token) || token)
     .filter((token) => Boolean(token) && !DISBANDED_FACTIONS.has(token));
 
   if (!filteredTokens.length) {
