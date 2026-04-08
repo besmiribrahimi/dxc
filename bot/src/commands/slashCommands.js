@@ -1,8 +1,230 @@
 const {
   SlashCommandBuilder,
   EmbedBuilder,
-  PermissionFlagsBits
+  PermissionFlagsBits,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
 } = require("discord.js");
+
+const APPLICATION_MODAL_ID = "application_submit_v1";
+const APPLICATION_ACCEPT_PREFIX = "application_accept:";
+const APPLICATION_REJECT_PREFIX = "application_reject:";
+
+const applicationCooldownMap = new Map();
+
+function getRemainingCooldownMs(userId, cooldownMs) {
+  const now = Date.now();
+  const until = Number(applicationCooldownMap.get(userId) || 0);
+  if (until <= now) {
+    return 0;
+  }
+
+  return until - now;
+}
+
+function setApplicationCooldown(userId, cooldownMs) {
+  const now = Date.now();
+  applicationCooldownMap.set(userId, now + cooldownMs);
+}
+
+function buildApplicationReviewButtons(applicantId, applicationId, disabled = false) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`${APPLICATION_ACCEPT_PREFIX}${applicantId}:${applicationId}`)
+      .setLabel("Accept")
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(disabled),
+    new ButtonBuilder()
+      .setCustomId(`${APPLICATION_REJECT_PREFIX}${applicantId}:${applicationId}`)
+      .setLabel("Reject")
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(disabled)
+  );
+}
+
+function parseApplicationReviewCustomId(customId) {
+  const isAccept = customId.startsWith(APPLICATION_ACCEPT_PREFIX);
+  const isReject = customId.startsWith(APPLICATION_REJECT_PREFIX);
+
+  if (!isAccept && !isReject) {
+    return null;
+  }
+
+  const payload = isAccept
+    ? customId.slice(APPLICATION_ACCEPT_PREFIX.length)
+    : customId.slice(APPLICATION_REJECT_PREFIX.length);
+  const [applicantId, applicationId] = String(payload || "").split(":");
+
+  if (!applicantId || !applicationId) {
+    return null;
+  }
+
+  return {
+    action: isAccept ? "accept" : "reject",
+    applicantId,
+    applicationId
+  };
+}
+
+function canReviewApplications(interaction, config) {
+  if (!interaction.inGuild()) {
+    return false;
+  }
+
+  const reviewerRoleId = String(config.applicationsReviewerRoleId || "").trim();
+  const member = interaction.member;
+
+  if (member?.permissions?.has(PermissionFlagsBits.ManageGuild)) {
+    return true;
+  }
+
+  if (reviewerRoleId && member?.roles?.cache?.has(reviewerRoleId)) {
+    return true;
+  }
+
+  return false;
+}
+
+function buildDecisionEmbed(baseEmbed, decisionText, reviewerTag, approved) {
+  const embed = EmbedBuilder.from(baseEmbed || {});
+  const existingFields = Array.isArray(embed.data?.fields) ? embed.data.fields : [];
+  const filteredFields = existingFields.filter((field) => field?.name !== "Decision");
+
+  embed
+    .setColor(approved ? 0x2ecc71 : 0xe74c3c)
+    .setFields(
+      ...filteredFields,
+      {
+        name: "Decision",
+        value: `${decisionText} by ${reviewerTag}`
+      }
+    )
+    .setTimestamp(new Date());
+
+  return embed;
+}
+
+async function handleApplicationModalSubmit(interaction, context) {
+  if (!interaction.isModalSubmit() || interaction.customId !== APPLICATION_MODAL_ID) {
+    return false;
+  }
+
+  if (!interaction.inGuild()) {
+    await interaction.reply({
+      content: "Applications can only be submitted inside a server.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const targetChannelId = String(context.config.applicationsChannelId || "").trim();
+  if (!targetChannelId) {
+    await interaction.reply({
+      content: "Applications are not configured yet. Ask an admin to set APPLICATIONS_CHANNEL_ID.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const reviewChannel = await interaction.client.channels.fetch(targetChannelId).catch(() => null);
+  if (!reviewChannel || !reviewChannel.isTextBased()) {
+    await interaction.reply({
+      content: "Configured applications channel is not available or not text-based.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const roblox = interaction.fields.getTextInputValue("apply_roblox").trim();
+  const age = interaction.fields.getTextInputValue("apply_age").trim();
+  const timezone = interaction.fields.getTextInputValue("apply_timezone").trim();
+  const reason = interaction.fields.getTextInputValue("apply_reason").trim();
+  const applicationId = Date.now().toString(36);
+
+  const embed = new EmbedBuilder()
+    .setTitle("New Application")
+    .setColor(0xdb2b2b)
+    .setDescription(`Applicant: <@${interaction.user.id}>`)
+    .addFields(
+      { name: "Roblox", value: roblox || "N/A" },
+      { name: "Age", value: age || "N/A", inline: true },
+      { name: "Timezone", value: timezone || "N/A", inline: true },
+      { name: "Why do you want to join?", value: reason || "N/A" },
+      { name: "Application ID", value: applicationId }
+    )
+    .setFooter({ text: `Applicant ID: ${interaction.user.id}` })
+    .setTimestamp(new Date());
+
+  await reviewChannel.send({
+    embeds: [embed],
+    components: [buildApplicationReviewButtons(interaction.user.id, applicationId, false)]
+  });
+
+  await interaction.reply({
+    content: "Application submitted. Staff will review it soon.",
+    ephemeral: true
+  });
+
+  return true;
+}
+
+async function handleApplicationReviewButton(interaction, context) {
+  if (!interaction.isButton()) {
+    return false;
+  }
+
+  const parsed = parseApplicationReviewCustomId(interaction.customId);
+  if (!parsed) {
+    return false;
+  }
+
+  if (!canReviewApplications(interaction, context.config)) {
+    await interaction.reply({
+      content: "You do not have permission to review applications.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const approved = parsed.action === "accept";
+  const decisionText = approved ? "Accepted" : "Rejected";
+  const baseEmbed = interaction.message?.embeds?.[0] || new EmbedBuilder().setTitle("Application");
+  const updatedEmbed = buildDecisionEmbed(baseEmbed, decisionText, interaction.user.tag, approved);
+
+  await interaction.update({
+    embeds: [updatedEmbed],
+    components: [buildApplicationReviewButtons(parsed.applicantId, parsed.applicationId, true)]
+  });
+
+  if (approved && interaction.inGuild()) {
+    const acceptedRoleId = String(context.config.applicationsAcceptedRoleId || "").trim();
+    if (acceptedRoleId) {
+      const member = await interaction.guild.members.fetch(parsed.applicantId).catch(() => null);
+      if (member) {
+        await member.roles.add(acceptedRoleId, `Application accepted by ${interaction.user.tag}`).catch(() => null);
+      }
+    }
+  }
+
+  const applicantUser = await interaction.client.users.fetch(parsed.applicantId).catch(() => null);
+  if (applicantUser) {
+    const dmText = approved
+      ? `Your application in ${interaction.guild?.name || "the server"} was accepted.`
+      : `Your application in ${interaction.guild?.name || "the server"} was rejected.`;
+    await applicantUser.send(dmText).catch(() => null);
+  }
+
+  await interaction.followUp({
+    content: `${decisionText} application for <@${parsed.applicantId}>.`,
+    ephemeral: true
+  });
+
+  return true;
+}
 
 async function fetchLeaderboardConfig(config) {
   const endpoint = String(config.leaderboardApiUrl || "").trim();
@@ -165,6 +387,10 @@ const slashCommandBuilders = [
         .setMaxValue(20)
     ),
   new SlashCommandBuilder()
+    .setName("apply")
+    .setDescription("Submit an application to staff")
+    .setDMPermission(false),
+  new SlashCommandBuilder()
     .setName("webhooktest")
     .setDescription("Send a test leaderboard update embed")
     .addStringOption((option) =>
@@ -306,6 +532,14 @@ async function registerSlashCommands(client, config) {
 }
 
 async function handleSlashCommand(interaction, context) {
+  if (await handleApplicationModalSubmit(interaction, context)) {
+    return;
+  }
+
+  if (await handleApplicationReviewButton(interaction, context)) {
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) {
     return;
   }
@@ -365,6 +599,71 @@ async function handleSlashCommand(interaction, context) {
       });
     }
 
+    return;
+  }
+
+  if (interaction.commandName === "apply") {
+    if (!interaction.inGuild()) {
+      await interaction.reply({
+        content: "This command can only be used in a server.",
+        ephemeral: true
+      });
+      return;
+    }
+
+    const cooldownMs = Number(context.config.applicationCooldownMs) || 120000;
+    const remainingMs = getRemainingCooldownMs(interaction.user.id, cooldownMs);
+    if (remainingMs > 0) {
+      const seconds = Math.max(1, Math.ceil(remainingMs / 1000));
+      await interaction.reply({
+        content: `Please wait ${seconds}s before sending another application.`,
+        ephemeral: true
+      });
+      return;
+    }
+
+    setApplicationCooldown(interaction.user.id, cooldownMs);
+
+    const modal = new ModalBuilder()
+      .setCustomId(APPLICATION_MODAL_ID)
+      .setTitle("Server Application");
+
+    const robloxInput = new TextInputBuilder()
+      .setCustomId("apply_roblox")
+      .setLabel("Roblox Username")
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setMaxLength(32);
+
+    const ageInput = new TextInputBuilder()
+      .setCustomId("apply_age")
+      .setLabel("Age")
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setMaxLength(4);
+
+    const timezoneInput = new TextInputBuilder()
+      .setCustomId("apply_timezone")
+      .setLabel("Timezone")
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setMaxLength(32);
+
+    const reasonInput = new TextInputBuilder()
+      .setCustomId("apply_reason")
+      .setLabel("Why do you want to join?")
+      .setStyle(TextInputStyle.Paragraph)
+      .setRequired(true)
+      .setMaxLength(1000);
+
+    modal.addComponents(
+      new ActionRowBuilder().addComponents(robloxInput),
+      new ActionRowBuilder().addComponents(ageInput),
+      new ActionRowBuilder().addComponents(timezoneInput),
+      new ActionRowBuilder().addComponents(reasonInput)
+    );
+
+    await interaction.showModal(modal);
     return;
   }
 

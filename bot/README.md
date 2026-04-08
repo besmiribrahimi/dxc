@@ -23,6 +23,10 @@ npm install
 Optional security and queue tuning:
 - `DISCORD_GUILD_ID` (recommended for instant slash command updates)
 - `LEADERBOARD_API_URL` (required for `/leaderboard` command)
+- `APPLICATIONS_CHANNEL_ID` (required for Appy-style application review)
+- `APPLICATIONS_REVIEWER_ROLE_ID` (optional role for application reviewers)
+- `APPLICATIONS_ACCEPTED_ROLE_ID` (optional auto-role on accepted applications)
+- `APPLICATION_COOLDOWN_MS` (optional anti-spam cooldown for `/apply`)
 - `WEBHOOK_SHARED_SECRET`
 - `QUEUE_INTERVAL_MS`
 - `MAX_QUEUE_SIZE`
@@ -61,10 +65,18 @@ The bot auto-registers these commands at startup:
 - `/ping` - bot latency/health
 - `/queue` - webhook queue size and rate
 - `/leaderboard` - fetch and show top synced leaderboard directly from web API
+- `/apply` - submit an application modal like Appy-style bots
 - `/webhooktest` - queue a test leaderboard embed
 - `/mute` - timeout a member (admin/mod command)
 - `/kick` - kick a member (admin/mod command)
 - `/ban` - ban a user (admin/mod command)
+
+Application flow:
+- User runs `/apply` and submits a modal
+- Bot posts application embed in `APPLICATIONS_CHANNEL_ID`
+- Staff review with Accept/Reject buttons
+- Applicant receives DM result
+- Optional accepted role is granted when approved
 
 If `DISCORD_GUILD_ID` is set, commands appear quickly in that guild.
 If not set, commands register globally and can take up to 1 hour to appear.
