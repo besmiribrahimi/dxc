@@ -132,6 +132,34 @@ function makeSubstitutionPayload(update) {
   };
 }
 
+function makeNotificationPayload(update) {
+  const ids = Array.isArray(update?.recipientIds)
+    ? update.recipientIds
+    : String(update?.recipientIds || "")
+      .split(/[\s,|;]+/)
+      .filter(Boolean);
+
+  const recipientIds = [...new Set(ids.map((value) => String(value || "").trim()).filter((value) => /^\d{8,}$/.test(value)))];
+
+  return {
+    eventType: "notify",
+    title: safeString(update?.title, "Ascend Entrenched Broadcast"),
+    message: safeString(update?.message, "Update from Ascend Entrenched"),
+    recipientIds
+  };
+}
+
+function makeRuntimeSettingsPayload(update) {
+  return {
+    eventType: "runtime_settings",
+    applicationsPanelChannelId: safeString(update?.applicationsPanelChannelId),
+    applicationsChannelId: safeString(update?.applicationsChannelId),
+    notificationUserIds: Array.isArray(update?.notificationUserIds)
+      ? [...new Set(update.notificationUserIds.map((value) => String(value || "").trim()).filter((value) => /^\d{8,}$/.test(value)))]
+      : []
+  };
+}
+
 async function sendLeaderboardUpdate(update) {
   return postBotWebhook(makeLeaderboardPayload(update));
 }
@@ -144,8 +172,18 @@ async function sendSubstitution(update) {
   return postBotWebhook(makeSubstitutionPayload(update));
 }
 
+async function sendNotificationBroadcast(update) {
+  return postBotWebhook(makeNotificationPayload(update));
+}
+
+async function sendRuntimeSettings(update) {
+  return postBotWebhook(makeRuntimeSettingsPayload(update));
+}
+
 module.exports = {
   sendLeaderboardUpdate,
   sendMatchHighlight,
-  sendSubstitution
+  sendSubstitution,
+  sendNotificationBroadcast,
+  sendRuntimeSettings
 };

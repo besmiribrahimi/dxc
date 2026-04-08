@@ -36,7 +36,32 @@ function buildDefaultConfig() {
   return {
     version: 1,
     updatedAt: null,
-    players: {}
+    players: {},
+    order: [],
+    botSettings: {
+      applicationsPanelChannelId: "",
+      applicationsChannelId: "",
+      notificationUserIds: []
+    }
+  };
+}
+
+function normalizeDiscordIds(raw) {
+  const values = Array.isArray(raw)
+    ? raw
+    : String(raw || "")
+      .split(/[\s,|;]+/)
+      .filter(Boolean);
+
+  return [...new Set(values.map((value) => String(value || "").trim()).filter((value) => /^\d{8,}$/.test(value)))];
+}
+
+function normalizeBotSettings(raw) {
+  const input = raw && typeof raw === "object" ? raw : {};
+  return {
+    applicationsPanelChannelId: String(input.applicationsPanelChannelId || "").trim(),
+    applicationsChannelId: String(input.applicationsChannelId || "").trim(),
+    notificationUserIds: normalizeDiscordIds(input.notificationUserIds)
   };
 }
 
@@ -93,6 +118,12 @@ async function getLeaderboardConfig() {
       parsed.updatedAt = null;
     }
 
+    if (!Array.isArray(parsed.order)) {
+      parsed.order = [];
+    }
+
+    parsed.botSettings = normalizeBotSettings(parsed.botSettings);
+
     return parsed;
   } catch {
     return buildDefaultConfig();
@@ -104,7 +135,9 @@ async function saveLeaderboardConfig(config) {
   const safe = {
     version: Number(config?.version) || 1,
     updatedAt: String(config?.updatedAt || new Date().toISOString()),
-    players: config?.players && typeof config.players === "object" ? config.players : {}
+    players: config?.players && typeof config.players === "object" ? config.players : {},
+    order: Array.isArray(config?.order) ? config.order.map((value) => String(value || "").trim().toLowerCase()).filter(Boolean) : [],
+    botSettings: normalizeBotSettings(config?.botSettings)
   };
 
   await runCommand(["SET", key, JSON.stringify(safe)]);

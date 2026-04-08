@@ -1,6 +1,7 @@
 const ADMIN_TOKEN_KEY = "draxar-admin-token-v1";
 const LOGIN_ENDPOINT = "/api/admin/login";
 const ADMIN_CONFIG_ENDPOINT = "/api/admin/config";
+const BOT_EVENT_ENDPOINT = "/api/admin/bot-event";
 
 const authCardNode = document.getElementById("adminAuthCard");
 const panelNode = document.getElementById("adminPanel");
@@ -12,8 +13,24 @@ const rowsNode = document.getElementById("adminRows");
 const reloadButtonNode = document.getElementById("adminReloadBtn");
 const saveButtonNode = document.getElementById("adminSaveBtn");
 const logoutButtonNode = document.getElementById("adminLogoutBtn");
+const applyPanelChannelNode = document.getElementById("adminApplyPanelChannel");
+const applicationsReceiveChannelNode = document.getElementById("adminApplicationsReceiveChannel");
+const notifyIdsNode = document.getElementById("adminNotifyIds");
+const notifyMessageNode = document.getElementById("adminNotifyMessage");
+const sendNotifyButtonNode = document.getElementById("adminSendNotifyBtn");
+const botOpsStatusNode = document.getElementById("adminBotOpsStatus");
 
-let currentConfig = { version: 1, updatedAt: null, players: {} };
+let currentConfig = {
+  version: 1,
+  updatedAt: null,
+  players: {},
+  order: [],
+  botSettings: {
+    applicationsPanelChannelId: "",
+    applicationsChannelId: "",
+    notificationUserIds: []
+  }
+};
 let currentPlayers = [];
 let draggingPlayerKey = "";
 let draggingInitialized = false;
@@ -77,6 +94,52 @@ function setSyncStatus(message, isError = false) {
 
   syncInfoNode.textContent = message;
   syncInfoNode.classList.toggle("error", isError);
+}
+
+function setBotOpsStatus(message, isError = false) {
+  if (!botOpsStatusNode) {
+    return;
+  }
+
+  botOpsStatusNode.textContent = message;
+  botOpsStatusNode.classList.toggle("error", isError);
+}
+
+function normalizeDiscordIds(rawValue) {
+  const values = Array.isArray(rawValue)
+    ? rawValue
+    : String(rawValue || "")
+      .split(/[\s,|;]+/)
+      .filter(Boolean);
+
+  return [...new Set(values.map((value) => String(value || "").trim()).filter((value) => /^\d{8,}$/.test(value)))];
+}
+
+function renderBotSettings(config) {
+  const settings = config?.botSettings && typeof config.botSettings === "object"
+    ? config.botSettings
+    : {};
+
+  if (applyPanelChannelNode) {
+    applyPanelChannelNode.value = String(settings.applicationsPanelChannelId || "").trim();
+  }
+
+  if (applicationsReceiveChannelNode) {
+    applicationsReceiveChannelNode.value = String(settings.applicationsChannelId || "").trim();
+  }
+
+  if (notifyIdsNode) {
+    const ids = normalizeDiscordIds(settings.notificationUserIds);
+    notifyIdsNode.value = ids.join(", ");
+  }
+}
+
+function collectBotSettingsFromInputs() {
+  return {
+    applicationsPanelChannelId: String(applyPanelChannelNode?.value || "").trim(),
+    applicationsChannelId: String(applicationsReceiveChannelNode?.value || "").trim(),
+    notificationUserIds: normalizeDiscordIds(notifyIdsNode?.value || "")
+  };
 }
 
 function getStoredToken() {
@@ -467,6 +530,7 @@ async function loadPanelData() {
     currentConfig = config;
     currentPlayers = mergePlayersWithConfig(parsedPlayers, config);
     renderRows(currentPlayers);
+    renderBotSettings(config);
 
     const hasManualOrder = Array.isArray(config?.order) && config.order.length > 0;
     const modeText = hasManualOrder
@@ -474,6 +538,7 @@ async function loadPanelData() {
       : "Mode: leaderboard rank (Level only, K/D ignored)";
 
     setSyncStatus(`Loaded ${currentPlayers.length} Players. ${modeText}. Drag with the :: handle to reorder. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
+    setBotOpsStatus("Bot settings loaded. Update fields then Save Global Sync.");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load panel data";
 
@@ -524,21 +589,73 @@ async function onSaveClick() {
     syncCurrentPlayersFromDom();
     const players = collectRowValues();
     const order = collectRowOrder();
-    const saveResult = await saveAdminConfig(token, { players, order });
+    const botSettings = collectBotSettingsFromInputs();
+    const saveResult = await saveAdminConfig(token, { players, order, botSettings });
     const saved = saveResult.config;
     currentConfig = saved;
     currentPlayers = mergePlayersWithConfig(currentPlayers, saved);
     renderRows(currentPlayers);
+    renderBotSettings(saved);
 
     const botDispatch = saveResult.botDispatch;
     const botSuffix = botDispatch
       ? ` Bot push: ${botDispatch.sent}/${botDispatch.attempted} sent${botDispatch.failed ? `, ${botDispatch.failed} failed` : ""}${botDispatch.skipped ? `, ${botDispatch.skipped} skipped` : ""}.`
       : "";
 
-    setSyncStatus(`Global sync saved. Mode: custom admin order. Updated: ${formatSyncTime(saved.updatedAt)}.${botSuffix}`);
+    const settingsDispatch = saveResult.botSettingsDispatch;
+    const settingsSuffix = settingsDispatch
+      ? ` Runtime sync: ${settingsDispatch.ok ? "ok" : settingsDispatch.skipped ? `skipped (${settingsDispatch.reason || "n/a"})` : `failed (${settingsDispatch.error || "unknown"})`}.`
+      : "";
+
+    setSyncStatus(`Global sync saved. Mode: custom admin order. Updated: ${formatSyncTime(saved.updatedAt)}.${botSuffix}${settingsSuffix}`);
+    setBotOpsStatus("Bot settings saved and synced to bot runtime.");
   } catch (error) {
     setSyncStatus(error instanceof Error ? error.message : "Save failed", true);
+    setBotOpsStatus("Failed to save bot settings.", true);
   }
+}
+
+async function onSendNotifyClick() {
+  const token = getStoredToken();
+  if (!token) {
+    setBotOpsStatus("Not signed in.", true);
+    return;
+  }
+
+  const message = String(notifyMessageNode?.value || "").trim();
+  const ids = normalizeDiscordIds(notifyIdsNode?.value || "");
+
+  if (!ids.length) {
+    setBotOpsStatus("Add at least one Discord user ID.", true);
+    return;
+  }
+
+  if (!message) {
+    setBotOpsStatus("Enter a message to send.", true);
+    return;
+  }
+
+  setBotOpsStatus(`Sending message to ${ids.length} IDs...`);
+
+  const result = await requestJson(BOT_EVENT_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      eventType: "notify",
+      title: "Ascend Entrenched Admin Broadcast",
+      message,
+      recipientIds: ids
+    })
+  });
+
+  if (!result.ok) {
+    setBotOpsStatus(result.data?.error || "Failed to dispatch bot notification.", true);
+    return;
+  }
+
+  setBotOpsStatus(`Notification dispatched to bot for ${ids.length} Discord IDs.`);
 }
 
 function onLogoutClick() {
@@ -551,6 +668,9 @@ loginFormNode.addEventListener("submit", onLoginSubmit);
 reloadButtonNode.addEventListener("click", loadPanelData);
 saveButtonNode.addEventListener("click", onSaveClick);
 logoutButtonNode.addEventListener("click", onLogoutClick);
+if (sendNotifyButtonNode) {
+  sendNotifyButtonNode.addEventListener("click", onSendNotifyClick);
+}
 
 if (getStoredToken()) {
   loadPanelData();

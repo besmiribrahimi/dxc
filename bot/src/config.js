@@ -32,6 +32,15 @@ function toPositiveInt(rawValue, fallback) {
   return parsed;
 }
 
+function splitCsvIds(raw) {
+  return [...new Set(
+    String(raw || "")
+      .split(/[\s,|;]+/)
+      .map((value) => value.trim())
+      .filter((value) => /^\d{8,}$/.test(value))
+  )];
+}
+
 function normalizeBaseUrl(url) {
   const value = String(url || "").trim();
   if (!value) {
@@ -95,12 +104,17 @@ module.exports = {
   embedActiveColor: firstEnv(["EMBED_ACTIVE_COLOR"], "#C8A2C8"),
   embedEliminatedColor: firstEnv(["EMBED_ELIMINATED_COLOR"], "#9B59B6"),
   embedHighlightColor: firstEnv(["EMBED_HIGHLIGHT_COLOR"], "#FFECB3"),
+  applicationsPanelChannelId: String(runtimeSettings.applicationsPanelChannelId || "").trim()
+    || firstEnv(["APPLICATIONS_PANEL_CHANNEL_ID", "APPLY_PANEL_CHANNEL_ID"]),
   applicationsChannelId: String(runtimeSettings.applicationsChannelId || "").trim()
     || firstEnv(["APPLICATIONS_CHANNEL_ID", "APPLY_CHANNEL_ID"]),
   applicationsReviewerRoleId: String(runtimeSettings.applicationsReviewerRoleId || "").trim()
     || firstEnv(["APPLICATIONS_REVIEWER_ROLE_ID"]),
   applicationsAcceptedRoleId: String(runtimeSettings.applicationsAcceptedRoleId || "").trim()
     || firstEnv(["APPLICATIONS_ACCEPTED_ROLE_ID"]),
+  notificationUserIds: Array.isArray(runtimeSettings.notificationUserIds) && runtimeSettings.notificationUserIds.length
+    ? runtimeSettings.notificationUserIds
+    : splitCsvIds(firstEnv(["NOTIFICATION_USER_IDS", "NOTIFY_USER_IDS"])),
   applicationCooldownMs: toPositiveInt(runtimeSettings.applicationCooldownMs, toPositiveInt(process.env.APPLICATION_COOLDOWN_MS, 120000)),
   port: toPositiveInt(process.env.PORT, 3001),
   webhookSharedSecret: String(process.env.WEBHOOK_SHARED_SECRET || "").trim(),

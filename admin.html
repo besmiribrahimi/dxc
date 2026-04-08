@@ -57,6 +57,28 @@
 
       <p id="adminSyncInfo" class="admin-status">Loading data...</p>
 
+      <section class="admin-card" aria-label="Bot apply and notification settings">
+        <h2>Bot Apply + Notifications</h2>
+        <p>Manage apply channels and broadcast to specific Discord IDs from web admin.</p>
+        <div class="admin-bot-grid">
+          <label for="adminApplyPanelChannel">Apply Panel Channel ID</label>
+          <input id="adminApplyPanelChannel" class="admin-bot-input" type="text" placeholder="123456789012345678">
+
+          <label for="adminApplicationsReceiveChannel">Applications Receive Channel ID</label>
+          <input id="adminApplicationsReceiveChannel" class="admin-bot-input" type="text" placeholder="123456789012345678">
+
+          <label for="adminNotifyIds">Notify Discord User IDs (comma or newline)</label>
+          <textarea id="adminNotifyIds" class="admin-bot-textarea" rows="3" placeholder="123... , 456..."></textarea>
+
+          <label for="adminNotifyMessage">Broadcast Message</label>
+          <textarea id="adminNotifyMessage" class="admin-bot-textarea" rows="3" placeholder="Message to send to listed Discord IDs"></textarea>
+        </div>
+        <div class="admin-actions">
+          <button id="adminSendNotifyBtn" type="button" class="admin-button">Send Message To IDs</button>
+        </div>
+        <p id="adminBotOpsStatus" class="admin-status">Bot settings are not loaded yet.</p>
+      </section>
+
       <div class="admin-table-wrap">
         <div class="admin-row admin-row-head" role="row">
           <span>Order</span>

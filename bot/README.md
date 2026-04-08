@@ -84,7 +84,8 @@ npm run dev
 - `/coinflip`, `/roll sides? count?`, `/choose options`, `/eightball question` - fun utilities
 - `/ticketpanel` - post ticket button panel
 - `/applypanel` - post application button panel
-- `/applysetup channel? reviewer_role? accepted_role?` - configure application review flow
+- `/applysetup panel_channel? applications_channel? reviewer_role? accepted_role?` - configure apply panel and review flow
+- `/ticketpanelsetup panel_channel? applications_channel? reviewer_role? accepted_role?` - alias for apply setup
 - `/ticketupdate note status?` - follow-up + optional status change
 - `/userinfo user` - Roblox/faction/country/matches/leaderboard status
 - `/leaderboard limit? page_size? post?` - synced paginated leaderboard
@@ -107,7 +108,7 @@ Examples:
 - `/setup leaderboard endpoint:https://dxc-chi.vercel.app`
 - `/setup leaderboard channel:#leaderboard auto_post:true every_hours:6`
 - `/setup style winner_color:#FFD700 active_color:#C8A2C8`
-- `/applysetup channel:#applications reviewer_role:@Reviewers accepted_role:@Member`
+- `/applysetup panel_channel:#apply applications_channel:#applications reviewer_role:@Reviewers accepted_role:@Member`
 
 Auto-post notes:
 - `auto_post:true` enables scheduled posting in the configured leaderboard channel.

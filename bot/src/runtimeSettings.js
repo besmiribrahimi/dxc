@@ -12,13 +12,33 @@ function toPositiveInt(rawValue, fallback) {
   return parsed;
 }
 
+function normalizeDiscordIds(raw) {
+  if (Array.isArray(raw)) {
+    return [...new Set(raw.map((value) => String(value || "").trim()).filter((value) => /^\d{8,}$/.test(value)))];
+  }
+
+  const text = String(raw || "");
+  if (!text.trim()) {
+    return [];
+  }
+
+  return [...new Set(
+    text
+      .split(/[\s,|;]+/)
+      .map((value) => value.trim())
+      .filter((value) => /^\d{8,}$/.test(value))
+  )];
+}
+
 function sanitizeRuntimeSettings(raw) {
   const input = raw && typeof raw === "object" ? raw : {};
 
   return {
+    applicationsPanelChannelId: String(input.applicationsPanelChannelId || "").trim(),
     applicationsChannelId: String(input.applicationsChannelId || "").trim(),
     applicationsReviewerRoleId: String(input.applicationsReviewerRoleId || "").trim(),
     applicationsAcceptedRoleId: String(input.applicationsAcceptedRoleId || "").trim(),
+    notificationUserIds: normalizeDiscordIds(input.notificationUserIds),
     applicationCooldownMs: toPositiveInt(input.applicationCooldownMs, 120000)
   };
 }

@@ -339,9 +339,13 @@ function hasReviewerAccess(member, settings) {
 
 function applicationConfig(context) {
   return {
+    panelChannelId: String(context?.config?.applicationsPanelChannelId || "").trim(),
     channelId: String(context?.config?.applicationsChannelId || "").trim(),
     reviewerRoleId: String(context?.config?.applicationsReviewerRoleId || "").trim(),
-    acceptedRoleId: String(context?.config?.applicationsAcceptedRoleId || "").trim()
+    acceptedRoleId: String(context?.config?.applicationsAcceptedRoleId || "").trim(),
+    notificationUserIds: Array.isArray(context?.config?.notificationUserIds)
+      ? context.config.notificationUserIds
+      : []
   };
 }
 
@@ -386,7 +390,11 @@ function buildApplySetupEmbed(settings, configState) {
     .setColor(statusColor(settings, "active"))
     .addFields(
       {
-        name: "Applications Channel",
+        name: "Apply Panel Channel",
+        value: configState.panelChannelId ? `<#${configState.panelChannelId}>` : "Not set"
+      },
+      {
+        name: "Applications Receive Channel",
         value: configState.channelId ? `<#${configState.channelId}>` : "Not set"
       },
       {
@@ -396,6 +404,10 @@ function buildApplySetupEmbed(settings, configState) {
       {
         name: "Accepted Role",
         value: configState.acceptedRoleId ? `<@&${configState.acceptedRoleId}>` : "Not set"
+      },
+      {
+        name: "Notification IDs",
+        value: configState.notificationUserIds.length ? configState.notificationUserIds.join(", ") : "Not set"
       }
     )
     .setFooter({ text: footerText(settings) })
@@ -980,7 +992,7 @@ async function handleApplyCreateModal(interaction, context) {
 
   if (!appConfig.channelId) {
     await interaction.reply({
-      content: "Applications channel is not configured. Ask an admin to run /applysetup channel:#channel.",
+      content: "Applications receive channel is not configured. Ask an admin to run /applysetup applications_channel:#channel.",
       ephemeral: true
     });
     return true;
@@ -1130,14 +1142,15 @@ async function handleApplySetupCommand(interaction, context) {
     return;
   }
 
-  const channel = interaction.options.getChannel("channel");
+  const panelChannel = interaction.options.getChannel("panel_channel");
+  const applicationsChannel = interaction.options.getChannel("applications_channel");
   const reviewerRole = interaction.options.getRole("reviewer_role");
   const acceptedRole = interaction.options.getRole("accepted_role");
 
   const settings = getGuildSettings(interaction.guild.id, context.config);
   const current = applicationConfig(context);
 
-  if (!channel && !reviewerRole && !acceptedRole) {
+  if (!panelChannel && !applicationsChannel && !reviewerRole && !acceptedRole) {
     await interaction.reply({
       embeds: [buildApplySetupEmbed(settings, current)],
       ephemeral: true
@@ -1146,8 +1159,12 @@ async function handleApplySetupCommand(interaction, context) {
   }
 
   const patch = {};
-  if (channel) {
-    patch.applicationsChannelId = channel.id;
+  if (panelChannel) {
+    patch.applicationsPanelChannelId = panelChannel.id;
+  }
+
+  if (applicationsChannel) {
+    patch.applicationsChannelId = applicationsChannel.id;
   }
 
   if (reviewerRole) {
@@ -1159,6 +1176,7 @@ async function handleApplySetupCommand(interaction, context) {
   }
 
   const saved = context.saveRuntimeSettings(patch);
+  context.config.applicationsPanelChannelId = saved.applicationsPanelChannelId;
   context.config.applicationsChannelId = saved.applicationsChannelId;
   context.config.applicationsReviewerRoleId = saved.applicationsReviewerRoleId;
   context.config.applicationsAcceptedRoleId = saved.applicationsAcceptedRoleId;
@@ -1939,13 +1957,46 @@ const slashCommandBuilders = [
     .setDMPermission(false),
   new SlashCommandBuilder()
     .setName("applysetup")
-    .setDescription("Configure applications channel and review roles")
+    .setDescription("Configure apply panel and applications channels")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false)
     .addChannelOption((option) =>
       option
-        .setName("channel")
-        .setDescription("Channel where new applications are sent")
+        .setName("panel_channel")
+        .setDescription("Channel where bot posts the apply embed panel")
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+    )
+    .addChannelOption((option) =>
+      option
+        .setName("applications_channel")
+        .setDescription("Channel where submitted applications are received")
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+    )
+    .addRoleOption((option) =>
+      option
+        .setName("reviewer_role")
+        .setDescription("Role allowed to accept/reject applications")
+    )
+    .addRoleOption((option) =>
+      option
+        .setName("accepted_role")
+        .setDescription("Role granted when an application is accepted")
+    ),
+  new SlashCommandBuilder()
+    .setName("ticketpanelsetup")
+    .setDescription("Alias: configure apply panel and applications channels")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false)
+    .addChannelOption((option) =>
+      option
+        .setName("panel_channel")
+        .setDescription("Channel where bot posts the apply embed panel")
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+    )
+    .addChannelOption((option) =>
+      option
+        .setName("applications_channel")
+        .setDescription("Channel where submitted applications are received")
         .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
     )
     .addRoleOption((option) =>
@@ -2744,22 +2795,42 @@ async function handleSlashCommand(interaction, context) {
       .setDescription("Press **Apply Now** to submit your player application. Staff will accept or reject it in the applications channel.")
       .addFields(
         { name: "Required", value: "Roblox Username, Country, Faction" },
+        { name: "Panel Channel", value: appConfig.panelChannelId ? `<#${appConfig.panelChannelId}>` : "Current channel" },
         { name: "Review Channel", value: appConfig.channelId ? `<#${appConfig.channelId}>` : "Not configured (use /applysetup)" }
       )
       .setFooter({ text: footerText(settings) })
       .setTimestamp(new Date());
 
-    await interaction.reply({
-      embeds: [panelEmbed],
-      components: [
-        new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId(APPLY_CREATE_BUTTON_ID)
-            .setLabel("Apply Now")
-            .setStyle(ButtonStyle.Primary)
-        )
-      ]
-    });
+    const components = [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(APPLY_CREATE_BUTTON_ID)
+          .setLabel("Apply Now")
+          .setStyle(ButtonStyle.Primary)
+      )
+    ];
+
+    if (appConfig.panelChannelId) {
+      const panelChannel = interaction.guild.channels.cache.get(appConfig.panelChannelId)
+        || await interaction.guild.channels.fetch(appConfig.panelChannelId).catch(() => null);
+
+      if (!panelChannel || !panelChannel.isTextBased()) {
+        await interaction.reply({
+          content: "Configured apply panel channel is not valid. Update with /applysetup.",
+          ephemeral: true
+        });
+        return;
+      }
+
+      await panelChannel.send({ embeds: [panelEmbed], components });
+      await interaction.reply({
+        content: `Apply panel posted in ${panelChannel}.`,
+        ephemeral: true
+      });
+      return;
+    }
+
+    await interaction.reply({ embeds: [panelEmbed], components });
     return;
   }
 
@@ -2838,6 +2909,11 @@ async function handleSlashCommand(interaction, context) {
   }
 
   if (interaction.commandName === "applysetup") {
+    await handleApplySetupCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "ticketpanelsetup") {
     await handleApplySetupCommand(interaction, context);
     return;
   }

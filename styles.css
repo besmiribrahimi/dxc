@@ -2205,6 +2205,43 @@ body.war-room-page::after {
   padding: 0.38rem 0.66rem;
 }
 
+.admin-bot-grid {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.44rem;
+  max-width: 860px;
+}
+
+.admin-bot-grid label {
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c4d6ed;
+}
+
+.admin-bot-input,
+.admin-bot-textarea {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(147, 197, 253, 0.34);
+  background: rgba(2, 6, 23, 0.62);
+  color: var(--text-main);
+  font-family: "Exo 2", sans-serif;
+  font-size: 0.9rem;
+  padding: 0.34rem 0.6rem;
+}
+
+.admin-bot-textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.admin-bot-input:focus-visible,
+.admin-bot-textarea:focus-visible {
+  outline: 1px solid rgba(147, 197, 253, 0.85);
+  border-color: rgba(147, 197, 253, 0.8);
+}
+
 .admin-login-form input:focus-visible,
 .admin-level-select:focus-visible,
 .admin-kd-input:focus-visible {

@@ -2,7 +2,9 @@ const { parseJsonBody, requireAdmin, sendJson } = require("../_lib/auth");
 const {
   sendLeaderboardUpdate,
   sendMatchHighlight,
-  sendSubstitution
+  sendSubstitution,
+  sendNotificationBroadcast,
+  sendRuntimeSettings
 } = require("../_lib/bot-webhook");
 
 function normalizeType(value) {
@@ -48,6 +50,43 @@ function validateSubstitutionPayload(payload) {
   return errors;
 }
 
+function validateNotifyPayload(payload) {
+  const errors = [];
+  const ids = Array.isArray(payload?.recipientIds)
+    ? payload.recipientIds
+    : String(payload?.recipientIds || "")
+      .split(/[\s,|;]+/)
+      .filter(Boolean);
+
+  const recipientIds = [...new Set(ids.map((value) => String(value || "").trim()).filter((value) => /^\d{8,}$/.test(value)))];
+
+  if (!recipientIds.length) {
+    errors.push("recipientIds is required");
+  }
+
+  if (!hasText(payload?.message)) {
+    errors.push("message is required");
+  }
+
+  return errors;
+}
+
+function validateRuntimeSettingsPayload(payload) {
+  const errors = [];
+  const panel = String(payload?.applicationsPanelChannelId || "").trim();
+  const intake = String(payload?.applicationsChannelId || "").trim();
+
+  if (panel && !/^\d{8,}$/.test(panel)) {
+    errors.push("applicationsPanelChannelId must be a Discord channel ID");
+  }
+
+  if (intake && !/^\d{8,}$/.test(intake)) {
+    errors.push("applicationsChannelId must be a Discord channel ID");
+  }
+
+  return errors;
+}
+
 module.exports = async function handler(req, res) {
   if (!requireAdmin(req, res)) {
     return;
@@ -63,6 +102,10 @@ module.exports = async function handler(req, res) {
   let errors = [];
   if (type === "substitution") {
     errors = validateSubstitutionPayload(body);
+  } else if (type === "notify" || type === "notification" || type === "broadcast") {
+    errors = validateNotifyPayload(body);
+  } else if (type === "runtime_settings" || type === "runtime" || type === "settings_sync") {
+    errors = validateRuntimeSettingsPayload(body);
   } else {
     errors = validateLeaderboardPayload(body);
   }
@@ -76,6 +119,10 @@ module.exports = async function handler(req, res) {
 
     if (type === "substitution") {
       result = await sendSubstitution(body);
+    } else if (type === "notify" || type === "notification" || type === "broadcast") {
+      result = await sendNotificationBroadcast(body);
+    } else if (type === "runtime_settings" || type === "runtime" || type === "settings_sync") {
+      result = await sendRuntimeSettings(body);
     } else if (type === "highlight") {
       result = await sendMatchHighlight(body);
     } else {
