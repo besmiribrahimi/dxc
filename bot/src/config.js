@@ -90,7 +90,7 @@ function resolveLfgQueueApiUrl() {
     return "";
   }
 
-  return `${websiteHome}/api/lfg-queue`;
+  return `${websiteHome}/api/lfg-queue.js`;
 }
 
 const discordToken = firstEnv(["DISCORD_BOT_TOKEN", "DISCORD_TOKEN"]);
