@@ -45,13 +45,14 @@ const fallbackPlayerLines = [
   "44. umairomg777- Faction: AH | Country: india -790594364454862938",
   "45  kkevin789- Faction: AH |Country: USA -770824804676010004",
   "46. AvgEggEnjoyer- Faction: DK | Country: Czech Republic -805144861417144331",
-  "47. besilikekesi - Faction: AH | Country: Albania"
+  "47. besiliekkesi - Faction: AH | Country: Albania -1359614368559534301"
 ];
 
 const avatarIdMap = new Map([
   ["1xoji", 3879584970],
   ["20sovietso21", 1626472826],
   ["bananaprouni", 2483811288],
+  ["besiliekkesi", 3144496991],
   ["blesk_bleskac", 1459210694],
   ["clown213o", 7690083810],
   ["daspokeynameyt", 531227865],
@@ -385,6 +386,7 @@ function countryToFlag(country) {
   const normalized = normalizeText(country).toLowerCase();
   const map = {
     turkey: "TR",
+    albania: "AL",
     spain: "ES",
     slovakia: "SK",
     vietnam: "VN",
