@@ -830,6 +830,94 @@ body::after {
   padding: 0.46rem 0.62rem;
 }
 
+.faction-news {
+  margin-bottom: 1rem;
+  border: 1px solid rgba(147, 197, 253, 0.24);
+  border-radius: 16px;
+  background:
+    linear-gradient(140deg, rgba(11, 17, 32, 0.94), rgba(7, 12, 24, 0.96)),
+    radial-gradient(circle at 85% 0%, rgba(59, 130, 246, 0.18), rgba(59, 130, 246, 0));
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.42);
+  padding: 0.82rem 0.92rem;
+}
+
+.faction-news-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.faction-news-head h3 {
+  margin: 0;
+  font-family: "Rajdhani", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: clamp(1.08rem, 1.85vw, 1.48rem);
+}
+
+.faction-news-head p {
+  margin: 0;
+  color: #9fb6d7;
+  font-size: 0.78rem;
+}
+
+.faction-news-highlight {
+  margin-top: 0.56rem;
+  border: 1px solid rgba(147, 197, 253, 0.26);
+  border-radius: 11px;
+  background: rgba(2, 6, 23, 0.44);
+  padding: 0.52rem 0.64rem;
+}
+
+.faction-news-highlight strong {
+  font-size: 0.9rem;
+  color: #e4eefb;
+  letter-spacing: 0.02em;
+}
+
+.faction-news-list {
+  margin-top: 0.56rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.5rem;
+}
+
+.faction-news-item {
+  border: 1px solid rgba(147, 197, 253, 0.2);
+  border-radius: 11px;
+  background: rgba(2, 6, 23, 0.42);
+  padding: 0.5rem 0.58rem;
+}
+
+.faction-news-item span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.26);
+  background: rgba(59, 130, 246, 0.14);
+  color: #cfe3fb;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 0.12rem 0.46rem;
+}
+
+.faction-news-item p {
+  margin: 0.34rem 0 0;
+  color: #b7cce7;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.faction-news-empty {
+  margin: 0;
+  color: #bfd0e6;
+  font-size: 0.85rem;
+}
+
 .faction-pulse {
   margin-bottom: 1rem;
   border: 1px solid rgba(147, 197, 253, 0.24);
@@ -2367,6 +2455,15 @@ body.war-room-page::after {
   }
 
   .faction-pulse-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .faction-news-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .faction-news-list {
     grid-template-columns: 1fr;
   }
 

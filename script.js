@@ -182,6 +182,7 @@ const DISBANDED_FACTIONS = new Set(["TWL"]);
 const WEB_SYNC_ENDPOINT = "/api/leaderboard-config";
 const OPS_SYNC_INTERVAL_MS = 90000;
 const OPS_MOTD_INTERVAL_MS = 8000;
+const FACTION_NEWS_ROTATE_MS = 7000;
 const OPS_MOTD_MESSAGES = [
   "Ascend Entrenched live grid online.",
   "Leaderboard intelligence stream active.",
@@ -217,6 +218,7 @@ let opsHudClockIntervalId = null;
 let opsHudSyncIntervalId = null;
 let opsHudMotdIntervalId = null;
 let opsHudMotdIndex = 0;
+let factionNewsRotateIntervalId = null;
 
 function normalizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
@@ -721,6 +723,134 @@ function renderFactionPulse(players) {
   }).join("");
 }
 
+function ensureFactionNewsMount() {
+  const existing = document.getElementById("factionNewsFeed");
+  if (existing) {
+    return existing;
+  }
+
+  const showcaseMain = document.querySelector(".content");
+  const leaderboardMain = document.querySelector(".leaderboard-content");
+  const host = showcaseMain || leaderboardMain;
+  if (!host) {
+    return null;
+  }
+
+  const section = document.createElement("section");
+  section.id = "factionNewsFeed";
+  section.className = "faction-news";
+  section.setAttribute("aria-label", "Faction news feed");
+  section.innerHTML = `
+    <div class="faction-news-head">
+      <h3>Faction News Feed</h3>
+      <p id="factionNewsUpdated">Live updates</p>
+    </div>
+    <article class="faction-news-highlight">
+      <strong id="factionNewsHeadline">Gathering latest faction briefings...</strong>
+    </article>
+    <div id="factionNewsList" class="faction-news-list"></div>
+  `;
+
+  const targetAnchor = host.querySelector("#factionPulse, .leaderboard-highlight, .leaderboard-warroom-link, .players-section, .leaderboard-top-three");
+  if (targetAnchor) {
+    targetAnchor.insertAdjacentElement("beforebegin", section);
+  } else {
+    host.insertAdjacentElement("afterbegin", section);
+  }
+
+  return section;
+}
+
+function renderFactionNewsFeed(players) {
+  const mount = ensureFactionNewsMount();
+  if (!mount) {
+    return;
+  }
+
+  const headlineNode = mount.querySelector("#factionNewsHeadline");
+  const listNode = mount.querySelector("#factionNewsList");
+  const updatedNode = mount.querySelector("#factionNewsUpdated");
+  if (!headlineNode || !listNode || !updatedNode) {
+    return;
+  }
+
+  const list = Array.isArray(players) ? players.slice() : [];
+  if (!list.length) {
+    headlineNode.textContent = "No faction news available right now.";
+    listNode.innerHTML = "<p class=\"faction-news-empty\">No operators found in current data feed.</p>";
+    updatedNode.textContent = "Waiting for data";
+    return;
+  }
+
+  const pulse = computeFactionPulse(list);
+  const topFaction = pulse[0] || null;
+  const secondFaction = pulse[1] || null;
+  const sortedByKd = list
+    .slice()
+    .sort((a, b) => {
+      if (Number(b.kd) !== Number(a.kd)) {
+        return Number(b.kd) - Number(a.kd);
+      }
+
+      return Number(b.level) - Number(a.level);
+    });
+
+  const topOperator = sortedByKd[0] || null;
+  const secondOperator = sortedByKd[1] || null;
+  const headlineItems = [
+    topFaction ? `${topFaction.token} controls the pressure line with ${topFaction.members} active operators.` : "Faction pressure line is contested.",
+    secondFaction ? `${secondFaction.token} is reinforcing sectors with Avg K/D ${secondFaction.avgKd.toFixed(2)}.` : "Secondary faction reinforcements are being reorganized.",
+    topOperator ? `${topOperator.name} is the current standout at K/D ${Number(topOperator.kd).toFixed(1)}.` : "Operator performance data is updating.",
+    secondOperator ? `${secondOperator.name} supports the frontline with Level ${Number(secondOperator.level || 0)} pressure.` : "Support operators are rotating through active fronts.",
+    `Roster intelligence currently tracks ${list.length} operators across active factions.`
+  ];
+
+  const briefings = [
+    {
+      tag: "Frontline",
+      text: topFaction
+        ? `${topFaction.token} has ${topFaction.members} operators active with Avg Level ${topFaction.avgLevel.toFixed(1)}.`
+        : "No dominant faction detected in current cycle."
+    },
+    {
+      tag: "Intel",
+      text: topOperator
+        ? `${topOperator.name} leads with K/D ${Number(topOperator.kd).toFixed(1)} and Level ${Number(topOperator.level || 0)}.`
+        : "Top-operator snapshot is unavailable."
+    },
+    {
+      tag: "Logistics",
+      text: secondFaction
+        ? `${secondFaction.token} staging momentum with ${secondFaction.members} members in rotation.`
+        : "Logistics update: reserve factions not fully mapped."
+    },
+    {
+      tag: "Broadcast",
+      text: `Ascend Entrenched feed synchronized at ${new Date().toLocaleTimeString("en-GB", { hour12: false })} UTC.`
+    }
+  ];
+
+  headlineNode.textContent = headlineItems[0];
+  listNode.innerHTML = briefings.map((item) => `
+    <article class="faction-news-item">
+      <span>${escapeHtml(item.tag)}</span>
+      <p>${escapeHtml(item.text)}</p>
+    </article>
+  `).join("");
+
+  updatedNode.textContent = `Updated ${new Date().toLocaleTimeString("en-GB", { hour12: false })} UTC`;
+
+  if (factionNewsRotateIntervalId) {
+    clearInterval(factionNewsRotateIntervalId);
+  }
+
+  let index = 0;
+  factionNewsRotateIntervalId = window.setInterval(() => {
+    index = (index + 1) % headlineItems.length;
+    headlineNode.textContent = headlineItems[index];
+  }, FACTION_NEWS_ROTATE_MS);
+}
+
 function ensureShowcaseControls(players, avatarMap) {
   if (!playersGrid || !Array.isArray(players) || !players.length) {
     return;
@@ -1092,6 +1222,7 @@ async function init() {
 
   renderPlayers(players, avatarMap);
   ensureShowcaseControls(players, avatarMap);
+  renderFactionNewsFeed(players);
   renderFactionPulse(players);
 }
 
@@ -1131,6 +1262,7 @@ if (playersGrid) {
 }
 
 if (typeof window !== "undefined") {
+  window.renderFactionNewsFeed = renderFactionNewsFeed;
   window.renderFactionPulse = renderFactionPulse;
 }
 

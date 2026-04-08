@@ -311,6 +311,10 @@ async function initLeaderboardPage() {
     hasManualOrder
   });
 
+  if (typeof window.renderFactionNewsFeed === "function") {
+    window.renderFactionNewsFeed(players);
+  }
+
   if (typeof window.renderFactionPulse === "function") {
     window.renderFactionPulse(players);
   }
