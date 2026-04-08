@@ -9,39 +9,56 @@ function firstEnv(names) {
   for (const name of names) {
     const value = process.env[name];
     if (typeof value === "string" && value.trim()) {
-      return value.trim();
+      const trimmed = value.trim();
+      if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+        return trimmed.slice(1, -1).trim();
+      }
+
+      return trimmed;
     }
   }
 
   return "";
 }
 
-function expectedApiToken() {
-  return firstEnv(["WEBSITE_API_TOKEN", "ADMIN_PANEL_SECRET"]);
+function acceptedApiTokens() {
+  const keys = [
+    "LFG_QUEUE_API_TOKEN",
+    "WEBSITE_API_TOKEN",
+    "BOT_WEBHOOK_SECRET",
+    "WEBHOOK_SHARED_SECRET",
+    "ADMIN_PANEL_SECRET"
+  ];
+
+  const tokens = keys
+    .map((key) => firstEnv([key]))
+    .filter(Boolean);
+
+  return [...new Set(tokens)];
 }
 
 function getProvidedToken(req) {
   const direct = String(req.headers["x-api-token"] || "").trim();
   if (direct) {
-    return direct;
+    return direct.replace(/^['\"]|['\"]$/g, "").trim();
   }
 
   const authHeader = String(req.headers.authorization || req.headers.Authorization || "");
   if (authHeader.toLowerCase().startsWith("bearer ")) {
-    return authHeader.slice(7).trim();
+    return authHeader.slice(7).trim().replace(/^['\"]|['\"]$/g, "").trim();
   }
 
   return "";
 }
 
 function requireApiToken(req, res) {
-  const expected = expectedApiToken();
-  if (!expected) {
-    return sendJson(res, 500, { ok: false, error: "Missing WEBSITE_API_TOKEN env var" });
+  const expected = acceptedApiTokens();
+  if (!expected.length) {
+    return sendJson(res, 500, { ok: false, error: "Missing queue auth env var" });
   }
 
   const provided = getProvidedToken(req);
-  if (!provided || provided !== expected) {
+  if (!provided || !expected.includes(provided)) {
     return sendJson(res, 401, { ok: false, error: "Unauthorized" });
   }
 

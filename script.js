@@ -648,13 +648,6 @@ function ensureOpsHud() {
           <a class="ops-hud-link" href="war-room.html">War Room</a>
           <button type="button" id="opsHudRefresh" class="ops-hud-link">Refresh Sync</button>
         </div>
-        <aside class="ops-lfg-box" aria-label="Live 1v1 queue">
-          <div class="ops-lfg-head">
-            <span>Live 1v1 Queue</span>
-            <strong id="opsLfgCount">0 online</strong>
-          </div>
-          <div id="opsLfgList" class="ops-lfg-list">No one is looking for 1v1 yet.</div>
-        </aside>
       </div>
     </div>
     <div class="ops-hud-grid">
@@ -680,6 +673,8 @@ function ensureOpsHud() {
 
   heroNode.insertAdjacentElement("afterend", section);
 
+  const dock = ensureLfgDock();
+
   opsHudNodes = {
     root: section,
     apiState: section.querySelector("#opsHudApiState"),
@@ -688,8 +683,8 @@ function ensureOpsHud() {
     clock: section.querySelector("#opsHudClock"),
     motd: section.querySelector("#opsHudMotd"),
     refreshButton: section.querySelector("#opsHudRefresh"),
-    lfgCount: section.querySelector("#opsLfgCount"),
-    lfgList: section.querySelector("#opsLfgList")
+    lfgCount: dock?.lfgCount || null,
+    lfgList: dock?.lfgList || null
   };
 
   if (opsHudNodes.refreshButton) {
@@ -699,6 +694,36 @@ function ensureOpsHud() {
   }
 
   return opsHudNodes;
+}
+
+function ensureLfgDock() {
+  const existing = document.getElementById("opsLfgDock");
+  if (existing) {
+    return {
+      root: existing,
+      lfgCount: existing.querySelector("#opsLfgCount"),
+      lfgList: existing.querySelector("#opsLfgList")
+    };
+  }
+
+  const dock = document.createElement("aside");
+  dock.id = "opsLfgDock";
+  dock.className = "ops-lfg-dock";
+  dock.setAttribute("aria-label", "Live 1v1 queue");
+  dock.innerHTML = `
+    <div class="ops-lfg-head">
+      <span>Live 1v1 Queue</span>
+      <strong id="opsLfgCount">0 online</strong>
+    </div>
+    <div id="opsLfgList" class="ops-lfg-list">No one is looking for 1v1 yet.</div>
+  `;
+
+  document.body.appendChild(dock);
+  return {
+    root: dock,
+    lfgCount: dock.querySelector("#opsLfgCount"),
+    lfgList: dock.querySelector("#opsLfgList")
+  };
 }
 
 function setOpsHudDataSource(sourceLabel) {

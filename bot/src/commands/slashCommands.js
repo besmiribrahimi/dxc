@@ -193,14 +193,14 @@ async function fetchJsonStatus(url, timeoutMs = 8000) {
 
 async function requestLfgQueue(context, action, payload = null) {
   const endpoint = String(context?.config?.lfgQueueApiUrl || "").trim();
-  const apiToken = String(context?.config?.websiteApiToken || "").trim();
+  const apiToken = String(context?.config?.lfgQueueApiToken || context?.config?.websiteApiToken || "").trim();
 
   if (!endpoint) {
     throw new Error("LFG queue API is not configured. Set LFG_QUEUE_API_URL or WEBSITE_HOME_URL.");
   }
 
   if (!apiToken) {
-    throw new Error("WEBSITE_API_TOKEN is not configured for bot queue sync.");
+    throw new Error("Queue auth token is not configured. Set LFG_QUEUE_API_TOKEN or BOT_WEBHOOK_SECRET.");
   }
 
   const method = action === "leave"
@@ -2761,8 +2761,14 @@ async function handleOneVsOneCommand(interaction, context) {
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const normalized = String(message || "").toLowerCase();
+    const friendly = normalized.includes("unauthorized")
+      ? "Queue auth mismatch. Set the same LFG_QUEUE_API_TOKEN (or BOT_WEBHOOK_SECRET) in VPS and Vercel."
+      : message;
+
     await interaction.reply({
-      content: `Failed to update 1v1 queue: ${error instanceof Error ? error.message : "Unknown error"}`,
+      content: `Failed to update 1v1 queue: ${friendly}`,
       ephemeral: true
     });
   }

@@ -111,6 +111,13 @@ module.exports = {
   discordGuildId: firstEnv(["DISCORD_GUILD_ID", "GUILD_ID"]),
   websiteHomeUrl: resolveWebsiteHomeUrl(),
   websiteApiToken: firstEnv(["WEBSITE_API_TOKEN", "ADMIN_PANEL_SECRET"]),
+  lfgQueueApiToken: firstEnv([
+    "LFG_QUEUE_API_TOKEN",
+    "BOT_WEBHOOK_SECRET",
+    "WEBSITE_API_TOKEN",
+    "WEBHOOK_SHARED_SECRET",
+    "ADMIN_PANEL_SECRET"
+  ]),
   lfgQueueApiUrl: resolveLfgQueueApiUrl(),
   leaderboardApiUrl: resolveLeaderboardApiUrl(),
   leaderboardChannelId: firstEnv(["LEADERBOARD_CHANNEL_ID"]),
