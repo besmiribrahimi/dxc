@@ -4,6 +4,7 @@ const { UpdateQueue } = require("./queue/UpdateQueue");
 const { buildEventEmbed } = require("./events");
 const { createApiServer } = require("./server/createApiServer");
 const { registerSlashCommands, handleSlashCommand } = require("./commands/slashCommands");
+const { saveRuntimeSettings } = require("./runtimeSettings");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
@@ -70,7 +71,8 @@ async function start() {
       await handleSlashCommand(interaction, {
         config,
         updateQueue,
-        handleAcceptedEvent
+        handleAcceptedEvent,
+        saveRuntimeSettings
       });
     } catch (error) {
       console.error("[Interaction Error]", error);

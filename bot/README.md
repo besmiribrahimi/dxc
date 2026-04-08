@@ -66,6 +66,7 @@ The bot auto-registers these commands at startup:
 - `/queue` - webhook queue size and rate
 - `/leaderboard` - fetch and show top synced leaderboard directly from web API
 - `/apply` - submit an application modal like Appy-style bots
+- `/applysetup` - admin command to configure application channel/roles/cooldown
 - `/webhooktest` - queue a test leaderboard embed
 - `/mute` - timeout a member (admin/mod command)
 - `/kick` - kick a member (admin/mod command)
@@ -77,6 +78,9 @@ Application flow:
 - Staff review with Accept/Reject buttons
 - Applicant receives DM result
 - Optional accepted role is granted when approved
+
+Quick setup command example:
+- `/applysetup review_channel:#applications reviewer_role:@Recruiters accepted_role:@Member cooldown_ms:120000`
 
 If `DISCORD_GUILD_ID` is set, commands appear quickly in that guild.
 If not set, commands register globally and can take up to 1 hour to appear.

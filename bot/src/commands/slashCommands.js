@@ -7,7 +7,8 @@ const {
   TextInputStyle,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  ChannelType
 } = require("discord.js");
 
 const APPLICATION_MODAL_ID = "application_submit_v1";
@@ -391,6 +392,38 @@ const slashCommandBuilders = [
     .setDescription("Submit an application to staff")
     .setDMPermission(false),
   new SlashCommandBuilder()
+    .setName("applysetup")
+    .setDescription("Configure Appy-style application settings")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false)
+    .addChannelOption((option) =>
+      option
+        .setName("review_channel")
+        .setDescription("Channel where applications are sent")
+        .setRequired(false)
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+    )
+    .addRoleOption((option) =>
+      option
+        .setName("reviewer_role")
+        .setDescription("Role allowed to accept/reject applications")
+        .setRequired(false)
+    )
+    .addRoleOption((option) =>
+      option
+        .setName("accepted_role")
+        .setDescription("Role granted when application is accepted")
+        .setRequired(false)
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("cooldown_ms")
+        .setDescription("Cooldown between /apply uses in milliseconds")
+        .setRequired(false)
+        .setMinValue(10000)
+        .setMaxValue(86400000)
+    ),
+  new SlashCommandBuilder()
     .setName("webhooktest")
     .setDescription("Send a test leaderboard update embed")
     .addStringOption((option) =>
@@ -664,6 +697,96 @@ async function handleSlashCommand(interaction, context) {
     );
 
     await interaction.showModal(modal);
+    return;
+  }
+
+  if (interaction.commandName === "applysetup") {
+    if (!interaction.inGuild()) {
+      await interaction.reply({
+        content: "This command can only be used in a server.",
+        ephemeral: true
+      });
+      return;
+    }
+
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+      await interaction.reply({
+        content: "You need Manage Server permission to run this command.",
+        ephemeral: true
+      });
+      return;
+    }
+
+    const reviewChannel = interaction.options.getChannel("review_channel");
+    const reviewerRole = interaction.options.getRole("reviewer_role");
+    const acceptedRole = interaction.options.getRole("accepted_role");
+    const cooldownMs = interaction.options.getInteger("cooldown_ms");
+
+    const hasAnyOption = Boolean(reviewChannel || reviewerRole || acceptedRole || cooldownMs);
+
+    if (!hasAnyOption) {
+      const channelLabel = context.config.applicationsChannelId
+        ? `<#${context.config.applicationsChannelId}>`
+        : "Not set";
+      const reviewerLabel = context.config.applicationsReviewerRoleId
+        ? `<@&${context.config.applicationsReviewerRoleId}>`
+        : "Not set";
+      const acceptedLabel = context.config.applicationsAcceptedRoleId
+        ? `<@&${context.config.applicationsAcceptedRoleId}>`
+        : "Not set";
+      const cooldownLabel = Number(context.config.applicationCooldownMs) || 120000;
+
+      await interaction.reply({
+        content: [
+          "Current application setup:",
+          `- Review channel: ${channelLabel}`,
+          `- Reviewer role: ${reviewerLabel}`,
+          `- Accepted role: ${acceptedLabel}`,
+          `- Cooldown: ${cooldownLabel}ms`,
+          "",
+          "Run /applysetup with options to update settings."
+        ].join("\n"),
+        ephemeral: true
+      });
+      return;
+    }
+
+    const nextSettings = {
+      applicationsChannelId: reviewChannel ? reviewChannel.id : context.config.applicationsChannelId,
+      applicationsReviewerRoleId: reviewerRole ? reviewerRole.id : context.config.applicationsReviewerRoleId,
+      applicationsAcceptedRoleId: acceptedRole ? acceptedRole.id : context.config.applicationsAcceptedRoleId,
+      applicationCooldownMs: cooldownMs || Number(context.config.applicationCooldownMs) || 120000
+    };
+
+    context.config.applicationsChannelId = nextSettings.applicationsChannelId;
+    context.config.applicationsReviewerRoleId = nextSettings.applicationsReviewerRoleId;
+    context.config.applicationsAcceptedRoleId = nextSettings.applicationsAcceptedRoleId;
+    context.config.applicationCooldownMs = nextSettings.applicationCooldownMs;
+
+    if (typeof context.saveRuntimeSettings === "function") {
+      context.saveRuntimeSettings(nextSettings);
+    }
+
+    const channelLabel = nextSettings.applicationsChannelId
+      ? `<#${nextSettings.applicationsChannelId}>`
+      : "Not set";
+    const reviewerLabel = nextSettings.applicationsReviewerRoleId
+      ? `<@&${nextSettings.applicationsReviewerRoleId}>`
+      : "Not set";
+    const acceptedLabel = nextSettings.applicationsAcceptedRoleId
+      ? `<@&${nextSettings.applicationsAcceptedRoleId}>`
+      : "Not set";
+
+    await interaction.reply({
+      content: [
+        "Application setup saved.",
+        `- Review channel: ${channelLabel}`,
+        `- Reviewer role: ${reviewerLabel}`,
+        `- Accepted role: ${acceptedLabel}`,
+        `- Cooldown: ${nextSettings.applicationCooldownMs}ms`
+      ].join("\n"),
+      ephemeral: true
+    });
     return;
   }
 

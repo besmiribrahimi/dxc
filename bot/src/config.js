@@ -1,4 +1,5 @@
 const dotenv = require("dotenv");
+const { loadRuntimeSettings } = require("./runtimeSettings");
 
 dotenv.config();
 
@@ -72,15 +73,20 @@ if (!discordChannelId) {
   throw new Error("Missing required environment variable: DISCORD_CHANNEL_ID (or CHANNEL_ID)");
 }
 
+const runtimeSettings = loadRuntimeSettings();
+
 module.exports = {
   discordToken,
   discordChannelId,
   discordGuildId: firstEnv(["DISCORD_GUILD_ID", "GUILD_ID"]),
   leaderboardApiUrl: resolveLeaderboardApiUrl(),
-  applicationsChannelId: firstEnv(["APPLICATIONS_CHANNEL_ID", "APPLY_CHANNEL_ID"]),
-  applicationsReviewerRoleId: firstEnv(["APPLICATIONS_REVIEWER_ROLE_ID"]),
-  applicationsAcceptedRoleId: firstEnv(["APPLICATIONS_ACCEPTED_ROLE_ID"]),
-  applicationCooldownMs: toPositiveInt(process.env.APPLICATION_COOLDOWN_MS, 120000),
+  applicationsChannelId: String(runtimeSettings.applicationsChannelId || "").trim()
+    || firstEnv(["APPLICATIONS_CHANNEL_ID", "APPLY_CHANNEL_ID"]),
+  applicationsReviewerRoleId: String(runtimeSettings.applicationsReviewerRoleId || "").trim()
+    || firstEnv(["APPLICATIONS_REVIEWER_ROLE_ID"]),
+  applicationsAcceptedRoleId: String(runtimeSettings.applicationsAcceptedRoleId || "").trim()
+    || firstEnv(["APPLICATIONS_ACCEPTED_ROLE_ID"]),
+  applicationCooldownMs: toPositiveInt(runtimeSettings.applicationCooldownMs, toPositiveInt(process.env.APPLICATION_COOLDOWN_MS, 120000)),
   port: toPositiveInt(process.env.PORT, 3001),
   webhookSharedSecret: String(process.env.WEBHOOK_SHARED_SECRET || "").trim(),
   queueIntervalMs: toPositiveInt(process.env.QUEUE_INTERVAL_MS, 1200),
