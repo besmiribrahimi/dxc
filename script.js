@@ -202,6 +202,8 @@ const factionFlagMap = new Map([
   ["AH", "faction_flags/AH.png"],
   ["ASHEN GUARD", "faction_flags/ASHEN GUARD.png"],
   ["BS", "faction_flags/BS.png"],
+  ["CSZK", "faction_flags/CZSK.png"],
+  ["CZSK", "faction_flags/CZSK.png"],
   ["DK", "faction_flags/DK.png"],
   ["DSA", "faction_flags/DSA.png"],
   ["IA", "faction_flags/IA.png"],
