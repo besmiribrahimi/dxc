@@ -10,363 +10,1350 @@ const {
   ButtonStyle,
   ChannelType
 } = require("discord.js");
+const {
+  getGuildSettings,
+  patchGuildSettings,
+  updateAllowedRole,
+  canCreateTicket,
+  normalizeHexColor
+} = require("../services/guildSettingsStore");
+const {
+  fetchLeaderboardData,
+  findEntryByRoblox,
+  resolveLeaderboardEndpoint
+} = require("../services/leaderboardService");
+const {
+  getUserProfile,
+  upsertUserProfileFromTicket
+} = require("../services/userProfileStore");
+const { appendTicketAudit } = require("../services/ticketAuditStore");
 
-const APPLICATION_MODAL_ID = "application_submit_v1";
-const APPLICATION_ACCEPT_PREFIX = "application_accept:";
-const APPLICATION_REJECT_PREFIX = "application_reject:";
+const TICKET_CREATE_BUTTON_ID = "ticket_create";
+const TICKET_CREATE_MODAL_ID = "ticket_create_modal";
+const TICKET_STATUS_PREFIX = "ticket_status:";
+const TICKET_CLOSE_BUTTON_ID = "ticket_close";
+const TICKET_CLOSE_MODAL_ID = "ticket_close_modal";
+const LEADERBOARD_NAV_PREFIX = "lbnav";
 
-const applicationCooldownMap = new Map();
+const DEFAULT_FOOTER = "Ascend Entrenched";
+const STATUS_ORDER = ["winner", "active", "eliminated"];
+const TICKET_STATUS_CHOICES = [
+  { name: "Open", value: "open" },
+  { name: "Waiting User", value: "waiting_user" },
+  { name: "In Review", value: "in_review" },
+  { name: "Escalated", value: "escalated" },
+  { name: "Resolved", value: "resolved" },
+  { name: "Closed", value: "closed" }
+];
 
-function getRemainingCooldownMs(userId, cooldownMs) {
-  const now = Date.now();
-  const until = Number(applicationCooldownMap.get(userId) || 0);
-  if (until <= now) {
-    return 0;
+function hexToInt(hex, fallbackHex) {
+  const safe = normalizeHexColor(hex, fallbackHex);
+  return Number.parseInt(String(safe || fallbackHex).slice(1), 16);
+}
+
+function footerText(settings) {
+  return String(settings?.brandingFooter || DEFAULT_FOOTER).trim() || DEFAULT_FOOTER;
+}
+
+function clampInt(value, min, max, fallback) {
+  const numeric = Number.parseInt(String(value || ""), 10);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
   }
 
-  return until - now;
+  return Math.max(min, Math.min(max, numeric));
 }
 
-function setApplicationCooldown(userId, cooldownMs) {
-  const now = Date.now();
-  applicationCooldownMap.set(userId, now + cooldownMs);
+function isValidHexColor(value) {
+  return /^#[0-9A-Fa-f]{6}$/.test(String(value || "").trim());
 }
 
-function buildApplicationReviewButtons(applicantId, applicationId, disabled = false) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`${APPLICATION_ACCEPT_PREFIX}${applicantId}:${applicationId}`)
-      .setLabel("Accept")
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(disabled),
-    new ButtonBuilder()
-      .setCustomId(`${APPLICATION_REJECT_PREFIX}${applicantId}:${applicationId}`)
-      .setLabel("Reject")
-      .setStyle(ButtonStyle.Danger)
-      .setDisabled(disabled)
-  );
+function sanitizeChannelName(rawValue) {
+  const safe = String(rawValue || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return safe || "player";
 }
 
-function parseApplicationReviewCustomId(customId) {
-  const isAccept = customId.startsWith(APPLICATION_ACCEPT_PREFIX);
-  const isReject = customId.startsWith(APPLICATION_REJECT_PREFIX);
+function chunkArray(values, chunkSize) {
+  const output = [];
+  for (let index = 0; index < values.length; index += chunkSize) {
+    output.push(values.slice(index, index + chunkSize));
+  }
 
-  if (!isAccept && !isReject) {
+  return output;
+}
+
+function normalizeStatusLabel(status) {
+  switch (String(status || "").trim().toLowerCase()) {
+    case "winner":
+      return "Winner";
+    case "active":
+      return "Active";
+    case "eliminated":
+      return "Eliminated";
+    case "waiting_user":
+      return "Waiting User";
+    case "in_review":
+      return "In Review";
+    case "escalated":
+      return "Escalated";
+    case "resolved":
+      return "Resolved";
+    case "closed":
+      return "Closed";
+    default:
+      return "Open";
+  }
+}
+
+function statusIcon(status) {
+  switch (String(status || "").trim().toLowerCase()) {
+    case "winner":
+      return "[WIN]";
+    case "active":
+      return "[ACT]";
+    case "eliminated":
+      return "[OUT]";
+    case "waiting_user":
+      return "[WAIT]";
+    case "in_review":
+      return "[REVIEW]";
+    case "escalated":
+      return "[ALERT]";
+    case "resolved":
+      return "[DONE]";
+    case "closed":
+      return "[CLOSED]";
+    default:
+      return "[INFO]";
+  }
+}
+
+function statusColor(settings, status) {
+  const safeStatus = String(status || "").trim().toLowerCase();
+  if (safeStatus === "winner") {
+    return hexToInt(settings?.colors?.winner, "#FFD700");
+  }
+
+  if (safeStatus === "eliminated") {
+    return hexToInt(settings?.colors?.eliminated, "#9B59B6");
+  }
+
+  if (safeStatus === "active") {
+    return hexToInt(settings?.colors?.active, "#C8A2C8");
+  }
+
+  if (safeStatus === "resolved") {
+    return hexToInt(settings?.colors?.highlight, "#FFECB3");
+  }
+
+  return hexToInt(settings?.colors?.info, "#C8A2C8");
+}
+
+function buildTicketTopic(meta) {
+  const safe = {
+    owner: String(meta?.owner || "").trim(),
+    ticket: String(meta?.ticket || "").trim(),
+    status: String(meta?.status || "open").trim().toLowerCase(),
+    roblox: encodeURIComponent(String(meta?.roblox || "").trim()),
+    country: encodeURIComponent(String(meta?.country || "").trim()),
+    faction: encodeURIComponent(String(meta?.faction || "").trim())
+  };
+
+  return `AE|owner=${safe.owner}|ticket=${safe.ticket}|status=${safe.status}|roblox=${safe.roblox}|country=${safe.country}|faction=${safe.faction}`;
+}
+
+function parseTicketTopic(topic) {
+  const raw = String(topic || "").trim();
+  if (!raw.startsWith("AE|")) {
     return null;
   }
 
-  const payload = isAccept
-    ? customId.slice(APPLICATION_ACCEPT_PREFIX.length)
-    : customId.slice(APPLICATION_REJECT_PREFIX.length);
-  const [applicantId, applicationId] = String(payload || "").split(":");
+  const parts = raw.split("|").slice(1);
+  const map = {};
+  parts.forEach((part) => {
+    const [key, value] = String(part || "").split("=");
+    if (key) {
+      map[key] = value || "";
+    }
+  });
 
-  if (!applicantId || !applicationId) {
+  if (!map.owner || !map.ticket) {
     return null;
   }
 
   return {
-    action: isAccept ? "accept" : "reject",
-    applicantId,
-    applicationId
+    owner: map.owner,
+    ticket: map.ticket,
+    status: String(map.status || "open").toLowerCase(),
+    roblox: decodeURIComponent(String(map.roblox || "")),
+    country: decodeURIComponent(String(map.country || "")),
+    faction: decodeURIComponent(String(map.faction || ""))
   };
 }
 
-function canReviewApplications(interaction, config) {
-  if (!interaction.inGuild()) {
+function isTicketChannel(channel) {
+  return Boolean(parseTicketTopic(channel?.topic));
+}
+
+function reviewerRoleIds(settings) {
+  const roleIds = [
+    ...(Array.isArray(settings?.ticketReviewerRoleIds) ? settings.ticketReviewerRoleIds : []),
+    ...(Array.isArray(settings?.ticketPingRoleIds) ? settings.ticketPingRoleIds : [])
+  ].map((value) => String(value || "").trim()).filter(Boolean);
+
+  return [...new Set(roleIds)];
+}
+
+function hasReviewerAccess(member, settings) {
+  if (!member) {
     return false;
   }
 
-  const reviewerRoleId = String(config.applicationsReviewerRoleId || "").trim();
-  const member = interaction.member;
-
-  if (member?.permissions?.has(PermissionFlagsBits.ManageGuild)) {
+  if (member.permissions?.has(PermissionFlagsBits.ManageGuild)) {
     return true;
   }
 
-  if (reviewerRoleId && member?.roles?.cache?.has(reviewerRoleId)) {
-    return true;
+  const roles = reviewerRoleIds(settings);
+  if (!roles.length) {
+    return false;
   }
 
-  return false;
+  return roles.some((roleId) => member.roles?.cache?.has(roleId));
 }
 
-function buildDecisionEmbed(baseEmbed, decisionText, reviewerTag, approved) {
-  const embed = EmbedBuilder.from(baseEmbed || {});
-  const existingFields = Array.isArray(embed.data?.fields) ? embed.data.fields : [];
-  const filteredFields = existingFields.filter((field) => field?.name !== "Decision");
+function buildRoleMentions(roleIds) {
+  const uniqueRoleIds = [...new Set((Array.isArray(roleIds) ? roleIds : []).map((value) => String(value || "").trim()).filter(Boolean))];
+  if (!uniqueRoleIds.length) {
+    return "";
+  }
 
-  embed
-    .setColor(approved ? 0x2ecc71 : 0xe74c3c)
-    .setFields(
-      ...filteredFields,
-      {
-        name: "Decision",
-        value: `${decisionText} by ${reviewerTag}`
-      }
+  return uniqueRoleIds.map((roleId) => `<@&${roleId}>`).join(" ");
+}
+
+function buildTicketActionRows(disabled = false) {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${TICKET_STATUS_PREFIX}open`)
+        .setLabel("Open")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(disabled),
+      new ButtonBuilder()
+        .setCustomId(`${TICKET_STATUS_PREFIX}waiting_user`)
+        .setLabel("Waiting User")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(disabled),
+      new ButtonBuilder()
+        .setCustomId(`${TICKET_STATUS_PREFIX}in_review`)
+        .setLabel("In Review")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(disabled),
+      new ButtonBuilder()
+        .setCustomId(`${TICKET_STATUS_PREFIX}escalated`)
+        .setLabel("Escalated")
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(disabled),
+      new ButtonBuilder()
+        .setCustomId(`${TICKET_STATUS_PREFIX}resolved`)
+        .setLabel("Resolved")
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(disabled)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(TICKET_CLOSE_BUTTON_ID)
+        .setLabel("Close Ticket")
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(disabled)
     )
+  ];
+}
+
+function buildTicketEmbed({ settings, ticketId, applicant, roblox, country, faction, status }) {
+  return new EmbedBuilder()
+    .setTitle(`Ticket ${ticketId}`)
+    .setColor(statusColor(settings, status))
+    .setDescription(`${statusIcon(status)} **Status:** ${normalizeStatusLabel(status)}`)
+    .addFields(
+      { name: "Applicant", value: `<@${applicant.id}>`, inline: true },
+      { name: "Roblox Username", value: roblox || "Unknown", inline: true },
+      { name: "Country", value: country || "Unknown", inline: true },
+      { name: "Faction", value: faction || "Unknown", inline: true }
+    )
+    .setFooter({ text: footerText(settings) })
     .setTimestamp(new Date());
+}
+
+async function sendTicketLog(guild, settings, embed, reasonText) {
+  const channelId = String(settings?.ticketLogChannelId || "").trim();
+  if (!channelId) {
+    return;
+  }
+
+  const logChannel = guild.channels.cache.get(channelId)
+    || await guild.channels.fetch(channelId).catch(() => null);
+
+  if (!logChannel || !logChannel.isTextBased()) {
+    return;
+  }
+
+  const payload = { embeds: [embed] };
+  if (reasonText) {
+    payload.content = reasonText;
+  }
+
+  await logChannel.send(payload).catch(() => {});
+}
+
+async function findOpenTicketForUser(guild, userId) {
+  await guild.channels.fetch().catch(() => {});
+  const channels = guild.channels.cache.filter((channel) => channel?.type === ChannelType.GuildText);
+  for (const channel of channels.values()) {
+    const meta = parseTicketTopic(channel.topic);
+    if (!meta) {
+      continue;
+    }
+
+    if (meta.owner === String(userId) && meta.status !== "closed") {
+      return channel;
+    }
+  }
+
+  return null;
+}
+
+async function handleTicketCreateButton(interaction, context) {
+  if (!interaction.isButton() || interaction.customId !== TICKET_CREATE_BUTTON_ID) {
+    return false;
+  }
+
+  if (!interaction.inGuild()) {
+    await interaction.reply({
+      content: "Tickets can only be created in a server.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  if (!canCreateTicket(interaction.member, settings)) {
+    await interaction.reply({
+      content: "Ticket creation is disabled for you in this server.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const existing = await findOpenTicketForUser(interaction.guild, interaction.user.id);
+  if (existing) {
+    await interaction.reply({
+      content: `You already have an open ticket: ${existing}`,
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const modal = new ModalBuilder()
+    .setCustomId(TICKET_CREATE_MODAL_ID)
+    .setTitle("Create Ticket");
+
+  const robloxInput = new TextInputBuilder()
+    .setCustomId("ticket_roblox")
+    .setLabel("Roblox Username")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(32);
+
+  const countryInput = new TextInputBuilder()
+    .setCustomId("ticket_country")
+    .setLabel("Country")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(48);
+
+  const factionInput = new TextInputBuilder()
+    .setCustomId("ticket_faction")
+    .setLabel("Faction")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(48);
+
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(robloxInput),
+    new ActionRowBuilder().addComponents(countryInput),
+    new ActionRowBuilder().addComponents(factionInput)
+  );
+
+  await interaction.showModal(modal);
+  return true;
+}
+
+async function handleTicketCreateModal(interaction, context) {
+  if (!interaction.isModalSubmit() || interaction.customId !== TICKET_CREATE_MODAL_ID) {
+    return false;
+  }
+
+  if (!interaction.inGuild()) {
+    await interaction.reply({ content: "Tickets can only be created in a server.", ephemeral: true });
+    return true;
+  }
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  if (!canCreateTicket(interaction.member, settings)) {
+    await interaction.reply({
+      content: "Ticket creation is disabled for you in this server.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const existing = await findOpenTicketForUser(interaction.guild, interaction.user.id);
+  if (existing) {
+    await interaction.reply({
+      content: `You already have an open ticket: ${existing}`,
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const roblox = interaction.fields.getTextInputValue("ticket_roblox").trim();
+  const country = interaction.fields.getTextInputValue("ticket_country").trim();
+  const faction = interaction.fields.getTextInputValue("ticket_faction").trim();
+
+  const ticketId = Date.now().toString(36);
+  const baseName = sanitizeChannelName(roblox).slice(0, 40);
+  const channelName = `ticket-${baseName}-${ticketId.slice(-4)}`;
+  const roleIds = reviewerRoleIds(settings);
+  const overwrites = [
+    {
+      id: interaction.guild.roles.everyone.id,
+      deny: [PermissionFlagsBits.ViewChannel]
+    },
+    {
+      id: interaction.user.id,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.AttachFiles,
+        PermissionFlagsBits.EmbedLinks
+      ]
+    }
+  ];
+
+  roleIds.forEach((roleId) => {
+    overwrites.push({
+      id: roleId,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.EmbedLinks
+      ]
+    });
+  });
+
+  const channel = await interaction.guild.channels.create({
+    name: channelName,
+    type: ChannelType.GuildText,
+    parent: settings.ticketCategoryId || null,
+    topic: buildTicketTopic({
+      owner: interaction.user.id,
+      ticket: ticketId,
+      status: "open",
+      roblox,
+      country,
+      faction
+    }),
+    permissionOverwrites: overwrites,
+    reason: `Ticket created by ${interaction.user.tag}`
+  });
+
+  const ticketEmbed = buildTicketEmbed({
+    settings,
+    ticketId,
+    applicant: interaction.user,
+    roblox,
+    country,
+    faction,
+    status: "open"
+  });
+
+  const pingText = buildRoleMentions(settings.ticketPingRoleIds);
+  await channel.send({
+    content: pingText || null,
+    embeds: [ticketEmbed],
+    components: buildTicketActionRows(false)
+  });
+
+  upsertUserProfileFromTicket(interaction.guild.id, interaction.user.id, {
+    robloxUsername: roblox,
+    country,
+    faction
+  });
+
+  appendTicketAudit({
+    event: "ticket_created",
+    guildId: interaction.guild.id,
+    channelId: channel.id,
+    ticketId,
+    ownerId: interaction.user.id,
+    roblox,
+    country,
+    faction
+  });
+
+  await sendTicketLog(
+    interaction.guild,
+    settings,
+    ticketEmbed,
+    `New ticket created in ${channel}`
+  );
+
+  await interaction.reply({
+    content: `Ticket created: ${channel}`,
+    ephemeral: true
+  });
+
+  return true;
+}
+
+async function handleTicketStatusButton(interaction, context) {
+  if (!interaction.isButton() || !interaction.customId.startsWith(TICKET_STATUS_PREFIX)) {
+    return false;
+  }
+
+  if (!interaction.inGuild() || !isTicketChannel(interaction.channel)) {
+    await interaction.reply({ content: "This action only works inside a ticket channel.", ephemeral: true });
+    return true;
+  }
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  if (!hasReviewerAccess(interaction.member, settings)) {
+    await interaction.reply({
+      content: "You do not have permission to update ticket status.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const status = interaction.customId.slice(TICKET_STATUS_PREFIX.length);
+  const allowedStatuses = new Set(TICKET_STATUS_CHOICES.map((choice) => choice.value));
+  if (!allowedStatuses.has(status)) {
+    await interaction.reply({ content: "Invalid ticket status.", ephemeral: true });
+    return true;
+  }
+
+  const currentMeta = parseTicketTopic(interaction.channel.topic) || {};
+  if (String(currentMeta.status || "").toLowerCase() === "closed") {
+    await interaction.reply({
+      content: "This ticket is already closed.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const nextTopic = buildTicketTopic({
+    ...currentMeta,
+    status
+  });
+
+  await interaction.channel.setTopic(nextTopic).catch(() => {});
+
+  const statusEmbed = new EmbedBuilder()
+    .setTitle(`Ticket ${currentMeta.ticket || "Update"}`)
+    .setColor(statusColor(settings, status))
+    .setDescription(`${statusIcon(status)} Status changed to **${normalizeStatusLabel(status)}** by <@${interaction.user.id}>`)
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [statusEmbed] });
+
+  appendTicketAudit({
+    event: "ticket_status_changed",
+    guildId: interaction.guild.id,
+    channelId: interaction.channel.id,
+    ticketId: currentMeta.ticket || "",
+    ownerId: currentMeta.owner || "",
+    status,
+    actorId: interaction.user.id
+  });
+
+  await sendTicketLog(
+    interaction.guild,
+    settings,
+    statusEmbed,
+    `Status update for <#${interaction.channel.id}>`
+  );
+
+  return true;
+}
+
+async function handleTicketCloseButton(interaction, context) {
+  if (!interaction.isButton() || interaction.customId !== TICKET_CLOSE_BUTTON_ID) {
+    return false;
+  }
+
+  if (!interaction.inGuild() || !isTicketChannel(interaction.channel)) {
+    await interaction.reply({ content: "This action only works in a ticket channel.", ephemeral: true });
+    return true;
+  }
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  if (!hasReviewerAccess(interaction.member, settings)) {
+    await interaction.reply({
+      content: "You do not have permission to close this ticket.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const modal = new ModalBuilder()
+    .setCustomId(TICKET_CLOSE_MODAL_ID)
+    .setTitle("Close Ticket");
+
+  const reasonInput = new TextInputBuilder()
+    .setCustomId("ticket_close_reason")
+    .setLabel("Reason (optional)")
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(false)
+    .setMaxLength(500);
+
+  modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
+  await interaction.showModal(modal);
+  return true;
+}
+
+async function handleTicketCloseModal(interaction, context) {
+  if (!interaction.isModalSubmit() || interaction.customId !== TICKET_CLOSE_MODAL_ID) {
+    return false;
+  }
+
+  if (!interaction.inGuild() || !isTicketChannel(interaction.channel)) {
+    await interaction.reply({ content: "This action only works in a ticket channel.", ephemeral: true });
+    return true;
+  }
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  if (!hasReviewerAccess(interaction.member, settings)) {
+    await interaction.reply({
+      content: "You do not have permission to close this ticket.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const reason = interaction.fields.getTextInputValue("ticket_close_reason").trim();
+  const meta = parseTicketTopic(interaction.channel.topic) || {};
+  const nextTopic = buildTicketTopic({
+    ...meta,
+    status: "closed"
+  });
+
+  await interaction.channel.setTopic(nextTopic).catch(() => {});
+
+  if (meta.owner) {
+    await interaction.channel.permissionOverwrites.edit(meta.owner, {
+      SendMessages: false
+    }).catch(() => {});
+  }
+
+  const oldName = String(interaction.channel.name || "ticket");
+  if (!oldName.startsWith("closed-")) {
+    const nextName = `closed-${oldName}`.slice(0, 100);
+    await interaction.channel.setName(nextName).catch(() => {});
+  }
+
+  const closeEmbed = new EmbedBuilder()
+    .setTitle(`Ticket ${meta.ticket || "Closed"}`)
+    .setColor(statusColor(settings, "closed"))
+    .setDescription(`Ticket closed by <@${interaction.user.id}>`)
+    .addFields({
+      name: "Reason",
+      value: reason || "No reason provided"
+    })
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [closeEmbed], components: buildTicketActionRows(true) });
+
+  appendTicketAudit({
+    event: "ticket_closed",
+    guildId: interaction.guild.id,
+    channelId: interaction.channel.id,
+    ticketId: meta.ticket || "",
+    ownerId: meta.owner || "",
+    actorId: interaction.user.id,
+    reason
+  });
+
+  await sendTicketLog(
+    interaction.guild,
+    settings,
+    closeEmbed,
+    `Ticket <#${interaction.channel.id}> closed`
+  );
+
+  const ticketOwner = meta.owner
+    ? await interaction.client.users.fetch(meta.owner).catch(() => null)
+    : null;
+
+  if (ticketOwner) {
+    await ticketOwner.send(`Your ticket in ${interaction.guild.name} was closed.${reason ? ` Reason: ${reason}` : ""}`).catch(() => {});
+  }
+
+  return true;
+}
+
+function buildLeaderboardPages(entries, pageSize) {
+  const grouped = {
+    winner: [],
+    active: [],
+    eliminated: []
+  };
+
+  entries.forEach((entry) => {
+    const status = STATUS_ORDER.includes(entry.status) ? entry.status : "active";
+    grouped[status].push(entry);
+  });
+
+  const pages = [];
+  STATUS_ORDER.forEach((status) => {
+    const list = grouped[status];
+    if (!list.length) {
+      return;
+    }
+
+    const chunks = chunkArray(list, pageSize);
+    chunks.forEach((items, index) => {
+      pages.push({
+        status,
+        items,
+        sectionPage: index + 1,
+        sectionPages: chunks.length
+      });
+    });
+  });
+
+  if (!pages.length) {
+    pages.push({
+      status: "active",
+      items: [],
+      sectionPage: 1,
+      sectionPages: 1
+    });
+  }
+
+  return pages;
+}
+
+function buildLeaderboardEmbed({ settings, page, pageIndex, pages, updatedAt, endpoint }) {
+  const statusLabel = normalizeStatusLabel(page.status);
+  const lines = page.items.map((entry) => (
+    `${statusIcon(entry.status)} #${entry.rank} **${entry.player}** | Lvl ${entry.level} | K/D ${entry.kd.toFixed(1)} | Matches ${entry.totalMatches}`
+  ));
+
+  const embed = new EmbedBuilder()
+    .setTitle(`Ascend Entrenched Leaderboard - ${statusLabel}`)
+    .setColor(statusColor(settings, page.status))
+    .setDescription(lines.length ? lines.join("\n") : "No players in this section.")
+    .addFields({
+      name: "Source",
+      value: endpoint,
+      inline: false
+    })
+    .setFooter({ text: `${footerText(settings)} • Page ${pageIndex + 1}/${pages.length}` })
+    .setTimestamp(new Date(updatedAt || Date.now()));
+
+  if (settings.highlightEnabled && page.items.length > 0) {
+    const top = page.items[0];
+    embed.addFields({
+      name: "Highlight",
+      value: `${statusIcon(top.status)} ${top.player} leads this section with Level ${top.level} and K/D ${top.kd.toFixed(1)}.`
+    });
+  }
 
   return embed;
 }
 
-async function handleApplicationModalSubmit(interaction, context) {
-  if (!interaction.isModalSubmit() || interaction.customId !== APPLICATION_MODAL_ID) {
-    return false;
-  }
-
-  if (!interaction.inGuild()) {
-    await interaction.reply({
-      content: "Applications can only be submitted inside a server.",
-      ephemeral: true
-    });
-    return true;
-  }
-
-  const targetChannelId = String(context.config.applicationsChannelId || "").trim();
-  if (!targetChannelId) {
-    await interaction.reply({
-      content: "Applications are not configured yet. Ask an admin to set APPLICATIONS_CHANNEL_ID.",
-      ephemeral: true
-    });
-    return true;
-  }
-
-  const reviewChannel = await interaction.client.channels.fetch(targetChannelId).catch(() => null);
-  if (!reviewChannel || !reviewChannel.isTextBased()) {
-    await interaction.reply({
-      content: "Configured applications channel is not available or not text-based.",
-      ephemeral: true
-    });
-    return true;
-  }
-
-  const roblox = interaction.fields.getTextInputValue("apply_roblox").trim();
-  const age = interaction.fields.getTextInputValue("apply_age").trim();
-  const timezone = interaction.fields.getTextInputValue("apply_timezone").trim();
-  const reason = interaction.fields.getTextInputValue("apply_reason").trim();
-  const applicationId = Date.now().toString(36);
-
-  const embed = new EmbedBuilder()
-    .setTitle("New Application")
-    .setColor(0xdb2b2b)
-    .setDescription(`Applicant: <@${interaction.user.id}>`)
-    .addFields(
-      { name: "Roblox", value: roblox || "N/A" },
-      { name: "Age", value: age || "N/A", inline: true },
-      { name: "Timezone", value: timezone || "N/A", inline: true },
-      { name: "Why do you want to join?", value: reason || "N/A" },
-      { name: "Application ID", value: applicationId }
-    )
-    .setFooter({ text: `Applicant ID: ${interaction.user.id}` })
-    .setTimestamp(new Date());
-
-  await reviewChannel.send({
-    embeds: [embed],
-    components: [buildApplicationReviewButtons(interaction.user.id, applicationId, false)]
-  });
-
-  await interaction.reply({
-    content: "Application submitted. Staff will review it soon.",
-    ephemeral: true
-  });
-
-  return true;
-}
-
-async function handleApplicationReviewButton(interaction, context) {
-  if (!interaction.isButton()) {
-    return false;
-  }
-
-  const parsed = parseApplicationReviewCustomId(interaction.customId);
-  if (!parsed) {
-    return false;
-  }
-
-  if (!canReviewApplications(interaction, context.config)) {
-    await interaction.reply({
-      content: "You do not have permission to review applications.",
-      ephemeral: true
-    });
-    return true;
-  }
-
-  const approved = parsed.action === "accept";
-  const decisionText = approved ? "Accepted" : "Rejected";
-  const baseEmbed = interaction.message?.embeds?.[0] || new EmbedBuilder().setTitle("Application");
-  const updatedEmbed = buildDecisionEmbed(baseEmbed, decisionText, interaction.user.tag, approved);
-
-  await interaction.update({
-    embeds: [updatedEmbed],
-    components: [buildApplicationReviewButtons(parsed.applicantId, parsed.applicationId, true)]
-  });
-
-  if (approved && interaction.inGuild()) {
-    const acceptedRoleId = String(context.config.applicationsAcceptedRoleId || "").trim();
-    if (acceptedRoleId) {
-      const member = await interaction.guild.members.fetch(parsed.applicantId).catch(() => null);
-      if (member) {
-        await member.roles.add(acceptedRoleId, `Application accepted by ${interaction.user.tag}`).catch(() => null);
-      }
-    }
-  }
-
-  const applicantUser = await interaction.client.users.fetch(parsed.applicantId).catch(() => null);
-  if (applicantUser) {
-    const dmText = approved
-      ? `Your application in ${interaction.guild?.name || "the server"} was accepted.`
-      : `Your application in ${interaction.guild?.name || "the server"} was rejected.`;
-    await applicantUser.send(dmText).catch(() => null);
-  }
-
-  await interaction.followUp({
-    content: `${decisionText} application for <@${parsed.applicantId}>.`,
-    ephemeral: true
-  });
-
-  return true;
-}
-
-async function fetchLeaderboardConfig(config) {
-  const endpoint = String(config.leaderboardApiUrl || "").trim();
-  if (!endpoint) {
-    throw new Error("LEADERBOARD_API_URL is not configured in bot environment");
-  }
-
-  const response = await fetch(endpoint, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Leaderboard API failed with HTTP ${response.status}`);
-  }
-
-  const payload = await response.json();
-  if (!payload?.ok || !payload?.config || typeof payload.config !== "object") {
-    throw new Error("Leaderboard API returned an invalid payload");
-  }
-
-  return payload.config;
-}
-
-function clampLevel(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return 1;
-  }
-
-  return Math.max(1, Math.min(10, Math.round(numeric)));
-}
-
-function clampKd(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return 1.0;
-  }
-
-  return Math.max(0, Math.min(9.9, Number(numeric.toFixed(1))));
-}
-
-function normalizePlayers(rawPlayers) {
-  const source = rawPlayers && typeof rawPlayers === "object" ? rawPlayers : {};
-  const normalized = {};
-
-  Object.entries(source).forEach(([rawName, rawStats]) => {
-    const key = String(rawName || "").trim().toLowerCase();
-    if (!key) {
-      return;
-    }
-
-    const stats = rawStats && typeof rawStats === "object" ? rawStats : {};
-    normalized[key] = {
-      level: clampLevel(stats.level),
-      kd: clampKd(stats.kd)
-    };
-  });
-
-  return normalized;
-}
-
-function normalizeOrder(rawOrder, playerKeys) {
-  const keys = Array.isArray(playerKeys) ? playerKeys : [];
-  const valid = new Set(keys);
-  const seen = new Set();
-  const ordered = [];
-
-  if (Array.isArray(rawOrder)) {
-    rawOrder.forEach((rawKey) => {
-      const key = String(rawKey || "").trim().toLowerCase();
-      if (!key || !valid.has(key) || seen.has(key)) {
-        return;
-      }
-
-      seen.add(key);
-      ordered.push(key);
-    });
-  }
-
-  keys.forEach((key) => {
-    if (!seen.has(key)) {
-      ordered.push(key);
-    }
-  });
-
-  return ordered;
-}
-
-function calculateScore(level, kd, rank) {
-  return Number(((level * 12) + (kd * 18) + Math.max(0, 14 - rank)).toFixed(1));
-}
-
-function buildRankedLeaderboard(config, limit) {
-  const topLimit = Math.max(1, Math.min(20, Number(limit) || 10));
-  const players = normalizePlayers(config?.players);
-  const keys = Object.keys(players);
-  if (!keys.length) {
+function buildLeaderboardNavRows(requesterId, pageIndex, totalPages, limit, pageSize) {
+  if (totalPages <= 1) {
     return [];
   }
 
-  const order = normalizeOrder(config?.order, keys);
-  const orderMap = new Map(order.map((key, index) => [key, index]));
+  const safePage = Math.max(0, Math.min(totalPages - 1, pageIndex));
+  const prevPage = Math.max(0, safePage - 1);
+  const nextPage = Math.min(totalPages - 1, safePage + 1);
 
-  return keys
-    .sort((a, b) => {
-      const aOrder = orderMap.has(a) ? orderMap.get(a) : Number.MAX_SAFE_INTEGER;
-      const bOrder = orderMap.has(b) ? orderMap.get(b) : Number.MAX_SAFE_INTEGER;
-
-      if (aOrder !== bOrder) {
-        return aOrder - bOrder;
-      }
-
-      const aStats = players[a];
-      const bStats = players[b];
-
-      if (bStats.level !== aStats.level) {
-        return bStats.level - aStats.level;
-      }
-
-      return a.localeCompare(b);
-    })
-    .slice(0, topLimit)
-    .map((key, index) => {
-      const stats = players[key] || { level: 1, kd: 1.0 };
-      const rank = index + 1;
-      return {
-        player: key,
-        rank,
-        level: stats.level,
-        kd: stats.kd,
-        score: calculateScore(stats.level, stats.kd, rank)
-      };
-    });
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${LEADERBOARD_NAV_PREFIX}:${requesterId}:${prevPage}:${limit}:${pageSize}`)
+        .setLabel("Prev")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(safePage === 0),
+      new ButtonBuilder()
+        .setCustomId(`${LEADERBOARD_NAV_PREFIX}:${requesterId}:${safePage}:${limit}:${pageSize}`)
+        .setLabel("Refresh")
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(`${LEADERBOARD_NAV_PREFIX}:${requesterId}:${nextPage}:${limit}:${pageSize}`)
+        .setLabel("Next")
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(safePage >= totalPages - 1)
+    )
+  ];
 }
 
-function getMuteDurationMs(minutes) {
-  const safeMinutes = Math.max(1, Math.min(40320, Number(minutes) || 0));
-  return safeMinutes * 60 * 1000;
+async function handleLeaderboardNavButton(interaction, context) {
+  if (!interaction.isButton() || !interaction.customId.startsWith(`${LEADERBOARD_NAV_PREFIX}:`)) {
+    return false;
+  }
+
+  const [, requesterId, pageRaw, limitRaw, pageSizeRaw] = interaction.customId.split(":");
+  if (String(requesterId) !== String(interaction.user.id)) {
+    await interaction.reply({
+      content: "Only the user who opened this leaderboard can use these buttons.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  if (!interaction.inGuild()) {
+    await interaction.reply({ content: "Leaderboard navigation only works in a server.", ephemeral: true });
+    return true;
+  }
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const endpoint = settings.leaderboardEndpoint || context.config.leaderboardApiUrl;
+
+  try {
+    const leaderboard = await fetchLeaderboardData(endpoint);
+    const limit = clampInt(limitRaw, 1, 100, 30);
+    const pageSize = clampInt(pageSizeRaw, 5, 20, 10);
+    const entries = leaderboard.entries.slice(0, limit);
+    const pages = buildLeaderboardPages(entries, pageSize);
+    const pageIndex = clampInt(pageRaw, 0, pages.length - 1, 0);
+    const page = pages[pageIndex];
+
+    const embed = buildLeaderboardEmbed({
+      settings,
+      page,
+      pageIndex,
+      pages,
+      updatedAt: leaderboard.updatedAt,
+      endpoint: leaderboard.endpoint
+    });
+
+    await interaction.update({
+      embeds: [embed],
+      components: buildLeaderboardNavRows(interaction.user.id, pageIndex, pages.length, limit, pageSize)
+    });
+  } catch (error) {
+    await interaction.reply({
+      content: `Failed to refresh leaderboard: ${error instanceof Error ? error.message : "Unknown error"}`,
+      ephemeral: true
+    });
+  }
+
+  return true;
+}
+
+function buildSetupViewEmbed(settings) {
+  const pingRoles = settings.ticketPingRoleIds.length
+    ? settings.ticketPingRoleIds.map((id) => `<@&${id}>`).join(", ")
+    : "Not set";
+  const reviewerRoles = settings.ticketReviewerRoleIds.length
+    ? settings.ticketReviewerRoleIds.map((id) => `<@&${id}>`).join(", ")
+    : "Not set";
+  const allowedRoles = settings.ticketAllowedRoleIds.length
+    ? settings.ticketAllowedRoleIds.map((id) => `<@&${id}>`).join(", ")
+    : "All roles";
+
+  return new EmbedBuilder()
+    .setTitle("Ascend Entrenched Setup")
+    .setColor(statusColor(settings, "active"))
+    .addFields(
+      {
+        name: "Ticket Settings",
+        value: [
+          `Enabled: ${settings.ticketEnabled ? "Yes" : "No"}`,
+          `Category: ${settings.ticketCategoryId ? `<#${settings.ticketCategoryId}>` : "Not set"}`,
+          `Log Channel: ${settings.ticketLogChannelId ? `<#${settings.ticketLogChannelId}>` : "Not set"}`,
+          `Ping Roles: ${pingRoles}`,
+          `Reviewer Roles: ${reviewerRoles}`,
+          `Allowed Roles: ${allowedRoles}`
+        ].join("\n")
+      },
+      {
+        name: "Leaderboard Settings",
+        value: [
+          `Channel: ${settings.leaderboardChannelId ? `<#${settings.leaderboardChannelId}>` : "Not set"}`,
+          `Endpoint: ${settings.leaderboardEndpoint || "Not set"}`,
+          `Highlight Enabled: ${settings.highlightEnabled ? "Yes" : "No"}`
+        ].join("\n")
+      },
+      {
+        name: "Style",
+        value: [
+          `Info: ${settings.colors.info}`,
+          `Winner: ${settings.colors.winner}`,
+          `Active: ${settings.colors.active}`,
+          `Eliminated: ${settings.colors.eliminated}`,
+          `Highlight: ${settings.colors.highlight}`,
+          `Footer: ${settings.brandingFooter}`
+        ].join("\n")
+      }
+    )
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+}
+
+async function handleSetupCommand(interaction, context) {
+  const subcommand = interaction.options.getSubcommand();
+  const guildId = interaction.guild.id;
+
+  if (subcommand === "view") {
+    const settings = getGuildSettings(guildId, context.config);
+    await interaction.reply({ embeds: [buildSetupViewEmbed(settings)], ephemeral: true });
+    return;
+  }
+
+  if (subcommand === "tickets") {
+    const enabled = interaction.options.getBoolean("enabled");
+    const category = interaction.options.getChannel("category");
+    const logChannel = interaction.options.getChannel("log_channel");
+    const pingRole = interaction.options.getRole("ping_role");
+    const reviewerRole = interaction.options.getRole("reviewer_role");
+
+    if (
+      enabled === null
+      && !category
+      && !logChannel
+      && !pingRole
+      && !reviewerRole
+    ) {
+      const settings = getGuildSettings(guildId, context.config);
+      await interaction.reply({ embeds: [buildSetupViewEmbed(settings)], ephemeral: true });
+      return;
+    }
+
+    const patch = {};
+    if (enabled !== null) {
+      patch.ticketEnabled = enabled;
+    }
+
+    if (category) {
+      patch.ticketCategoryId = category.id;
+    }
+
+    if (logChannel) {
+      patch.ticketLogChannelId = logChannel.id;
+    }
+
+    if (pingRole) {
+      patch.ticketPingRoleIds = [pingRole.id];
+    }
+
+    if (reviewerRole) {
+      patch.ticketReviewerRoleIds = [reviewerRole.id];
+    }
+
+    const next = patchGuildSettings(guildId, patch, context.config);
+    await interaction.reply({
+      content: "Ticket setup updated.",
+      embeds: [buildSetupViewEmbed(next)],
+      ephemeral: true
+    });
+    return;
+  }
+
+  if (subcommand === "ticket_access") {
+    const action = interaction.options.getString("action", true);
+    const role = interaction.options.getRole("role");
+
+    if (action !== "clear" && !role) {
+      await interaction.reply({
+        content: "You must provide a role for add/remove actions.",
+        ephemeral: true
+      });
+      return;
+    }
+
+    const next = updateAllowedRole(guildId, role?.id || "", action, context.config);
+    await interaction.reply({
+      content: "Ticket access list updated.",
+      embeds: [buildSetupViewEmbed(next)],
+      ephemeral: true
+    });
+    return;
+  }
+
+  if (subcommand === "leaderboard") {
+    const channel = interaction.options.getChannel("channel");
+    const endpointInput = interaction.options.getString("endpoint");
+
+    if (!channel && !endpointInput) {
+      const settings = getGuildSettings(guildId, context.config);
+      await interaction.reply({ embeds: [buildSetupViewEmbed(settings)], ephemeral: true });
+      return;
+    }
+
+    const patch = {};
+    if (channel) {
+      patch.leaderboardChannelId = channel.id;
+    }
+
+    if (endpointInput) {
+      const resolved = resolveLeaderboardEndpoint(endpointInput);
+      if (!/^https?:\/\//i.test(resolved)) {
+        await interaction.reply({
+          content: "Endpoint must be a valid http(s) URL.",
+          ephemeral: true
+        });
+        return;
+      }
+
+      patch.leaderboardEndpoint = resolved;
+    }
+
+    const next = patchGuildSettings(guildId, patch, context.config);
+    await interaction.reply({
+      content: "Leaderboard setup updated.",
+      embeds: [buildSetupViewEmbed(next)],
+      ephemeral: true
+    });
+    return;
+  }
+
+  if (subcommand === "style") {
+    const infoColor = interaction.options.getString("info_color");
+    const winnerColor = interaction.options.getString("winner_color");
+    const activeColor = interaction.options.getString("active_color");
+    const eliminatedColor = interaction.options.getString("eliminated_color");
+    const highlightColor = interaction.options.getString("highlight_color");
+    const footer = interaction.options.getString("footer");
+    const highlightEnabled = interaction.options.getBoolean("highlight_enabled");
+
+    if (
+      !infoColor
+      && !winnerColor
+      && !activeColor
+      && !eliminatedColor
+      && !highlightColor
+      && !footer
+      && highlightEnabled === null
+    ) {
+      const settings = getGuildSettings(guildId, context.config);
+      await interaction.reply({ embeds: [buildSetupViewEmbed(settings)], ephemeral: true });
+      return;
+    }
+
+    const current = getGuildSettings(guildId, context.config);
+
+    const providedColors = [
+      infoColor,
+      winnerColor,
+      activeColor,
+      eliminatedColor,
+      highlightColor
+    ].filter((value) => typeof value === "string" && value.trim().length > 0);
+
+    const invalidColor = providedColors.find((value) => !isValidHexColor(value));
+    if (invalidColor) {
+      await interaction.reply({
+        content: `Invalid color value: ${invalidColor}. Use format #RRGGBB.`,
+        ephemeral: true
+      });
+      return;
+    }
+
+    const patch = {
+      colors: {
+        info: normalizeHexColor(infoColor, current.colors.info),
+        winner: normalizeHexColor(winnerColor, current.colors.winner),
+        active: normalizeHexColor(activeColor, current.colors.active),
+        eliminated: normalizeHexColor(eliminatedColor, current.colors.eliminated),
+        highlight: normalizeHexColor(highlightColor, current.colors.highlight)
+      }
+    };
+
+    if (footer) {
+      patch.brandingFooter = String(footer).trim().slice(0, 100);
+    }
+
+    if (highlightEnabled !== null) {
+      patch.highlightEnabled = highlightEnabled;
+    }
+
+    const next = patchGuildSettings(guildId, patch, context.config);
+    await interaction.reply({
+      content: "Style setup updated.",
+      embeds: [buildSetupViewEmbed(next)],
+      ephemeral: true
+    });
+  }
+}
+
+async function handleUserInfoCommand(interaction, context) {
+  const targetUser = interaction.options.getUser("user", true);
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const profile = getUserProfile(interaction.guild.id, targetUser.id);
+
+  let leaderboardData = null;
+  let lookupRobloxName = profile?.robloxUsername || "";
+  let entry = null;
+
+  try {
+    leaderboardData = await fetchLeaderboardData(settings.leaderboardEndpoint || context.config.leaderboardApiUrl);
+    if (!lookupRobloxName) {
+      lookupRobloxName = targetUser.username;
+    }
+
+    entry = findEntryByRoblox(leaderboardData.entries, lookupRobloxName);
+  } catch {
+    leaderboardData = null;
+  }
+
+  if (!profile && !entry) {
+    await interaction.reply({
+      content: "No user profile data found for that member yet.",
+      ephemeral: true
+    });
+    return;
+  }
+
+  const status = entry?.status || "active";
+  const embed = new EmbedBuilder()
+    .setTitle(`User Info - ${targetUser.tag}`)
+    .setColor(statusColor(settings, status))
+    .addFields(
+      {
+        name: "Roblox Username",
+        value: profile?.robloxUsername || entry?.player || "Unknown",
+        inline: true
+      },
+      {
+        name: "Faction",
+        value: profile?.faction || "Unknown",
+        inline: true
+      },
+      {
+        name: "Country",
+        value: profile?.country || "Unknown",
+        inline: true
+      },
+      {
+        name: "Total Matches",
+        value: String(entry?.totalMatches || 0),
+        inline: true
+      },
+      {
+        name: "Leaderboard Status",
+        value: normalizeStatusLabel(status),
+        inline: true
+      },
+      {
+        name: "Leaderboard Rank",
+        value: entry ? `#${entry.rank}` : "Not ranked",
+        inline: true
+      }
+    )
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleLeaderboardCommand(interaction, context) {
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const endpoint = settings.leaderboardEndpoint || context.config.leaderboardApiUrl;
+  const limit = clampInt(interaction.options.getInteger("limit"), 1, 100, 30);
+  const pageSize = clampInt(interaction.options.getInteger("page_size"), 5, 20, 10);
+  const postToConfiguredChannel = interaction.options.getBoolean("post") === true;
+
+  await interaction.deferReply({ ephemeral: !postToConfiguredChannel });
+
+  try {
+    const leaderboard = await fetchLeaderboardData(endpoint);
+    const entries = leaderboard.entries.slice(0, limit);
+    const pages = buildLeaderboardPages(entries, pageSize);
+    const pageIndex = 0;
+    const page = pages[pageIndex];
+
+    const embed = buildLeaderboardEmbed({
+      settings,
+      page,
+      pageIndex,
+      pages,
+      updatedAt: leaderboard.updatedAt,
+      endpoint: leaderboard.endpoint
+    });
+
+    const components = buildLeaderboardNavRows(interaction.user.id, pageIndex, pages.length, limit, pageSize);
+
+    if (postToConfiguredChannel && settings.leaderboardChannelId) {
+      const targetChannel = interaction.guild.channels.cache.get(settings.leaderboardChannelId)
+        || await interaction.guild.channels.fetch(settings.leaderboardChannelId).catch(() => null);
+
+      if (!targetChannel || !targetChannel.isTextBased()) {
+        await interaction.editReply({
+          content: "Configured leaderboard channel is not valid.",
+          embeds: [],
+          components: []
+        });
+        return;
+      }
+
+      await targetChannel.send({ embeds: [embed], components });
+      await interaction.editReply({
+        content: `Leaderboard posted in ${targetChannel}.`,
+        embeds: [],
+        components: []
+      });
+      return;
+    }
+
+    await interaction.editReply({
+      embeds: [embed],
+      components
+    });
+  } catch (error) {
+    await interaction.editReply({
+      content: `Failed to load leaderboard: ${error instanceof Error ? error.message : "Unknown error"}`,
+      embeds: [],
+      components: []
+    });
+  }
+}
+
+function setupCommandBuilder() {
+  return new SlashCommandBuilder()
+    .setName("setup")
+    .setDescription("Configure Ascend Entrenched bot settings")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false)
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("view")
+        .setDescription("View current setup values")
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("tickets")
+        .setDescription("Configure ticket category, ping roles, and global enable state")
+        .addBooleanOption((option) =>
+          option.setName("enabled").setDescription("Enable or disable ticket creation globally")
+        )
+        .addChannelOption((option) =>
+          option
+            .setName("category")
+            .setDescription("Category where ticket channels are created")
+            .addChannelTypes(ChannelType.GuildCategory)
+        )
+        .addChannelOption((option) =>
+          option
+            .setName("log_channel")
+            .setDescription("Channel for ticket log events")
+            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+        )
+        .addRoleOption((option) =>
+          option
+            .setName("ping_role")
+            .setDescription("Role to ping when a ticket is created")
+        )
+        .addRoleOption((option) =>
+          option
+            .setName("reviewer_role")
+            .setDescription("Role that can update and close tickets")
+        )
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("ticket_access")
+        .setDescription("Limit ticket creation to selected roles")
+        .addStringOption((option) =>
+          option
+            .setName("action")
+            .setDescription("How to edit allowed ticket roles")
+            .setRequired(true)
+            .addChoices(
+              { name: "Add role", value: "add" },
+              { name: "Remove role", value: "remove" },
+              { name: "Clear all (allow everyone)", value: "clear" }
+            )
+        )
+        .addRoleOption((option) =>
+          option
+            .setName("role")
+            .setDescription("Role to add or remove")
+            .setRequired(false)
+        )
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("leaderboard")
+        .setDescription("Configure leaderboard source and output channel")
+        .addChannelOption((option) =>
+          option
+            .setName("channel")
+            .setDescription("Default leaderboard channel")
+            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+        )
+        .addStringOption((option) =>
+          option
+            .setName("endpoint")
+            .setDescription("Leaderboard base URL or /api/leaderboard-config endpoint")
+        )
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("style")
+        .setDescription("Configure embed colors and branding")
+        .addStringOption((option) =>
+          option
+            .setName("info_color")
+            .setDescription("Hex color for normal info, example #C8A2C8")
+        )
+        .addStringOption((option) =>
+          option
+            .setName("winner_color")
+            .setDescription("Hex color for winners, example #FFD700")
+        )
+        .addStringOption((option) =>
+          option
+            .setName("active_color")
+            .setDescription("Hex color for active players, example #C8A2C8")
+        )
+        .addStringOption((option) =>
+          option
+            .setName("eliminated_color")
+            .setDescription("Hex color for eliminated players, example #9B59B6")
+        )
+        .addStringOption((option) =>
+          option
+            .setName("highlight_color")
+            .setDescription("Hex color for highlights, example #FFECB3")
+        )
+        .addStringOption((option) =>
+          option
+            .setName("footer")
+            .setDescription("Embed footer branding text")
+            .setMaxLength(100)
+        )
+        .addBooleanOption((option) =>
+          option
+            .setName("highlight_enabled")
+            .setDescription("Enable leaderboard highlight field")
+        )
+    );
 }
 
 const slashCommandBuilders = [
@@ -377,52 +1364,71 @@ const slashCommandBuilders = [
     .setName("queue")
     .setDescription("Show webhook queue status"),
   new SlashCommandBuilder()
+    .setName("ticketpanel")
+    .setDescription("Post the Create Ticket panel")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false),
+  new SlashCommandBuilder()
+    .setName("ticketupdate")
+    .setDescription("Post a ticket follow-up note and optional status")
+    .setDMPermission(false)
+    .addStringOption((option) =>
+      option
+        .setName("note")
+        .setDescription("Follow-up note for this ticket")
+        .setRequired(true)
+        .setMaxLength(500)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("status")
+        .setDescription("Optional ticket status update")
+        .setRequired(false)
+        .addChoices(
+          { name: "Open", value: "open" },
+          { name: "Waiting User", value: "waiting_user" },
+          { name: "In Review", value: "in_review" },
+          { name: "Escalated", value: "escalated" },
+          { name: "Resolved", value: "resolved" }
+        )
+    ),
+  new SlashCommandBuilder()
+    .setName("userinfo")
+    .setDescription("Show esports profile and leaderboard info for a user")
+    .setDMPermission(false)
+    .addUserOption((option) =>
+      option
+        .setName("user")
+        .setDescription("User to inspect")
+        .setRequired(true)
+    ),
+  new SlashCommandBuilder()
     .setName("leaderboard")
-    .setDescription("Show globally synced leaderboard standings")
+    .setDescription("Show synced leaderboard from web source")
+    .setDMPermission(false)
     .addIntegerOption((option) =>
       option
         .setName("limit")
-        .setDescription("How many top players to show (1-20)")
+        .setDescription("Maximum players to include")
         .setRequired(false)
         .setMinValue(1)
-        .setMaxValue(20)
-    ),
-  new SlashCommandBuilder()
-    .setName("apply")
-    .setDescription("Submit an application to staff")
-    .setDMPermission(false),
-  new SlashCommandBuilder()
-    .setName("applysetup")
-    .setDescription("Configure Appy-style application settings")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .setDMPermission(false)
-    .addChannelOption((option) =>
-      option
-        .setName("review_channel")
-        .setDescription("Channel where applications are sent")
-        .setRequired(false)
-        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-    )
-    .addRoleOption((option) =>
-      option
-        .setName("reviewer_role")
-        .setDescription("Role allowed to accept/reject applications")
-        .setRequired(false)
-    )
-    .addRoleOption((option) =>
-      option
-        .setName("accepted_role")
-        .setDescription("Role granted when application is accepted")
-        .setRequired(false)
+        .setMaxValue(100)
     )
     .addIntegerOption((option) =>
       option
-        .setName("cooldown_ms")
-        .setDescription("Cooldown between /apply uses in milliseconds")
+        .setName("page_size")
+        .setDescription("Entries per page section")
         .setRequired(false)
-        .setMinValue(10000)
-        .setMaxValue(86400000)
+        .setMinValue(5)
+        .setMaxValue(20)
+    )
+    .addBooleanOption((option) =>
+      option
+        .setName("post")
+        .setDescription("Post in configured leaderboard channel")
+        .setRequired(false)
     ),
+  setupCommandBuilder(),
   new SlashCommandBuilder()
     .setName("webhooktest")
     .setDescription("Send a test leaderboard update embed")
@@ -544,13 +1550,10 @@ async function registerSlashCommands(client, config) {
     } catch (error) {
       const code = Number(error?.code || 0);
       const shouldFallback = code === 50001 || Number(error?.status || 0) === 403;
-
       if (!shouldFallback) {
         throw error;
       }
 
-      // If guild registration fails (usually missing access or wrong guild ID),
-      // fall back to global registration so commands still appear eventually.
       await client.application.commands.set(slashCommands);
       return {
         scope: "global",
@@ -564,12 +1567,33 @@ async function registerSlashCommands(client, config) {
   return { scope: "global", count: slashCommands.length };
 }
 
+function getMuteDurationMs(minutes) {
+  const safeMinutes = Math.max(1, Math.min(40320, Number(minutes) || 0));
+  return safeMinutes * 60 * 1000;
+}
+
 async function handleSlashCommand(interaction, context) {
-  if (await handleApplicationModalSubmit(interaction, context)) {
+  if (await handleTicketCreateButton(interaction, context)) {
     return;
   }
 
-  if (await handleApplicationReviewButton(interaction, context)) {
+  if (await handleTicketCreateModal(interaction, context)) {
+    return;
+  }
+
+  if (await handleTicketStatusButton(interaction, context)) {
+    return;
+  }
+
+  if (await handleTicketCloseButton(interaction, context)) {
+    return;
+  }
+
+  if (await handleTicketCloseModal(interaction, context)) {
+    return;
+  }
+
+  if (await handleLeaderboardNavButton(interaction, context)) {
     return;
   }
 
@@ -594,199 +1618,105 @@ async function handleSlashCommand(interaction, context) {
     return;
   }
 
-  if (interaction.commandName === "leaderboard") {
-    const limit = interaction.options.getInteger("limit") || 10;
-
-    await interaction.deferReply({ ephemeral: true });
-
-    try {
-      const configData = await fetchLeaderboardConfig(context.config);
-      const ranked = buildRankedLeaderboard(configData, limit);
-
-      if (!ranked.length) {
-        await interaction.editReply({
-          content: "Leaderboard is currently empty."
-        });
-        return;
-      }
-
-      const lines = ranked.map((entry) => (
-        `#${entry.rank} ${entry.player} | Lvl ${entry.level} | K/D ${entry.kd.toFixed(1)} | Score ${entry.score}`
-      ));
-
-      const embed = new EmbedBuilder()
-        .setTitle("Global Synced Leaderboard")
-        .setColor(0xdb2b2b)
-        .setDescription(lines.join("\n").slice(0, 4000))
-        .setFooter({
-          text: configData?.updatedAt
-            ? `Last sync: ${new Date(configData.updatedAt).toLocaleString()}`
-            : "Last sync: unknown"
-        })
-        .setTimestamp(new Date());
-
-      await interaction.editReply({ embeds: [embed] });
-    } catch (error) {
-      await interaction.editReply({
-        content: `Failed to load leaderboard sync: ${error instanceof Error ? error.message : "Unknown error"}`
-      });
-    }
-
-    return;
-  }
-
-  if (interaction.commandName === "apply") {
-    if (!interaction.inGuild()) {
-      await interaction.reply({
-        content: "This command can only be used in a server.",
-        ephemeral: true
-      });
-      return;
-    }
-
-    const cooldownMs = Number(context.config.applicationCooldownMs) || 120000;
-    const remainingMs = getRemainingCooldownMs(interaction.user.id, cooldownMs);
-    if (remainingMs > 0) {
-      const seconds = Math.max(1, Math.ceil(remainingMs / 1000));
-      await interaction.reply({
-        content: `Please wait ${seconds}s before sending another application.`,
-        ephemeral: true
-      });
-      return;
-    }
-
-    setApplicationCooldown(interaction.user.id, cooldownMs);
-
-    const modal = new ModalBuilder()
-      .setCustomId(APPLICATION_MODAL_ID)
-      .setTitle("Server Application");
-
-    const robloxInput = new TextInputBuilder()
-      .setCustomId("apply_roblox")
-      .setLabel("Roblox Username")
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true)
-      .setMaxLength(32);
-
-    const ageInput = new TextInputBuilder()
-      .setCustomId("apply_age")
-      .setLabel("Age")
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true)
-      .setMaxLength(4);
-
-    const timezoneInput = new TextInputBuilder()
-      .setCustomId("apply_timezone")
-      .setLabel("Timezone")
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true)
-      .setMaxLength(32);
-
-    const reasonInput = new TextInputBuilder()
-      .setCustomId("apply_reason")
-      .setLabel("Why do you want to join?")
-      .setStyle(TextInputStyle.Paragraph)
-      .setRequired(true)
-      .setMaxLength(1000);
-
-    modal.addComponents(
-      new ActionRowBuilder().addComponents(robloxInput),
-      new ActionRowBuilder().addComponents(ageInput),
-      new ActionRowBuilder().addComponents(timezoneInput),
-      new ActionRowBuilder().addComponents(reasonInput)
-    );
-
-    await interaction.showModal(modal);
-    return;
-  }
-
-  if (interaction.commandName === "applysetup") {
-    if (!interaction.inGuild()) {
-      await interaction.reply({
-        content: "This command can only be used in a server.",
-        ephemeral: true
-      });
-      return;
-    }
-
-    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
-      await interaction.reply({
-        content: "You need Manage Server permission to run this command.",
-        ephemeral: true
-      });
-      return;
-    }
-
-    const reviewChannel = interaction.options.getChannel("review_channel");
-    const reviewerRole = interaction.options.getRole("reviewer_role");
-    const acceptedRole = interaction.options.getRole("accepted_role");
-    const cooldownMs = interaction.options.getInteger("cooldown_ms");
-
-    const hasAnyOption = Boolean(reviewChannel || reviewerRole || acceptedRole || cooldownMs);
-
-    if (!hasAnyOption) {
-      const channelLabel = context.config.applicationsChannelId
-        ? `<#${context.config.applicationsChannelId}>`
-        : "Not set";
-      const reviewerLabel = context.config.applicationsReviewerRoleId
-        ? `<@&${context.config.applicationsReviewerRoleId}>`
-        : "Not set";
-      const acceptedLabel = context.config.applicationsAcceptedRoleId
-        ? `<@&${context.config.applicationsAcceptedRoleId}>`
-        : "Not set";
-      const cooldownLabel = Number(context.config.applicationCooldownMs) || 120000;
-
-      await interaction.reply({
-        content: [
-          "Current application setup:",
-          `- Review channel: ${channelLabel}`,
-          `- Reviewer role: ${reviewerLabel}`,
-          `- Accepted role: ${acceptedLabel}`,
-          `- Cooldown: ${cooldownLabel}ms`,
-          "",
-          "Run /applysetup with options to update settings."
-        ].join("\n"),
-        ephemeral: true
-      });
-      return;
-    }
-
-    const nextSettings = {
-      applicationsChannelId: reviewChannel ? reviewChannel.id : context.config.applicationsChannelId,
-      applicationsReviewerRoleId: reviewerRole ? reviewerRole.id : context.config.applicationsReviewerRoleId,
-      applicationsAcceptedRoleId: acceptedRole ? acceptedRole.id : context.config.applicationsAcceptedRoleId,
-      applicationCooldownMs: cooldownMs || Number(context.config.applicationCooldownMs) || 120000
-    };
-
-    context.config.applicationsChannelId = nextSettings.applicationsChannelId;
-    context.config.applicationsReviewerRoleId = nextSettings.applicationsReviewerRoleId;
-    context.config.applicationsAcceptedRoleId = nextSettings.applicationsAcceptedRoleId;
-    context.config.applicationCooldownMs = nextSettings.applicationCooldownMs;
-
-    if (typeof context.saveRuntimeSettings === "function") {
-      context.saveRuntimeSettings(nextSettings);
-    }
-
-    const channelLabel = nextSettings.applicationsChannelId
-      ? `<#${nextSettings.applicationsChannelId}>`
-      : "Not set";
-    const reviewerLabel = nextSettings.applicationsReviewerRoleId
-      ? `<@&${nextSettings.applicationsReviewerRoleId}>`
-      : "Not set";
-    const acceptedLabel = nextSettings.applicationsAcceptedRoleId
-      ? `<@&${nextSettings.applicationsAcceptedRoleId}>`
-      : "Not set";
+  if (interaction.commandName === "ticketpanel") {
+    const settings = getGuildSettings(interaction.guild.id, context.config);
+    const panelEmbed = new EmbedBuilder()
+      .setTitle("Ascend Entrenched Tickets")
+      .setColor(statusColor(settings, "active"))
+      .setDescription("Press **Create Ticket** to submit your Roblox competitive profile for staff review.")
+      .addFields(
+        { name: "Required", value: "Roblox Username, Country, Faction" },
+        { name: "Status", value: settings.ticketEnabled ? "Ticket creation enabled" : "Ticket creation disabled" }
+      )
+      .setFooter({ text: footerText(settings) })
+      .setTimestamp(new Date());
 
     await interaction.reply({
-      content: [
-        "Application setup saved.",
-        `- Review channel: ${channelLabel}`,
-        `- Reviewer role: ${reviewerLabel}`,
-        `- Accepted role: ${acceptedLabel}`,
-        `- Cooldown: ${nextSettings.applicationCooldownMs}ms`
-      ].join("\n"),
-      ephemeral: true
+      embeds: [panelEmbed],
+      components: [
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(TICKET_CREATE_BUTTON_ID)
+            .setLabel("Create Ticket")
+            .setStyle(ButtonStyle.Success)
+            .setDisabled(!settings.ticketEnabled)
+        )
+      ]
     });
+    return;
+  }
+
+  if (interaction.commandName === "ticketupdate") {
+    if (!interaction.inGuild() || !isTicketChannel(interaction.channel)) {
+      await interaction.reply({ content: "Use this command inside a ticket channel.", ephemeral: true });
+      return;
+    }
+
+    const settings = getGuildSettings(interaction.guild.id, context.config);
+    const note = interaction.options.getString("note", true).trim();
+    const status = interaction.options.getString("status");
+    const meta = parseTicketTopic(interaction.channel.topic) || {};
+
+    if (status && !hasReviewerAccess(interaction.member, settings)) {
+      await interaction.reply({
+        content: "Only reviewers can change ticket status.",
+        ephemeral: true
+      });
+      return;
+    }
+
+    if (status) {
+      await interaction.channel.setTopic(buildTicketTopic({ ...meta, status })).catch(() => {});
+    }
+
+    const noteEmbed = new EmbedBuilder()
+      .setTitle(`Ticket ${meta.ticket || "Update"}`)
+      .setColor(statusColor(settings, status || "active"))
+      .setDescription(note)
+      .addFields({
+        name: "By",
+        value: `<@${interaction.user.id}>`,
+        inline: true
+      })
+      .setFooter({ text: footerText(settings) })
+      .setTimestamp(new Date());
+
+    if (status) {
+      noteEmbed.addFields({
+        name: "Status",
+        value: `${statusIcon(status)} ${normalizeStatusLabel(status)}`,
+        inline: true
+      });
+    }
+
+    await interaction.reply({ embeds: [noteEmbed] });
+
+    appendTicketAudit({
+      event: "ticket_follow_up",
+      guildId: interaction.guild.id,
+      channelId: interaction.channel.id,
+      ticketId: meta.ticket || "",
+      ownerId: meta.owner || "",
+      actorId: interaction.user.id,
+      note,
+      status: status || null
+    });
+
+    return;
+  }
+
+  if (interaction.commandName === "userinfo") {
+    await handleUserInfoCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "leaderboard") {
+    await handleLeaderboardCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "setup") {
+    await handleSetupCommand(interaction, context);
     return;
   }
 

@@ -1,149 +1,106 @@
-# Ascend Entrenched Bot Webhook Bridge
+# Ascend Entrenched Bot
 
-Node.js Discord bot improvement using:
-- discord.js v14
-- Express REST listener
-- Queue-based rate limiting for burst updates
-- Modular event handlers (leaderboard, highlights, substitutions)
+Discord bot for esports operations with:
+- Ticket-based submissions (modal + dedicated channels)
+- Synced leaderboard from web API
+- User profile lookup for competitive info
+- Admin setup flow in Discord (`/setup`)
+- Webhook bridge for live event embeds
 
-## 1) Setup
+## Setup
 
-1. Open a terminal in `bot`.
-2. Install dependencies:
+1. Open terminal in `bot`
+2. Install deps:
 
 ```bash
 npm install
 ```
 
-3. Copy `.env.example` to `.env`.
-4. Fill these required values:
+3. Copy `.env.example` to `.env`
+4. Fill required values:
 - `DISCORD_BOT_TOKEN`
 - `DISCORD_CHANNEL_ID`
 
-Optional security and queue tuning:
-- `DISCORD_GUILD_ID` (recommended for instant slash command updates)
-- `LEADERBOARD_API_URL` (required for `/leaderboard` command)
-- `APPLICATIONS_CHANNEL_ID` (required for Appy-style application review)
-- `APPLICATIONS_REVIEWER_ROLE_ID` (optional role for application reviewers)
-- `APPLICATIONS_ACCEPTED_ROLE_ID` (optional auto-role on accepted applications)
-- `APPLICATION_COOLDOWN_MS` (optional anti-spam cooldown for `/apply`)
-- `WEBHOOK_SHARED_SECRET`
-- `QUEUE_INTERVAL_MS`
-- `MAX_QUEUE_SIZE`
-- `PORT`
+Recommended:
+- `DISCORD_GUILD_ID` for instant guild command registration
+- `LEADERBOARD_API_URL` (for `/leaderboard` and `/userinfo`)
 
-## 2) Run
+## Run
 
 ```bash
 npm start
 ```
 
-Dev watch mode:
+Dev mode:
 
 ```bash
 npm run dev
 ```
 
-## 3) API Endpoint
+## Ticket Flow
 
-POST updates to:
+1. Admin posts panel using `/ticketpanel`
+2. User clicks `Create Ticket`
+3. Modal asks:
+- Roblox Username
+- Country
+- Faction
+4. Bot creates private ticket channel
+5. Staff roles are pinged
+6. Ticket supports:
+- Status buttons (`Open`, `Waiting User`, `In Review`, `Escalated`, `Resolved`)
+- Follow-up command `/ticketupdate`
+- Close modal with reason
+7. Optional logging:
+- Ticket log channel (`/setup tickets log_channel`)
+- Local audit file (`bot/ticket-audit.log`)
 
-`/webhook/update`
+## Commands
 
-Health endpoint:
+- `/ping` - latency check
+- `/queue` - webhook queue status
+- `/ticketpanel` - post ticket button panel
+- `/ticketupdate note status?` - follow-up + optional status change
+- `/userinfo user` - Roblox/faction/country/matches/leaderboard status
+- `/leaderboard limit? page_size? post?` - synced paginated leaderboard
+- `/setup ...` - server admin setup (tickets, access, leaderboard, style)
+- `/webhooktest ...` - queue a test leaderboard embed
+- `/mute`, `/kick`, `/ban` - moderation commands
 
-`/health`
+## Setup Command Guide
 
-If `WEBHOOK_SHARED_SECRET` is set, include header:
+- `/setup view`
+- `/setup tickets enabled category log_channel ping_role reviewer_role`
+- `/setup ticket_access action role`
+- `/setup leaderboard channel endpoint`
+- `/setup style info_color winner_color active_color eliminated_color highlight_color footer highlight_enabled`
 
-`x-webhook-secret: your_shared_secret`
+Examples:
+- `/setup tickets enabled:true ping_role:@Staff reviewer_role:@Admins`
+- `/setup ticket_access action:add role:@Verified`
+- `/setup leaderboard endpoint:https://dxc-chi.vercel.app`
+- `/setup style winner_color:#FFD700 active_color:#C8A2C8`
 
-## 3.1) Slash Commands
+## Leaderboard Color Rules
 
-The bot auto-registers these commands at startup:
+- Winners: `#FFD700`
+- Active players: `#C8A2C8`
+- Eliminated: `#9B59B6`
+- Highlights: `#FFECB3`
 
-- `/ping` - bot latency/health
-- `/queue` - webhook queue size and rate
-- `/leaderboard` - fetch and show top synced leaderboard directly from web API
-- `/apply` - submit an application modal like Appy-style bots
-- `/applysetup` - admin command to configure application channel/roles/cooldown
-- `/webhooktest` - queue a test leaderboard embed
-- `/mute` - timeout a member (admin/mod command)
-- `/kick` - kick a member (admin/mod command)
-- `/ban` - ban a user (admin/mod command)
+All embeds include timestamp and branding footer (`Ascend Entrenched` by default).
 
-Application flow:
-- User runs `/apply` and submits a modal
-- Bot posts application embed in `APPLICATIONS_CHANNEL_ID`
-- Staff review with Accept/Reject buttons
-- Applicant receives DM result
-- Optional accepted role is granted when approved
+## Webhook API
 
-Quick setup command example:
-- `/applysetup review_channel:#applications reviewer_role:@Recruiters accepted_role:@Member cooldown_ms:120000`
+- `GET /health`
+- `POST /webhook/update`
 
-If `DISCORD_GUILD_ID` is set, commands appear quickly in that guild.
-If not set, commands register globally and can take up to 1 hour to appear.
+If `WEBHOOK_SHARED_SECRET` is set, include:
+- Header: `x-webhook-secret: your_shared_secret`
 
-## 4) Web Payload Example
+## Notes
 
-### Standard leaderboard update (your current format)
-
-```json
-{
-  "group": "H",
-  "player": "20SovietSO21",
-  "status": "winner",
-  "score": 42,
-  "matchHighlight": "Player scored a double kill"
-}
-```
-
-### Optional event type: highlight
-
-```json
-{
-  "eventType": "highlight",
-  "group": "H",
-  "player": "20SovietSO21",
-  "status": "info",
-  "score": 42,
-  "matchHighlight": "Player scored a double kill"
-}
-```
-
-### Optional event type: substitution
-
-```json
-{
-  "eventType": "substitution",
-  "group": "H",
-  "playerOut": "Player_A",
-  "playerIn": "Player_B",
-  "reason": "Tactical swap"
-}
-```
-
-## 5) Embed Rules Implemented
-
-- Title: `Group {group} Update` (leaderboard)
-- Fields: Player, Status, Score, Match Highlight
-- Colors:
-  - winner = Green
-  - eliminated = Red
-  - info = Blue
-
-## 6) Extension Notes
-
-The project is intentionally modular:
-
-- `src/events/leaderboard.js`: leaderboard embed builder
-- `src/events/matchHighlights.js`: highlight embed builder
-- `src/events/substitutions.js`: substitution embed builder
-- `src/validators/payloadValidators.js`: per-event validation
-- `src/events/index.js`: event type routing and dispatch
-
-To add a future event:
-1. Create a new event module in `src/events`.
-2. Add validation in `src/validators/payloadValidators.js`.
-3. Register routing in `src/events/index.js`.
+- Guild-specific setup is persisted in `bot/guild-settings.json`
+- User ticket profiles are persisted in `bot/user-profiles.json`
+- Runtime changes are safe for multi-guild operation
+- Keep bot role above managed roles/channels for moderation and ticket permissions

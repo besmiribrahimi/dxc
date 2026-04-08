@@ -6,3 +6,7 @@
 !.env.example
 .vercel
 node_modules/
+bot/runtime-settings.json
+bot/guild-settings.json
+bot/user-profiles.json
+bot/ticket-audit.log
