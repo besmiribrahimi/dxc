@@ -310,6 +310,10 @@ async function initLeaderboardPage() {
     syncLabel: syncSuffix,
     hasManualOrder
   });
+
+  if (typeof window.renderFactionPulse === "function") {
+    window.renderFactionPulse(players);
+  }
 }
 
 initLeaderboardPage();

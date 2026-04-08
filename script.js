@@ -179,6 +179,16 @@ const TOP_PLAYER_OVERRIDES = {
 };
 const FULL_BODY_SIZE = "720x720";
 const DISBANDED_FACTIONS = new Set(["TWL"]);
+const WEB_SYNC_ENDPOINT = "/api/leaderboard-config";
+const OPS_SYNC_INTERVAL_MS = 90000;
+const OPS_MOTD_INTERVAL_MS = 8000;
+const OPS_MOTD_MESSAGES = [
+  "Ascend Entrenched live grid online.",
+  "Leaderboard intelligence stream active.",
+  "War Room uplink stable. Maintain pressure.",
+  "Faction movement updated from latest roster.",
+  "Operator performance feed synchronized."
+];
 const factionFlagMap = new Map([
   ["72ND", "faction_flags/72ND.png"],
   ["AEF", "faction_flags/AEF.png"],
@@ -201,6 +211,12 @@ const factionFlagMap = new Map([
   ["TWA", "faction_flags/TWA.png"],
   ["URF", "faction_flags/URF.png"]
 ]);
+
+let opsHudNodes = null;
+let opsHudClockIntervalId = null;
+let opsHudSyncIntervalId = null;
+let opsHudMotdIntervalId = null;
+let opsHudMotdIndex = 0;
 
 function normalizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
@@ -393,6 +409,393 @@ function countryToFlag(country) {
       .split("")
       .map((char) => 127397 + char.charCodeAt(0))
   );
+}
+
+function formatRelativeSyncTime(updatedAt) {
+  const value = String(updatedAt || "").trim();
+  if (!value) {
+    return "No sync timestamp";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Invalid sync timestamp";
+  }
+
+  const deltaMs = Date.now() - parsed.getTime();
+  if (deltaMs < 0) {
+    return "Synced just now";
+  }
+
+  const minutes = Math.floor(deltaMs / 60000);
+  if (minutes < 1) {
+    return "Synced moments ago";
+  }
+
+  if (minutes < 60) {
+    return `Synced ${minutes}m ago`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `Synced ${hours}h ago`;
+  }
+
+  const days = Math.floor(hours / 24);
+  return `Synced ${days}d ago`;
+}
+
+function computeFactionPulse(players) {
+  const list = Array.isArray(players) ? players : [];
+  const map = new Map();
+
+  list.forEach((player) => {
+    const tokens = splitFactionTokens(player.faction).filter((token) => token !== "N/A");
+    const uniqueTokens = [...new Set(tokens)];
+    if (!uniqueTokens.length) {
+      return;
+    }
+
+    uniqueTokens.forEach((token) => {
+      const current = map.get(token) || {
+        token,
+        members: 0,
+        levelTotal: 0,
+        kdTotal: 0
+      };
+
+      current.members += 1;
+      current.levelTotal += Number(player.level || 0);
+      current.kdTotal += Number(player.kd || 0);
+      map.set(token, current);
+    });
+  });
+
+  return [...map.values()]
+    .sort((a, b) => {
+      if (b.members !== a.members) {
+        return b.members - a.members;
+      }
+
+      return b.kdTotal - a.kdTotal;
+    })
+    .map((item) => ({
+      ...item,
+      avgLevel: item.members ? (item.levelTotal / item.members) : 0,
+      avgKd: item.members ? (item.kdTotal / item.members) : 0
+    }));
+}
+
+function ensureOpsHud() {
+  if (opsHudNodes) {
+    return opsHudNodes;
+  }
+
+  const heroNode = document.querySelector(".hero");
+  if (!heroNode) {
+    return null;
+  }
+
+  const section = document.createElement("section");
+  section.className = "ops-hud";
+  section.setAttribute("aria-label", "Ascend Entrenched operations hub");
+  section.innerHTML = `
+    <div class="ops-hud-head">
+      <h2>Ascend Entrenched Command Grid</h2>
+      <div class="ops-hud-actions">
+        <a class="ops-hud-link" href="leaderboard.html">Leaderboard</a>
+        <a class="ops-hud-link" href="war-room.html">War Room</a>
+        <button type="button" id="opsHudRefresh" class="ops-hud-link">Refresh Sync</button>
+      </div>
+    </div>
+    <div class="ops-hud-grid">
+      <article class="ops-hud-chip">
+        <span>Website API</span>
+        <strong id="opsHudApiState">Checking...</strong>
+      </article>
+      <article class="ops-hud-chip">
+        <span>Global Sync</span>
+        <strong id="opsHudSyncState">Awaiting data...</strong>
+      </article>
+      <article class="ops-hud-chip">
+        <span>Data Source</span>
+        <strong id="opsHudDataSource">Unknown</strong>
+      </article>
+      <article class="ops-hud-chip">
+        <span>UTC Clock</span>
+        <strong id="opsHudClock">--:--:--</strong>
+      </article>
+    </div>
+    <p id="opsHudMotd" class="ops-hud-motd">${OPS_MOTD_MESSAGES[0]}</p>
+  `;
+
+  heroNode.insertAdjacentElement("afterend", section);
+
+  opsHudNodes = {
+    root: section,
+    apiState: section.querySelector("#opsHudApiState"),
+    syncState: section.querySelector("#opsHudSyncState"),
+    dataSource: section.querySelector("#opsHudDataSource"),
+    clock: section.querySelector("#opsHudClock"),
+    motd: section.querySelector("#opsHudMotd"),
+    refreshButton: section.querySelector("#opsHudRefresh")
+  };
+
+  if (opsHudNodes.refreshButton) {
+    opsHudNodes.refreshButton.addEventListener("click", () => {
+      runOpsSyncCheck(true);
+    });
+  }
+
+  return opsHudNodes;
+}
+
+function setOpsHudDataSource(sourceLabel) {
+  const nodes = ensureOpsHud();
+  if (!nodes?.dataSource) {
+    return;
+  }
+
+  const label = String(sourceLabel || "").trim() || "Unknown";
+  nodes.dataSource.textContent = label;
+}
+
+function updateOpsHudClock() {
+  const nodes = ensureOpsHud();
+  if (!nodes?.clock) {
+    return;
+  }
+
+  nodes.clock.textContent = new Date().toLocaleTimeString("en-GB", {
+    hour12: false,
+    timeZone: "UTC"
+  });
+}
+
+function startOpsHudMotdRotation() {
+  const nodes = ensureOpsHud();
+  if (!nodes?.motd) {
+    return;
+  }
+
+  if (opsHudMotdIntervalId) {
+    clearInterval(opsHudMotdIntervalId);
+  }
+
+  opsHudMotdIntervalId = window.setInterval(() => {
+    opsHudMotdIndex = (opsHudMotdIndex + 1) % OPS_MOTD_MESSAGES.length;
+    nodes.motd.textContent = OPS_MOTD_MESSAGES[opsHudMotdIndex];
+  }, OPS_MOTD_INTERVAL_MS);
+}
+
+async function runOpsSyncCheck(force = false) {
+  const nodes = ensureOpsHud();
+  if (!nodes?.apiState || !nodes.syncState) {
+    return;
+  }
+
+  if (force) {
+    nodes.apiState.textContent = "Checking...";
+    nodes.syncState.textContent = "Refreshing sync...";
+  }
+
+  try {
+    const startedAt = Date.now();
+    const response = await fetch(WEB_SYNC_ENDPOINT, { cache: "no-store" });
+    const latency = Date.now() - startedAt;
+
+    if (!response.ok) {
+      nodes.apiState.textContent = `Offline (HTTP ${response.status})`;
+      nodes.apiState.classList.remove("is-online");
+      nodes.apiState.classList.add("is-offline");
+      nodes.syncState.textContent = "Sync unavailable";
+      return;
+    }
+
+    const payload = await response.json();
+    const updatedAt = payload?.config?.updatedAt || "";
+    nodes.apiState.textContent = `Online (${latency}ms)`;
+    nodes.apiState.classList.add("is-online");
+    nodes.apiState.classList.remove("is-offline");
+    nodes.syncState.textContent = formatRelativeSyncTime(updatedAt);
+  } catch {
+    nodes.apiState.textContent = "Offline (Network)";
+    nodes.apiState.classList.remove("is-online");
+    nodes.apiState.classList.add("is-offline");
+    nodes.syncState.textContent = "Sync unavailable";
+  }
+}
+
+function startOpsHud() {
+  const nodes = ensureOpsHud();
+  if (!nodes) {
+    return;
+  }
+
+  updateOpsHudClock();
+  runOpsSyncCheck();
+  startOpsHudMotdRotation();
+
+  if (opsHudClockIntervalId) {
+    clearInterval(opsHudClockIntervalId);
+  }
+
+  opsHudClockIntervalId = window.setInterval(updateOpsHudClock, 1000);
+
+  if (opsHudSyncIntervalId) {
+    clearInterval(opsHudSyncIntervalId);
+  }
+
+  opsHudSyncIntervalId = window.setInterval(() => runOpsSyncCheck(), OPS_SYNC_INTERVAL_MS);
+}
+
+function ensureFactionPulseMount() {
+  const existing = document.getElementById("factionPulse");
+  if (existing) {
+    return existing;
+  }
+
+  const showcaseMain = document.querySelector(".content");
+  const leaderboardMain = document.querySelector(".leaderboard-content");
+  const host = showcaseMain || leaderboardMain;
+  if (!host) {
+    return null;
+  }
+
+  const section = document.createElement("section");
+  section.id = "factionPulse";
+  section.className = "faction-pulse";
+  section.setAttribute("aria-label", "Faction pulse radar");
+  section.innerHTML = `
+    <div class="faction-pulse-head">
+      <h3>Faction Pulse Radar</h3>
+      <p>Live composition based on current roster.</p>
+    </div>
+    <div id="factionPulseGrid" class="faction-pulse-grid"></div>
+  `;
+
+  const targetAnchor = host.querySelector(".leaderboard-highlight, .leaderboard-warroom-link, .players-section, .leaderboard-top-three");
+  if (targetAnchor) {
+    targetAnchor.insertAdjacentElement("beforebegin", section);
+  } else {
+    host.insertAdjacentElement("afterbegin", section);
+  }
+
+  return section;
+}
+
+function renderFactionPulse(players) {
+  const mount = ensureFactionPulseMount();
+  if (!mount) {
+    return;
+  }
+
+  const grid = mount.querySelector("#factionPulseGrid");
+  if (!grid) {
+    return;
+  }
+
+  const pulse = computeFactionPulse(players).slice(0, 6);
+  if (!pulse.length) {
+    grid.innerHTML = "<p class=\"faction-pulse-empty\">No active faction pulse data.</p>";
+    return;
+  }
+
+  const maxMembers = Math.max(1, ...pulse.map((item) => item.members));
+
+  grid.innerHTML = pulse.map((entry) => {
+    const intensity = Math.round((entry.members / maxMembers) * 100);
+    const flagPath = getFactionFlagPath(entry.token);
+    const safeToken = escapeHtml(entry.token);
+    const flagMarkup = flagPath
+      ? `<img class=\"faction-flag-icon\" src=\"${flagPath}\" alt=\"${safeToken} flag\" loading=\"lazy\">`
+      : "";
+
+    return `
+      <article class="faction-pulse-card" style="--intensity:${intensity}%">
+        <strong>${flagMarkup}${safeToken}</strong>
+        <span>${entry.members} operators</span>
+        <p>Avg Level ${entry.avgLevel.toFixed(1)} • Avg K/D ${entry.avgKd.toFixed(2)}</p>
+      </article>
+    `;
+  }).join("");
+}
+
+function ensureShowcaseControls(players, avatarMap) {
+  if (!playersGrid || !Array.isArray(players) || !players.length) {
+    return;
+  }
+
+  const section = playersGrid.closest(".players-section");
+  if (!section) {
+    return;
+  }
+
+  let controls = document.getElementById("showcaseControls");
+  if (!controls) {
+    controls = document.createElement("div");
+    controls.id = "showcaseControls";
+    controls.className = "showcase-controls";
+    controls.innerHTML = `
+      <label class="showcase-control search">
+        <span>Search Players</span>
+        <input id="showcaseSearch" type="search" placeholder="Name, faction, country" autocomplete="off">
+      </label>
+      <label class="showcase-control sort">
+        <span>Sort</span>
+        <select id="showcaseSort">
+          <option value="rank">Leaderboard Rank</option>
+          <option value="kd">Highest K/D</option>
+          <option value="wins">Highest Wins</option>
+          <option value="name">Name A-Z</option>
+        </select>
+      </label>
+    `;
+    section.insertAdjacentElement("afterbegin", controls);
+  }
+
+  const searchNode = controls.querySelector("#showcaseSearch");
+  const sortNode = controls.querySelector("#showcaseSort");
+  if (!searchNode || !sortNode) {
+    return;
+  }
+
+  const baseList = players.map((player, index) => ({ ...player, baseRank: index + 1 }));
+
+  const applyView = () => {
+    const query = normalizeText(searchNode.value).toLowerCase();
+    const mode = String(sortNode.value || "rank");
+
+    const filtered = baseList.filter((player) => {
+      if (!query) {
+        return true;
+      }
+
+      const searchText = `${player.name} ${player.faction} ${player.country}`.toLowerCase();
+      return searchText.includes(query);
+    });
+
+    filtered.sort((a, b) => {
+      if (mode === "kd") {
+        return Number(b.kd) - Number(a.kd);
+      }
+
+      if (mode === "wins") {
+        return Number(b.wins) - Number(a.wins);
+      }
+
+      if (mode === "name") {
+        return String(a.name).localeCompare(String(b.name));
+      }
+
+      return Number(a.baseRank) - Number(b.baseRank);
+    });
+
+    renderPlayers(filtered, avatarMap);
+  };
+
+  searchNode.addEventListener("input", applyView);
+  sortNode.addEventListener("change", applyView);
 }
 
 function getPlayerStats(name, isTopPlayer) {
@@ -630,6 +1033,7 @@ async function loadPlayerLines() {
         .filter(Boolean);
 
       if (lines.length > 0) {
+        setOpsHudDataSource("discordlink live feed");
         return lines;
       }
     }
@@ -637,6 +1041,7 @@ async function loadPlayerLines() {
     // Fallback is used when local file serving blocks access.
   }
 
+  setOpsHudDataSource("embedded fallback list");
   return fallbackPlayerLines;
 }
 
@@ -686,6 +1091,8 @@ async function init() {
   }
 
   renderPlayers(players, avatarMap);
+  ensureShowcaseControls(players, avatarMap);
+  renderFactionPulse(players);
 }
 
 if (closeModalButton) {
@@ -722,3 +1129,9 @@ window.addEventListener("keydown", (event) => {
 if (playersGrid) {
   init();
 }
+
+if (typeof window !== "undefined") {
+  window.renderFactionPulse = renderFactionPulse;
+}
+
+startOpsHud();
