@@ -1691,6 +1691,18 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && modal && modal.classList.contains("open")) {
     closeModal();
   }
+
+  const isAdminShortcut = event.ctrlKey && event.shiftKey && String(event.key || "").toLowerCase() === "a";
+  if (!isAdminShortcut || isTypingTarget(event.target)) {
+    return;
+  }
+
+  if (isAdminPanelPage()) {
+    return;
+  }
+
+  event.preventDefault();
+  window.location.href = "admin.html";
 });
 
 if (playersGrid) {
