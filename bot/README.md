@@ -22,6 +22,7 @@ npm install
 
 Optional security and queue tuning:
 - `DISCORD_GUILD_ID` (recommended for instant slash command updates)
+- `LEADERBOARD_API_URL` (required for `/leaderboard` command)
 - `WEBHOOK_SHARED_SECRET`
 - `QUEUE_INTERVAL_MS`
 - `MAX_QUEUE_SIZE`
@@ -59,7 +60,11 @@ The bot auto-registers these commands at startup:
 
 - `/ping` - bot latency/health
 - `/queue` - webhook queue size and rate
+- `/leaderboard` - fetch and show top synced leaderboard directly from web API
 - `/webhooktest` - queue a test leaderboard embed
+- `/mute` - timeout a member (admin/mod command)
+- `/kick` - kick a member (admin/mod command)
+- `/ban` - ban a user (admin/mod command)
 
 If `DISCORD_GUILD_ID` is set, commands appear quickly in that guild.
 If not set, commands register globally and can take up to 1 hour to appear.
