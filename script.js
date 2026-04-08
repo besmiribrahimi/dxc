@@ -154,13 +154,13 @@ const modalAvatar = document.getElementById("modalAvatar");
 const modalName = document.getElementById("modalName");
 const modalFaction = document.getElementById("modalFaction");
 const modalCountry = document.getElementById("modalCountry");
-const modalWins = document.getElementById("modalWins");
+const modalLevel = document.getElementById("modalLevel");
 const modalKd = document.getElementById("modalKd");
 const modalDiscord = document.getElementById("modalDiscord");
 const topPlayerCard = document.getElementById("topPlayerCard");
 const topPlayerNameNode = document.getElementById("topPlayerName");
 const topPlayerSubtitleNode = document.getElementById("topPlayerSubtitle");
-const topPlayerWinsNode = document.getElementById("topPlayerWins");
+const topPlayerLevelNode = document.getElementById("topPlayerLevel");
 const topPlayerKdNode = document.getElementById("topPlayerKd");
 const topCountryBadgeNode = document.getElementById("topCountryBadge");
 const topPlayerAvatarNode = document.getElementById("topPlayerAvatar");
@@ -173,7 +173,7 @@ const AVATAR_SIZE = "720x720";
 const AVATAR_FORMAT = "Png";
 const TOP_PLAYER_NAME = "20SovietSO21";
 const TOP_PLAYER_OVERRIDES = {
-  wins: 3,
+  level: 10,
   kd: 4.0,
   subtitle: "Dominating recent matches with top performance."
 };
@@ -337,7 +337,7 @@ function parsePlayerLine(rawLine) {
     userId: avatarIdMap.get(name.toLowerCase()) ?? fallbackAvatarId,
     avatarUrl: "",
     bodyAvatarUrl: "",
-    wins: 0,
+    level: 1,
     kd: 0
   };
 }
@@ -712,12 +712,17 @@ function ensureOpsHud() {
 }
 
 function ensureLfgDock() {
+  if (isAdminPanelPage()) {
+    return null;
+  }
+
   const existing = document.getElementById("opsLfgDock");
   if (existing) {
     return {
       root: existing,
       lfgCount: existing.querySelector("#opsLfgCount"),
-      lfgList: existing.querySelector("#opsLfgList")
+      lfgList: existing.querySelector("#opsLfgList"),
+      lfgMeta: existing.querySelector("#opsLfgMeta")
     };
   }
 
@@ -727,17 +732,21 @@ function ensureLfgDock() {
   dock.setAttribute("aria-label", "Live 1v1 queue");
   dock.innerHTML = `
     <div class="ops-lfg-head">
-      <span>Live 1v1 Queue</span>
+      <div class="ops-lfg-title-wrap">
+        <span>Live 1v1 Queue</span>
+        <small id="opsLfgMeta">Syncing...</small>
+      </div>
       <strong id="opsLfgCount">0 online</strong>
     </div>
-    <div id="opsLfgList" class="ops-lfg-list">No one is looking for 1v1 yet.</div>
+    <div id="opsLfgList" class="ops-lfg-list">No one is looking for 1v1 right now.</div>
   `;
 
   document.body.appendChild(dock);
   return {
     root: dock,
     lfgCount: dock.querySelector("#opsLfgCount"),
-    lfgList: dock.querySelector("#opsLfgList")
+    lfgList: dock.querySelector("#opsLfgList"),
+    lfgMeta: dock.querySelector("#opsLfgMeta")
   };
 }
 
@@ -829,20 +838,35 @@ function formatLfgTimeRemaining(expiresAt) {
   return `${minutes}m ${seconds}s`;
 }
 
+function formatLfgUpdatedAt() {
+  return `Updated ${new Date().toLocaleTimeString("en-GB", {
+    hour12: false,
+    timeZone: "UTC"
+  })} UTC`;
+}
+
 function renderLfgQueue(entries) {
-  const nodes = ensureOpsHud();
+  const nodes = ensureLfgDock();
   if (!nodes?.lfgCount || !nodes?.lfgList) {
     return;
+  }
+
+  nodes.root?.classList.remove("is-offline");
+  nodes.root?.classList.add("is-live");
+  if (nodes.lfgMeta) {
+    nodes.lfgMeta.textContent = formatLfgUpdatedAt();
   }
 
   const active = Array.isArray(entries)
     ? entries.filter((entry) => Number(entry?.expiresAt || 0) > Date.now())
     : [];
 
+  active.sort((a, b) => Number(b?.expiresAt || 0) - Number(a?.expiresAt || 0));
+
   nodes.lfgCount.textContent = `${active.length} online`;
 
   if (!active.length) {
-    nodes.lfgList.textContent = "No one is looking for 1v1 yet.";
+    nodes.lfgList.innerHTML = "<p class=\"ops-lfg-empty\">No one is looking for 1v1 right now.</p>";
     return;
   }
 
@@ -851,16 +875,19 @@ function renderLfgQueue(entries) {
     const timeLeft = formatLfgTimeRemaining(entry?.expiresAt);
     return `
       <div class="ops-lfg-row">
-        <strong>${username}</strong>
+        <div class="ops-lfg-user">
+          <strong>${username}</strong>
+          <small>Ready now</small>
+        </div>
         <span class="ops-lfg-status">looking for 1v1</span>
-        <small>${timeLeft} left</small>
+        <small class="ops-lfg-timer">${timeLeft} left</small>
       </div>
     `;
   }).join("");
 }
 
 async function runLfgQueueSync() {
-  const nodes = ensureOpsHud();
+  const nodes = ensureLfgDock();
   if (!nodes?.lfgList) {
     return;
   }
@@ -868,7 +895,12 @@ async function runLfgQueueSync() {
   try {
     const response = await fetch(LFG_FEED_ENDPOINT, { cache: "no-store" });
     if (!response.ok) {
-      nodes.lfgList.textContent = `Queue offline (HTTP ${response.status})`;
+      if (nodes.lfgMeta) {
+        nodes.lfgMeta.textContent = `Offline (HTTP ${response.status})`;
+      }
+      nodes.root?.classList.add("is-offline");
+      nodes.root?.classList.remove("is-live");
+      nodes.lfgList.innerHTML = `<p class=\"ops-lfg-empty\">Queue offline (HTTP ${response.status}).</p>`;
       if (nodes.lfgCount) {
         nodes.lfgCount.textContent = "offline";
       }
@@ -878,11 +910,31 @@ async function runLfgQueueSync() {
     const payload = await response.json().catch(() => ({}));
     renderLfgQueue(Array.isArray(payload?.entries) ? payload.entries : []);
   } catch {
-    nodes.lfgList.textContent = "Queue offline (network).";
+    if (nodes.lfgMeta) {
+      nodes.lfgMeta.textContent = "Offline (network)";
+    }
+    nodes.root?.classList.add("is-offline");
+    nodes.root?.classList.remove("is-live");
+    nodes.lfgList.innerHTML = "<p class=\"ops-lfg-empty\">Queue offline (network).</p>";
     if (nodes.lfgCount) {
       nodes.lfgCount.textContent = "offline";
     }
   }
+}
+
+function startLfgQueueSystem() {
+  const nodes = ensureLfgDock();
+  if (!nodes) {
+    return;
+  }
+
+  runLfgQueueSync();
+
+  if (lfgSyncIntervalId) {
+    clearInterval(lfgSyncIntervalId);
+  }
+
+  lfgSyncIntervalId = window.setInterval(() => runLfgQueueSync(), LFG_SYNC_INTERVAL_MS);
 }
 
 function startOpsHud() {
@@ -1187,8 +1239,8 @@ function ensureShowcaseControls(players, avatarMap) {
         <span>Sort</span>
         <select id="showcaseSort">
           <option value="rank">Leaderboard Rank</option>
+          <option value="level">Highest Level</option>
           <option value="kd">Highest K/D</option>
-          <option value="wins">Highest Wins</option>
           <option value="name">Name A-Z</option>
         </select>
       </label>
@@ -1222,8 +1274,8 @@ function ensureShowcaseControls(players, avatarMap) {
         return Number(b.kd) - Number(a.kd);
       }
 
-      if (mode === "wins") {
-        return Number(b.wins) - Number(a.wins);
+      if (mode === "level") {
+        return Number(b.level) - Number(a.level);
       }
 
       if (mode === "name") {
@@ -1243,16 +1295,16 @@ function ensureShowcaseControls(players, avatarMap) {
 function getPlayerStats(name, isTopPlayer) {
   if (isTopPlayer) {
     return {
-      wins: TOP_PLAYER_OVERRIDES.wins,
+      level: TOP_PLAYER_OVERRIDES.level,
       kd: TOP_PLAYER_OVERRIDES.kd
     };
   }
 
   const seed = [...name].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const wins = (seed % 10) + 1;
+  const level = (seed % 10) + 1;
   const kd = Number((((seed % 34) + 13) / 10).toFixed(1));
 
-  return { wins, kd };
+  return { level, kd };
 }
 
 function getBodyAvatarApiUrl(userId) {
@@ -1381,7 +1433,7 @@ function buildPlayerCard(player, index, avatarMap) {
 }
 
 function openModal(player) {
-  if (!modal || !modalAvatar || !modalName || !modalFaction || !modalCountry || !modalWins || !modalKd || !modalDiscord) {
+  if (!modal || !modalAvatar || !modalName || !modalFaction || !modalCountry || !modalLevel || !modalKd || !modalDiscord) {
     return;
   }
 
@@ -1395,7 +1447,7 @@ function openModal(player) {
     groupClass: "modal-faction-group"
   });
   modalCountry.textContent = `${countryToFlag(player.country)} ${player.country}`;
-  modalWins.textContent = String(player.wins);
+  modalLevel.textContent = String(player.level);
   modalKd.textContent = Number(player.kd).toFixed(1);
   modalDiscord.href = `https://discord.com/users/${player.discordId}`;
   modalDiscord.textContent = "Open Player Discord";
@@ -1406,13 +1458,13 @@ function openModal(player) {
 }
 
 function renderTopPlayerCard(player) {
-  if (!topPlayerCard || !topPlayerNameNode || !topPlayerSubtitleNode || !topPlayerWinsNode || !topPlayerKdNode || !topCountryBadgeNode || !topPlayerAvatarNode || !topFactionBadgeNode) {
+  if (!topPlayerCard || !topPlayerNameNode || !topPlayerSubtitleNode || !topPlayerLevelNode || !topPlayerKdNode || !topCountryBadgeNode || !topPlayerAvatarNode || !topFactionBadgeNode) {
     return;
   }
 
   topPlayerNameNode.textContent = player.name;
   topPlayerSubtitleNode.textContent = TOP_PLAYER_OVERRIDES.subtitle;
-  topPlayerWinsNode.textContent = String(player.wins);
+  topPlayerLevelNode.textContent = String(player.level);
   topPlayerKdNode.textContent = Number(player.kd).toFixed(1);
   topCountryBadgeNode.textContent = `${countryToFlag(player.country)} ${player.country}`;
   const factionPrimaryToken = splitFactionTokens(player.faction)[0];
@@ -1520,7 +1572,7 @@ async function init() {
   players.forEach((player) => {
     const isTop = player.name.toLowerCase() === TOP_PLAYER_NAME.toLowerCase();
     const stats = getPlayerStats(player.name, isTop);
-    player.wins = stats.wins;
+    player.level = stats.level;
     player.kd = stats.kd;
   });
 
@@ -1578,3 +1630,4 @@ if (typeof window !== "undefined") {
 }
 
 startOpsHud();
+startLfgQueueSystem();
