@@ -2937,14 +2937,9 @@ async function handleOneVsOneCommand(interaction, context) {
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    const normalized = String(message || "").toLowerCase();
-    const friendly = normalized.includes("unauthorized")
-      ? "Queue auth mismatch. Set the same LFG_QUEUE_API_TOKEN (or BOT_WEBHOOK_SECRET) in VPS and Vercel."
-      : message;
-
+    console.warn("[1v1 Queue Error]", error instanceof Error ? error.message : error);
     await interaction.reply({
-      content: `Failed to update 1v1 queue: ${friendly}`,
+      content: "1v1 queue is temporarily unavailable. Try again in a moment.",
       ephemeral: true
     });
   }
