@@ -44,7 +44,8 @@ const fallbackPlayerLines = [
   "43. xxninjaxx9065 -Faction: N/A | Country: England - 805826703783231509",
   "44. umairomg777- Faction: AH | Country: india -790594364454862938",
   "45  kkevin789- Faction: AH |Country: USA -770824804676010004",
-  "46. AvgEggEnjoyer- Faction: DK | Country: Czech Republic -805144861417144331"
+  "46. AvgEggEnjoyer- Faction: DK | Country: Czech Republic -805144861417144331",
+  "47. besilikekesi - Faction: AH | Country: Albania"
 ];
 
 const avatarIdMap = new Map([
@@ -310,12 +311,10 @@ function parsePlayerLine(rawLine) {
 
   const withoutIndex = line.replace(/^\d+\s*\.?\s*/, "");
   const discordMatch = withoutIndex.match(/-\s*(\d{8,})\s*$/);
-  if (!discordMatch) {
-    return null;
-  }
-
-  const discordId = discordMatch[1];
-  const withoutDiscord = withoutIndex.slice(0, discordMatch.index).trim();
+  const discordId = discordMatch ? discordMatch[1] : "";
+  const withoutDiscord = discordMatch
+    ? withoutIndex.slice(0, discordMatch.index).trim()
+    : withoutIndex;
   const dataMatch = withoutDiscord.match(/^(.*?)\s*-\s*Faction:\s*(.*?)\s*\|\s*Country:\s*(.*?)\s*$/i);
   if (!dataMatch) {
     return null;
@@ -1449,8 +1448,15 @@ function openModal(player) {
   modalCountry.textContent = `${countryToFlag(player.country)} ${player.country}`;
   modalLevel.textContent = String(player.level);
   modalKd.textContent = Number(player.kd).toFixed(1);
-  modalDiscord.href = `https://discord.com/users/${player.discordId}`;
-  modalDiscord.textContent = "Open Player Discord";
+  if (/^\d{8,}$/.test(String(player.discordId || ""))) {
+    modalDiscord.href = `https://discord.com/users/${player.discordId}`;
+    modalDiscord.textContent = "Open Player Discord";
+    modalDiscord.removeAttribute("aria-disabled");
+  } else {
+    modalDiscord.href = "#";
+    modalDiscord.textContent = "Discord not linked";
+    modalDiscord.setAttribute("aria-disabled", "true");
+  }
 
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");
