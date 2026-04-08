@@ -57,16 +57,10 @@
 
       <p id="adminSyncInfo" class="admin-status">Loading data...</p>
 
-      <section class="admin-card" aria-label="Bot apply and notification settings">
-        <h2>Bot Apply + Notifications</h2>
-        <p>Manage apply channels and broadcast to specific Discord IDs from web admin.</p>
+      <section class="admin-card" aria-label="Bot notification sender">
+        <h2>Bot DM Sender</h2>
+        <p>Send a direct message to specific Discord user IDs.</p>
         <div class="admin-bot-grid">
-          <label for="adminApplyPanelChannel">Apply Panel Channel ID</label>
-          <input id="adminApplyPanelChannel" class="admin-bot-input" type="text" placeholder="123456789012345678">
-
-          <label for="adminApplicationsReceiveChannel">Applications Receive Channel ID</label>
-          <input id="adminApplicationsReceiveChannel" class="admin-bot-input" type="text" placeholder="123456789012345678">
-
           <label for="adminNotifyIds">Notify Discord User IDs (comma or newline)</label>
           <textarea id="adminNotifyIds" class="admin-bot-textarea" rows="3" placeholder="123... , 456..."></textarea>
 

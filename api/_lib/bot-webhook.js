@@ -139,7 +139,11 @@ function makeNotificationPayload(update) {
       .split(/[\s,|;]+/)
       .filter(Boolean);
 
-  const recipientIds = [...new Set(ids.map((value) => String(value || "").trim()).filter((value) => /^\d{8,}$/.test(value)))];
+  const recipientIds = [...new Set(
+    ids
+      .map((value) => String(value || "").trim().replace(/[<@!>]/g, ""))
+      .filter((value) => /^\d{8,}$/.test(value))
+  )];
 
   return {
     eventType: "notify",

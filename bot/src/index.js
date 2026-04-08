@@ -35,6 +35,18 @@ async function resolveTargetChannel() {
   return fetched;
 }
 
+function normalizeDirectMessageContent(title, message) {
+  const safeTitle = String(title || "Ascend Entrenched Broadcast").trim() || "Ascend Entrenched Broadcast";
+  const safeMessage = String(message || "").trim();
+  const content = `**${safeTitle}**\n${safeMessage}`.trim();
+
+  if (content.length <= 1900) {
+    return content;
+  }
+
+  return `${content.slice(0, 1897)}...`;
+}
+
 async function handleAcceptedEvent(payload, eventType) {
   if (!client.isReady()) {
     throw new Error("Discord client is not ready yet");
@@ -66,38 +78,46 @@ async function handleAcceptedEvent(payload, eventType) {
     const uniqueIds = [...new Set(ids)];
     const message = String(payload?.message || "").trim();
     const title = String(payload?.title || "Ascend Entrenched Broadcast").trim();
+    const dmContent = normalizeDirectMessageContent(title, message);
 
     let sent = 0;
     let failed = 0;
+    const failedIds = [];
     for (const userId of uniqueIds) {
       const user = await client.users.fetch(userId).catch(() => null);
       if (!user) {
         failed += 1;
+        failedIds.push(userId);
         continue;
       }
 
       try {
         await user.send({
-          embeds: [buildEventEmbed({
-            player: "Ascend Entrenched",
-            status: "info",
-            score: 0,
-            matchHighlight: message,
-            message: `${title}: ${message}`
-          }, EVENT_TYPES.NOTIFY)]
+          content: dmContent,
+          allowedMentions: { parse: [] }
         });
         sent += 1;
       } catch {
         failed += 1;
+        failedIds.push(userId);
       }
     }
 
-    const channel = await resolveTargetChannel();
-    await channel.send({
-      embeds: [buildEventEmbed({
-        message: `${title} sent to ${sent}/${uniqueIds.length} users${failed ? ` (${failed} failed)` : ""}.`
-      }, EVENT_TYPES.NOTIFY)]
-    });
+    try {
+      const channel = await resolveTargetChannel();
+      const failedSuffix = failedIds.length
+        ? ` Failed IDs: ${failedIds.slice(0, 5).join(", ")}${failedIds.length > 5 ? "..." : ""}.`
+        : "";
+
+      await channel.send({
+        embeds: [buildEventEmbed({
+          message: `${title} sent to ${sent}/${uniqueIds.length} users${failed ? ` (${failed} failed)` : ""}.${failedSuffix}`
+        }, EVENT_TYPES.NOTIFY)]
+      });
+    } catch (summaryError) {
+      console.warn("[Notify Summary Error]", summaryError instanceof Error ? summaryError.message : summaryError);
+    }
+
     return;
   }
 

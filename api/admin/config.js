@@ -3,8 +3,7 @@ const { getLeaderboardConfig, saveLeaderboardConfig } = require("../_lib/upstash
 const {
   sendLeaderboardUpdate,
   sendMatchHighlight,
-  sendSubstitution,
-  sendRuntimeSettings
+  sendSubstitution
 } = require("../_lib/bot-webhook");
 
 function clampLevel(value) {
@@ -79,25 +78,6 @@ function toPositiveInt(rawValue, fallback) {
   }
 
   return parsed;
-}
-
-function normalizeDiscordIds(raw) {
-  const values = Array.isArray(raw)
-    ? raw
-    : String(raw || "")
-      .split(/[\s,|;]+/)
-      .filter(Boolean);
-
-  return [...new Set(values.map((value) => String(value || "").trim()).filter((value) => /^\d{8,}$/.test(value)))];
-}
-
-function normalizeBotSettings(raw) {
-  const input = raw && typeof raw === "object" ? raw : {};
-  return {
-    applicationsPanelChannelId: String(input.applicationsPanelChannelId || "").trim(),
-    applicationsChannelId: String(input.applicationsChannelId || "").trim(),
-    notificationUserIds: normalizeDiscordIds(input.notificationUserIds)
-  };
 }
 
 function getTopLimit() {
@@ -331,11 +311,6 @@ async function dispatchBotSyncEvents(previousConfig, currentConfig) {
   return summary;
 }
 
-async function dispatchBotSettingsSync(config) {
-  const botSettings = normalizeBotSettings(config?.botSettings);
-  return sendRuntimeSettings(botSettings);
-}
-
 module.exports = async function handler(req, res) {
   if (!requireAdmin(req, res)) {
     return;
@@ -369,20 +344,25 @@ module.exports = async function handler(req, res) {
     const body = parseJsonBody(req);
     const players = normalizePlayers(body?.players);
     const order = normalizeOrder(body?.order, Object.keys(players));
-    const botSettings = normalizeBotSettings(body?.botSettings);
+    const existingBotSettings = previousConfig?.botSettings && typeof previousConfig.botSettings === "object"
+      ? previousConfig.botSettings
+      : {
+        applicationsPanelChannelId: "",
+        applicationsChannelId: "",
+        notificationUserIds: []
+      };
     const nextConfig = {
       version: 1,
       updatedAt: new Date().toISOString(),
       players,
       order,
-      botSettings
+      botSettings: existingBotSettings
     };
 
     try {
       const saved = await saveLeaderboardConfig(nextConfig);
       const botDispatch = await dispatchBotSyncEvents(previousConfig, saved);
-      const botSettingsDispatch = await dispatchBotSettingsSync(saved);
-      return sendJson(res, 200, { ok: true, config: saved, botDispatch, botSettingsDispatch });
+      return sendJson(res, 200, { ok: true, config: saved, botDispatch });
     } catch (error) {
       return sendJson(res, 500, {
         ok: false,

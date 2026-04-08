@@ -58,7 +58,11 @@ function validateNotifyPayload(payload) {
       .split(/[\s,|;]+/)
       .filter(Boolean);
 
-  const recipientIds = [...new Set(ids.map((value) => String(value || "").trim()).filter((value) => /^\d{8,}$/.test(value)))];
+  const recipientIds = [...new Set(
+    ids
+      .map((value) => String(value || "").trim().replace(/[<@!>]/g, ""))
+      .filter((value) => /^\d{8,}$/.test(value))
+  )];
 
   if (!recipientIds.length) {
     errors.push("recipientIds is required");
@@ -133,6 +137,13 @@ module.exports = async function handler(req, res) {
       return sendJson(res, 502, {
         ok: false,
         error: result?.error || "Failed to dispatch event to bot"
+      });
+    }
+
+    if (result?.skipped) {
+      return sendJson(res, 503, {
+        ok: false,
+        error: result?.reason || "Bot webhook is disabled or not configured"
       });
     }
 

@@ -13,8 +13,6 @@ const rowsNode = document.getElementById("adminRows");
 const reloadButtonNode = document.getElementById("adminReloadBtn");
 const saveButtonNode = document.getElementById("adminSaveBtn");
 const logoutButtonNode = document.getElementById("adminLogoutBtn");
-const applyPanelChannelNode = document.getElementById("adminApplyPanelChannel");
-const applicationsReceiveChannelNode = document.getElementById("adminApplicationsReceiveChannel");
 const notifyIdsNode = document.getElementById("adminNotifyIds");
 const notifyMessageNode = document.getElementById("adminNotifyMessage");
 const sendNotifyButtonNode = document.getElementById("adminSendNotifyBtn");
@@ -26,8 +24,6 @@ let currentConfig = {
   players: {},
   order: [],
   botSettings: {
-    applicationsPanelChannelId: "",
-    applicationsChannelId: "",
     notificationUserIds: []
   }
 };
@@ -112,7 +108,11 @@ function normalizeDiscordIds(rawValue) {
       .split(/[\s,|;]+/)
       .filter(Boolean);
 
-  return [...new Set(values.map((value) => String(value || "").trim()).filter((value) => /^\d{8,}$/.test(value)))];
+  return [...new Set(
+    values
+      .map((value) => String(value || "").trim().replace(/[<@!>]/g, ""))
+      .filter((value) => /^\d{8,}$/.test(value))
+  )];
 }
 
 function renderBotSettings(config) {
@@ -120,26 +120,10 @@ function renderBotSettings(config) {
     ? config.botSettings
     : {};
 
-  if (applyPanelChannelNode) {
-    applyPanelChannelNode.value = String(settings.applicationsPanelChannelId || "").trim();
-  }
-
-  if (applicationsReceiveChannelNode) {
-    applicationsReceiveChannelNode.value = String(settings.applicationsChannelId || "").trim();
-  }
-
   if (notifyIdsNode) {
     const ids = normalizeDiscordIds(settings.notificationUserIds);
     notifyIdsNode.value = ids.join(", ");
   }
-}
-
-function collectBotSettingsFromInputs() {
-  return {
-    applicationsPanelChannelId: String(applyPanelChannelNode?.value || "").trim(),
-    applicationsChannelId: String(applicationsReceiveChannelNode?.value || "").trim(),
-    notificationUserIds: normalizeDiscordIds(notifyIdsNode?.value || "")
-  };
 }
 
 function getStoredToken() {
@@ -538,7 +522,7 @@ async function loadPanelData() {
       : "Mode: leaderboard rank (Level only, K/D ignored)";
 
     setSyncStatus(`Loaded ${currentPlayers.length} Players. ${modeText}. Drag with the :: handle to reorder. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
-    setBotOpsStatus("Bot settings loaded. Update fields then Save Global Sync.");
+    setBotOpsStatus("DM sender ready.");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load panel data";
 
@@ -589,29 +573,20 @@ async function onSaveClick() {
     syncCurrentPlayersFromDom();
     const players = collectRowValues();
     const order = collectRowOrder();
-    const botSettings = collectBotSettingsFromInputs();
-    const saveResult = await saveAdminConfig(token, { players, order, botSettings });
+    const saveResult = await saveAdminConfig(token, { players, order });
     const saved = saveResult.config;
     currentConfig = saved;
     currentPlayers = mergePlayersWithConfig(currentPlayers, saved);
     renderRows(currentPlayers);
-    renderBotSettings(saved);
 
     const botDispatch = saveResult.botDispatch;
     const botSuffix = botDispatch
       ? ` Bot push: ${botDispatch.sent}/${botDispatch.attempted} sent${botDispatch.failed ? `, ${botDispatch.failed} failed` : ""}${botDispatch.skipped ? `, ${botDispatch.skipped} skipped` : ""}.`
       : "";
 
-    const settingsDispatch = saveResult.botSettingsDispatch;
-    const settingsSuffix = settingsDispatch
-      ? ` Runtime sync: ${settingsDispatch.ok ? "ok" : settingsDispatch.skipped ? `skipped (${settingsDispatch.reason || "n/a"})` : `failed (${settingsDispatch.error || "unknown"})`}.`
-      : "";
-
-    setSyncStatus(`Global sync saved. Mode: custom admin order. Updated: ${formatSyncTime(saved.updatedAt)}.${botSuffix}${settingsSuffix}`);
-    setBotOpsStatus("Bot settings saved and synced to bot runtime.");
+    setSyncStatus(`Global sync saved. Mode: custom admin order. Updated: ${formatSyncTime(saved.updatedAt)}.${botSuffix}`);
   } catch (error) {
     setSyncStatus(error instanceof Error ? error.message : "Save failed", true);
-    setBotOpsStatus("Failed to save bot settings.", true);
   }
 }
 
@@ -637,25 +612,41 @@ async function onSendNotifyClick() {
 
   setBotOpsStatus(`Sending message to ${ids.length} IDs...`);
 
-  const result = await requestJson(BOT_EVENT_ENDPOINT, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      eventType: "notify",
-      title: "Ascend Entrenched Admin Broadcast",
-      message,
-      recipientIds: ids
-    })
-  });
+  try {
+    const result = await requestJson(BOT_EVENT_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        eventType: "notify",
+        title: "Ascend Entrenched Admin Broadcast",
+        message,
+        recipientIds: ids
+      })
+    });
 
-  if (!result.ok) {
-    setBotOpsStatus(result.data?.error || "Failed to dispatch bot notification.", true);
-    return;
+    if (!result.ok) {
+      const details = Array.isArray(result.data?.details) && result.data.details.length
+        ? ` (${result.data.details.join("; ")})`
+        : "";
+      setBotOpsStatus(`${result.data?.error || "Failed to dispatch bot notification."}${details}`, true);
+      return;
+    }
+
+    const dispatch = result.data?.dispatch || {};
+    if (dispatch.skipped) {
+      setBotOpsStatus(`DM sender skipped: ${dispatch.reason || "webhook is disabled or not configured"}.`, true);
+      return;
+    }
+
+    const queueInfo = dispatch?.data && typeof dispatch.data === "object" ? dispatch.data : {};
+    const queuePosition = Number.isFinite(Number(queueInfo.queuePosition)) ? Number(queueInfo.queuePosition) : null;
+    const queueSuffix = queuePosition ? ` Queue position: ${queuePosition}.` : "";
+    setBotOpsStatus(`DM job accepted for ${ids.length} Discord IDs.${queueSuffix}`);
+  } catch (error) {
+    setBotOpsStatus(error instanceof Error ? error.message : "Failed to dispatch bot notification.", true);
   }
-
-  setBotOpsStatus(`Notification dispatched to bot for ${ids.length} Discord IDs.`);
 }
 
 function onLogoutClick() {
