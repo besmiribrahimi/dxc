@@ -268,6 +268,17 @@ function statusColor(settings, status) {
   return hexToInt(settings?.colors?.info, "#C8A2C8");
 }
 
+function renderWelcomeMessageTemplate(template, { memberTag, memberMention, serverName, memberCount }) {
+  const raw = String(template || "").trim();
+  const fallback = "Welcome {user} to {server}! You are member #{membercount}.";
+  const source = raw || fallback;
+
+  return source
+    .replace(/\{user\}/gi, memberMention || memberTag || "New member")
+    .replace(/\{server\}/gi, serverName || "the server")
+    .replace(/\{membercount\}/gi, String(memberCount || 0));
+}
+
 function buildTicketTopic(meta) {
   const safe = {
     owner: String(meta?.owner || "").trim(),
@@ -1178,8 +1189,8 @@ async function handleApplySetupCommand(interaction, context) {
     return;
   }
 
-  const panelChannel = interaction.options.getChannel("setchannel") || interaction.options.getChannel("panel_channel");
-  const applicationsChannel = interaction.options.getChannel("setmodapp") || interaction.options.getChannel("applications_channel");
+  const panelChannel = interaction.options.getChannel("setchannel");
+  const applicationsChannel = interaction.options.getChannel("setmodapp");
 
   const settings = getGuildSettings(interaction.guild.id, context.config);
   const current = applicationConfig(context);
@@ -1218,8 +1229,8 @@ async function handleTicketPanelSetupCommand(interaction, context) {
     return;
   }
 
-  const panelChannel = interaction.options.getChannel("setchannel") || interaction.options.getChannel("panel_channel");
-  const moderationChannel = interaction.options.getChannel("setmodapp") || interaction.options.getChannel("applications_channel");
+  const panelChannel = interaction.options.getChannel("setchannel");
+  const moderationChannel = interaction.options.getChannel("setmodapp");
   const settings = getGuildSettings(interaction.guild.id, context.config);
   const current = ticketPanelConfig(settings);
 
@@ -1356,6 +1367,13 @@ function buildSetupViewEmbed(settings) {
           `Ping Roles: ${pingRoles}`,
           `Reviewer Roles: ${reviewerRoles}`,
           `Allowed Roles: ${allowedRoles}`
+        ].join("\n")
+      },
+      {
+        name: "Welcome Settings",
+        value: [
+          `Channel: ${settings.welcomeChannelId ? `<#${settings.welcomeChannelId}>` : "Not set"}`,
+          `Message: ${settings.welcomeMessage || "Not set"}`
         ].join("\n")
       },
       {
@@ -2034,23 +2052,6 @@ const slashCommandBuilders = [
         .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
     ),
   new SlashCommandBuilder()
-    .setName("applysetup")
-    .setDescription("Alias: simple setup for application panel and mod review channel")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .setDMPermission(false)
-    .addChannelOption((option) =>
-      option
-        .setName("setchannel")
-        .setDescription("Channel where application panel message will be sent")
-        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-    )
-    .addChannelOption((option) =>
-      option
-        .setName("setmodapp")
-        .setDescription("Channel where applications are accepted or rejected")
-        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-    ),
-  new SlashCommandBuilder()
     .setName("setupticket")
     .setDescription("Simple setup for ticket panel and mod review channel")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
@@ -2068,21 +2069,21 @@ const slashCommandBuilders = [
         .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
     ),
   new SlashCommandBuilder()
-    .setName("ticketpanelsetup")
-    .setDescription("Alias: simple setup for ticket panel and mod review channel")
+    .setName("setwelcome")
+    .setDescription("Set welcome channel and join message")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false)
     .addChannelOption((option) =>
       option
-        .setName("setchannel")
-        .setDescription("Channel where ticket panel message will be sent")
+        .setName("channel")
+        .setDescription("Channel where welcome message will be sent")
         .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
     )
-    .addChannelOption((option) =>
+    .addStringOption((option) =>
       option
-        .setName("setmodapp")
-        .setDescription("Channel where ticket updates are sent for staff")
-        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+        .setName("message")
+        .setDescription("Welcome message template. Use {user}, {server}, {membercount}")
+        .setMaxLength(1024)
     ),
   new SlashCommandBuilder()
     .setName("ticketupdate")
@@ -2455,6 +2456,8 @@ async function handleConfigCheckCommand(interaction, context) {
     { label: "Leaderboard channel", ok: Boolean(settings.leaderboardChannelId) },
     { label: "Ticket enabled", ok: Boolean(settings.ticketEnabled) },
     { label: "Ticket category", ok: Boolean(settings.ticketCategoryId) },
+    { label: "Welcome channel", ok: Boolean(settings.welcomeChannelId) },
+    { label: "Welcome message", ok: Boolean(String(settings.welcomeMessage || "").trim()) },
     { label: "Applications channel", ok: Boolean(appConfig.channelId) },
     { label: "Application reviewer role", ok: Boolean(appConfig.reviewerRoleId) },
     { label: "Application accepted role", ok: Boolean(appConfig.acceptedRoleId) }
@@ -2534,6 +2537,93 @@ async function handleHqPostCommand(interaction, context) {
     content: `Broadcast sent to ${targetChannel}.${pin ? " Message pinned if permissions allowed." : ""}`,
     ephemeral: true
   });
+}
+
+async function handleSetWelcomeCommand(interaction, context) {
+  if (!interaction.inGuild()) {
+    await interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+    return;
+  }
+
+  const guildId = interaction.guild.id;
+  const settings = getGuildSettings(guildId, context.config);
+  const channel = interaction.options.getChannel("channel");
+  const message = interaction.options.getString("message");
+
+  if (!channel && !message) {
+    const preview = renderWelcomeMessageTemplate(settings.welcomeMessage, {
+      memberTag: interaction.user.tag,
+      memberMention: `<@${interaction.user.id}>`,
+      serverName: interaction.guild.name,
+      memberCount: interaction.guild.memberCount
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle("Welcome Setup")
+      .setColor(statusColor(settings, "active"))
+      .addFields(
+        {
+          name: "Channel",
+          value: settings.welcomeChannelId ? `<#${settings.welcomeChannelId}>` : "Not set"
+        },
+        {
+          name: "Template",
+          value: settings.welcomeMessage || "Not set"
+        },
+        {
+          name: "Preview",
+          value: preview.slice(0, 1024)
+        }
+      )
+      .setFooter({ text: footerText(settings) })
+      .setTimestamp(new Date());
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+    return;
+  }
+
+  const patch = {};
+  if (channel) {
+    patch.welcomeChannelId = channel.id;
+  }
+
+  if (typeof message === "string") {
+    patch.welcomeMessage = String(message).trim().slice(0, 1024);
+  }
+
+  const next = patchGuildSettings(guildId, patch, context.config);
+  const preview = renderWelcomeMessageTemplate(next.welcomeMessage, {
+    memberTag: interaction.user.tag,
+    memberMention: `<@${interaction.user.id}>`,
+    serverName: interaction.guild.name,
+    memberCount: interaction.guild.memberCount
+  });
+
+  const embed = new EmbedBuilder()
+    .setTitle("Welcome Setup Updated")
+    .setColor(statusColor(next, "active"))
+    .addFields(
+      {
+        name: "Channel",
+        value: next.welcomeChannelId ? `<#${next.welcomeChannelId}>` : "Not set"
+      },
+      {
+        name: "Template",
+        value: next.welcomeMessage || "Not set"
+      },
+      {
+        name: "Preview",
+        value: preview.slice(0, 1024)
+      },
+      {
+        name: "Template Variables",
+        value: "{user}, {server}, {membercount}"
+      }
+    )
+    .setFooter({ text: footerText(next) })
+    .setTimestamp(new Date());
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
 }
 
 async function handlePollCommand(interaction, context) {
@@ -3003,13 +3093,18 @@ async function handleSlashCommand(interaction, context) {
     return;
   }
 
-  if (interaction.commandName === "setupapply" || interaction.commandName === "applysetup") {
+  if (interaction.commandName === "setupapply") {
     await handleApplySetupCommand(interaction, context);
     return;
   }
 
-  if (interaction.commandName === "setupticket" || interaction.commandName === "ticketpanelsetup") {
+  if (interaction.commandName === "setupticket") {
     await handleTicketPanelSetupCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "setwelcome") {
+    await handleSetWelcomeCommand(interaction, context);
     return;
   }
 

@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
 const config = require("./config");
 const { UpdateQueue } = require("./queue/UpdateQueue");
 const { buildEventEmbed, EVENT_TYPES } = require("./events");
@@ -6,9 +6,10 @@ const { createApiServer } = require("./server/createApiServer");
 const { registerSlashCommands, handleSlashCommand } = require("./commands/slashCommands");
 const { saveRuntimeSettings } = require("./runtimeSettings");
 const { startLeaderboardAutoPoster } = require("./services/leaderboardAutoPoster");
+const { getGuildSettings } = require("./services/guildSettingsStore");
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
 });
 
 const updateQueue = new UpdateQueue({
@@ -45,6 +46,25 @@ function normalizeDirectMessageContent(title, message) {
   }
 
   return `${content.slice(0, 1897)}...`;
+}
+
+function welcomeColor(settings) {
+  const raw = String(settings?.colors?.active || "#C8A2C8").trim();
+  const safe = /^#[0-9A-Fa-f]{6}$/.test(raw) ? raw : "#C8A2C8";
+  return Number.parseInt(safe.slice(1), 16);
+}
+
+function renderWelcomeMessage(template, member) {
+  const guildName = String(member?.guild?.name || "this server");
+  const memberCount = Number(member?.guild?.memberCount || 0);
+  const mention = `<@${member.id}>`;
+  const fallback = "Welcome {user} to {server}! You are member #{membercount}.";
+  const source = String(template || "").trim() || fallback;
+
+  return source
+    .replace(/\{user\}/gi, mention)
+    .replace(/\{server\}/gi, guildName)
+    .replace(/\{membercount\}/gi, String(memberCount));
 }
 
 async function handleAcceptedEvent(payload, eventType) {
@@ -156,6 +176,36 @@ async function start() {
 
   client.on("error", (error) => {
     console.error("[Discord Client Error]", error);
+  });
+
+  client.on("guildMemberAdd", async (member) => {
+    try {
+      const settings = getGuildSettings(member.guild.id, config);
+      const channelId = String(settings?.welcomeChannelId || "").trim();
+      if (!channelId) {
+        return;
+      }
+
+      const channel = member.guild.channels.cache.get(channelId)
+        || await member.guild.channels.fetch(channelId).catch(() => null);
+
+      if (!channel || !channel.isTextBased()) {
+        return;
+      }
+
+      const description = renderWelcomeMessage(settings?.welcomeMessage, member);
+      const embed = new EmbedBuilder()
+        .setTitle(`Welcome to ${member.guild.name}`)
+        .setColor(welcomeColor(settings))
+        .setDescription(description.slice(0, 4096))
+        .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
+        .setFooter({ text: String(settings?.brandingFooter || "Ascend Entrenched") })
+        .setTimestamp(new Date());
+
+      await channel.send({ embeds: [embed] });
+    } catch (error) {
+      console.error("[Welcome Message Error]", error instanceof Error ? error.message : error);
+    }
   });
 
   client.on("interactionCreate", async (interaction) => {
