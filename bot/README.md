@@ -1,7 +1,8 @@
 # Ascend Entrenched Bot
 
 Discord bot for esports operations with:
-- Ticket-based submissions (modal + dedicated channels)
+- Help ticket system (modal + private ticket channels)
+- Separate application panel workflow
 - Synced leaderboard from web API
 - User profile lookup for competitive info
 - Admin setup flow in Discord (`/setup`)
@@ -40,11 +41,10 @@ npm run dev
 ## Ticket Flow
 
 1. Admin posts panel using `/ticketpanel`
-2. User clicks `Create Ticket`
+2. User clicks `Create Help Ticket`
 3. Modal asks:
-- Roblox Username
-- Country
-- Faction
+- Issue Subject
+- Issue Details
 4. Bot creates private ticket channel
 5. Staff roles are pinged
 6. Ticket supports:
@@ -55,11 +55,22 @@ npm run dev
 - Ticket log channel (`/setup tickets log_channel`)
 - Local audit file (`bot/ticket-audit.log`)
 
+## Application Flow
+
+1. Admin posts panel using `/applypanel`
+2. User clicks `Apply Now`
+3. Modal asks:
+- Roblox Username
+- Country
+- Faction
+4. Bot posts application embed to configured applications channel
+
 ## Commands
 
 - `/ping` - latency check
 - `/queue` - webhook queue status
 - `/ticketpanel` - post ticket button panel
+- `/applypanel` - post application button panel
 - `/ticketupdate note status?` - follow-up + optional status change
 - `/userinfo user` - Roblox/faction/country/matches/leaderboard status
 - `/leaderboard limit? page_size? post?` - synced paginated leaderboard

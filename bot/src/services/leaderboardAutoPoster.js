@@ -19,32 +19,19 @@ function colorToInt(hex, fallback) {
   return Number.parseInt(String(safe).slice(1), 16);
 }
 
-function statusIcon(status) {
-  const safe = String(status || "").trim().toLowerCase();
-  if (safe === "winner") {
-    return "[WIN]";
-  }
-
-  if (safe === "eliminated") {
-    return "[OUT]";
-  }
-
-  return "[ACT]";
-}
-
 function buildAutoPostEmbed(settings, data) {
   const entries = Array.isArray(data?.entries) ? data.entries.slice(0, 10) : [];
   const lines = entries.map((entry) => (
-    `${statusIcon(entry.status)} #${entry.rank} **${entry.player}** | Lvl ${entry.level} | K/D ${Number(entry.kd || 0).toFixed(1)} | Matches ${entry.totalMatches || 0}`
+    `#${entry.rank} **${entry.player}** | Lvl ${entry.level} | K/D ${Number(entry.kd || 0).toFixed(1)} | Matches ${entry.totalMatches || 0}`
   ));
 
   return new EmbedBuilder()
-    .setTitle("Ascend Entrenched Leaderboard Sync")
+    .setTitle("Ascend Entrenched Leaderboard")
     .setColor(colorToInt(settings?.colors?.active, "#C8A2C8"))
     .setDescription(lines.length ? lines.join("\n") : "No leaderboard entries available.")
     .addFields({
-      name: "Source",
-      value: String(data?.endpoint || settings?.leaderboardEndpoint || "Not configured")
+      name: "Note",
+      value: "Live leaderboard standings. Not a tournament bracket."
     })
     .setFooter({
       text: `${String(settings?.brandingFooter || "Ascend Entrenched").trim() || "Ascend Entrenched"} | Auto post`

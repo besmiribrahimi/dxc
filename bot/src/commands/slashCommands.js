@@ -30,13 +30,14 @@ const { appendTicketAudit } = require("../services/ticketAuditStore");
 
 const TICKET_CREATE_BUTTON_ID = "ticket_create";
 const TICKET_CREATE_MODAL_ID = "ticket_create_modal";
+const APPLY_CREATE_BUTTON_ID = "apply_create";
+const APPLY_CREATE_MODAL_ID = "apply_create_modal";
 const TICKET_STATUS_PREFIX = "ticket_status:";
 const TICKET_CLOSE_BUTTON_ID = "ticket_close";
 const TICKET_CLOSE_MODAL_ID = "ticket_close_modal";
 const LEADERBOARD_NAV_PREFIX = "lbnav";
 
 const DEFAULT_FOOTER = "Ascend Entrenched";
-const STATUS_ORDER = ["winner", "active", "eliminated"];
 const TICKET_STATUS_CHOICES = [
   { name: "Open", value: "open" },
   { name: "Waiting User", value: "waiting_user" },
@@ -159,13 +160,10 @@ function buildTicketTopic(meta) {
   const safe = {
     owner: String(meta?.owner || "").trim(),
     ticket: String(meta?.ticket || "").trim(),
-    status: String(meta?.status || "open").trim().toLowerCase(),
-    roblox: encodeURIComponent(String(meta?.roblox || "").trim()),
-    country: encodeURIComponent(String(meta?.country || "").trim()),
-    faction: encodeURIComponent(String(meta?.faction || "").trim())
+    status: String(meta?.status || "open").trim().toLowerCase()
   };
 
-  return `AE|owner=${safe.owner}|ticket=${safe.ticket}|status=${safe.status}|roblox=${safe.roblox}|country=${safe.country}|faction=${safe.faction}`;
+  return `AE|owner=${safe.owner}|ticket=${safe.ticket}|status=${safe.status}`;
 }
 
 function parseTicketTopic(topic) {
@@ -275,16 +273,18 @@ function buildTicketActionRows(disabled = false) {
   ];
 }
 
-function buildTicketEmbed({ settings, ticketId, applicant, roblox, country, faction, status }) {
+function buildTicketEmbed({ settings, ticketId, applicant, subject, details, status }) {
+  const subjectText = String(subject || "").trim() || "No subject provided";
+  const detailsText = String(details || "").trim() || "No details provided";
+
   return new EmbedBuilder()
     .setTitle(`Ticket ${ticketId}`)
     .setColor(statusColor(settings, status))
     .setDescription(`${statusIcon(status)} **Status:** ${normalizeStatusLabel(status)}`)
     .addFields(
       { name: "Applicant", value: `<@${applicant.id}>`, inline: true },
-      { name: "Roblox Username", value: roblox || "Unknown", inline: true },
-      { name: "Country", value: country || "Unknown", inline: true },
-      { name: "Faction", value: faction || "Unknown", inline: true }
+      { name: "Subject", value: subjectText.slice(0, 1024), inline: true },
+      { name: "Details", value: detailsText.slice(0, 1024), inline: false }
     )
     .setFooter({ text: footerText(settings) })
     .setTimestamp(new Date());
@@ -361,33 +361,25 @@ async function handleTicketCreateButton(interaction, context) {
 
   const modal = new ModalBuilder()
     .setCustomId(TICKET_CREATE_MODAL_ID)
-    .setTitle("Create Ticket");
+    .setTitle("Create Help Ticket");
 
-  const robloxInput = new TextInputBuilder()
-    .setCustomId("ticket_roblox")
-    .setLabel("Roblox Username")
+  const subjectInput = new TextInputBuilder()
+    .setCustomId("ticket_subject")
+    .setLabel("What do you need help with?")
     .setStyle(TextInputStyle.Short)
     .setRequired(true)
-    .setMaxLength(32);
+    .setMaxLength(100);
 
-  const countryInput = new TextInputBuilder()
-    .setCustomId("ticket_country")
-    .setLabel("Country")
-    .setStyle(TextInputStyle.Short)
+  const detailsInput = new TextInputBuilder()
+    .setCustomId("ticket_details")
+    .setLabel("Describe your issue")
+    .setStyle(TextInputStyle.Paragraph)
     .setRequired(true)
-    .setMaxLength(48);
-
-  const factionInput = new TextInputBuilder()
-    .setCustomId("ticket_faction")
-    .setLabel("Faction")
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true)
-    .setMaxLength(48);
+    .setMaxLength(1000);
 
   modal.addComponents(
-    new ActionRowBuilder().addComponents(robloxInput),
-    new ActionRowBuilder().addComponents(countryInput),
-    new ActionRowBuilder().addComponents(factionInput)
+    new ActionRowBuilder().addComponents(subjectInput),
+    new ActionRowBuilder().addComponents(detailsInput)
   );
 
   await interaction.showModal(modal);
@@ -422,12 +414,11 @@ async function handleTicketCreateModal(interaction, context) {
     return true;
   }
 
-  const roblox = interaction.fields.getTextInputValue("ticket_roblox").trim();
-  const country = interaction.fields.getTextInputValue("ticket_country").trim();
-  const faction = interaction.fields.getTextInputValue("ticket_faction").trim();
+  const subject = interaction.fields.getTextInputValue("ticket_subject").trim();
+  const details = interaction.fields.getTextInputValue("ticket_details").trim();
 
   const ticketId = Date.now().toString(36);
-  const baseName = sanitizeChannelName(roblox).slice(0, 40);
+  const baseName = sanitizeChannelName(subject).slice(0, 40);
   const channelName = `ticket-${baseName}-${ticketId.slice(-4)}`;
   const roleIds = reviewerRoleIds(settings);
   const overwrites = [
@@ -467,10 +458,7 @@ async function handleTicketCreateModal(interaction, context) {
     topic: buildTicketTopic({
       owner: interaction.user.id,
       ticket: ticketId,
-      status: "open",
-      roblox,
-      country,
-      faction
+      status: "open"
     }),
     permissionOverwrites: overwrites,
     reason: `Ticket created by ${interaction.user.tag}`
@@ -480,9 +468,8 @@ async function handleTicketCreateModal(interaction, context) {
     settings,
     ticketId,
     applicant: interaction.user,
-    roblox,
-    country,
-    faction,
+    subject,
+    details,
     status: "open"
   });
 
@@ -493,21 +480,14 @@ async function handleTicketCreateModal(interaction, context) {
     components: buildTicketActionRows(false)
   });
 
-  upsertUserProfileFromTicket(interaction.guild.id, interaction.user.id, {
-    robloxUsername: roblox,
-    country,
-    faction
-  });
-
   appendTicketAudit({
     event: "ticket_created",
     guildId: interaction.guild.id,
     channelId: channel.id,
     ticketId,
     ownerId: interaction.user.id,
-    roblox,
-    country,
-    faction
+    subject,
+    details
   });
 
   await sendTicketLog(
@@ -518,7 +498,7 @@ async function handleTicketCreateModal(interaction, context) {
   );
 
   await interaction.reply({
-    content: `Ticket created: ${channel}`,
+    content: `Help ticket created: ${channel}`,
     ephemeral: true
   });
 
@@ -713,41 +693,16 @@ async function handleTicketCloseModal(interaction, context) {
 }
 
 function buildLeaderboardPages(entries, pageSize) {
-  const grouped = {
-    winner: [],
-    active: [],
-    eliminated: []
-  };
-
-  entries.forEach((entry) => {
-    const status = STATUS_ORDER.includes(entry.status) ? entry.status : "active";
-    grouped[status].push(entry);
-  });
-
+  const safeEntries = Array.isArray(entries) ? entries : [];
   const pages = [];
-  STATUS_ORDER.forEach((status) => {
-    const list = grouped[status];
-    if (!list.length) {
-      return;
-    }
-
-    const chunks = chunkArray(list, pageSize);
-    chunks.forEach((items, index) => {
-      pages.push({
-        status,
-        items,
-        sectionPage: index + 1,
-        sectionPages: chunks.length
-      });
-    });
+  const chunks = chunkArray(safeEntries, pageSize);
+  chunks.forEach((items) => {
+    pages.push({ items });
   });
 
   if (!pages.length) {
     pages.push({
-      status: "active",
-      items: [],
-      sectionPage: 1,
-      sectionPages: 1
+      items: []
     });
   }
 
@@ -755,18 +710,17 @@ function buildLeaderboardPages(entries, pageSize) {
 }
 
 function buildLeaderboardEmbed({ settings, page, pageIndex, pages, updatedAt, endpoint }) {
-  const statusLabel = normalizeStatusLabel(page.status);
   const lines = page.items.map((entry) => (
-    `${statusIcon(entry.status)} #${entry.rank} **${entry.player}** | Lvl ${entry.level} | K/D ${entry.kd.toFixed(1)} | Matches ${entry.totalMatches}`
+    `#${entry.rank} **${entry.player}** | Lvl ${entry.level} | K/D ${entry.kd.toFixed(1)} | Matches ${entry.totalMatches}`
   ));
 
   const embed = new EmbedBuilder()
-    .setTitle(`Ascend Entrenched Leaderboard - ${statusLabel}`)
-    .setColor(statusColor(settings, page.status))
+    .setTitle("Ascend Entrenched Leaderboard")
+    .setColor(statusColor(settings, "active"))
     .setDescription(lines.length ? lines.join("\n") : "No players in this section.")
     .addFields({
-      name: "Source",
-      value: endpoint,
+      name: "Note",
+      value: "Live leaderboard standings. Not a tournament bracket.",
       inline: false
     })
     .setFooter({ text: `${footerText(settings)} • Page ${pageIndex + 1}/${pages.length}` })
@@ -776,11 +730,122 @@ function buildLeaderboardEmbed({ settings, page, pageIndex, pages, updatedAt, en
     const top = page.items[0];
     embed.addFields({
       name: "Highlight",
-      value: `${statusIcon(top.status)} ${top.player} leads this section with Level ${top.level} and K/D ${top.kd.toFixed(1)}.`
+      value: `${top.player} leads this page with Level ${top.level} and K/D ${top.kd.toFixed(1)}.`
     });
   }
 
   return embed;
+}
+
+async function handleApplyCreateButton(interaction) {
+  if (!interaction.isButton() || interaction.customId !== APPLY_CREATE_BUTTON_ID) {
+    return false;
+  }
+
+  if (!interaction.inGuild()) {
+    await interaction.reply({
+      content: "Applications can only be submitted in a server.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const modal = new ModalBuilder()
+    .setCustomId(APPLY_CREATE_MODAL_ID)
+    .setTitle("Submit Application");
+
+  const robloxInput = new TextInputBuilder()
+    .setCustomId("apply_roblox")
+    .setLabel("Roblox Username")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(32);
+
+  const countryInput = new TextInputBuilder()
+    .setCustomId("apply_country")
+    .setLabel("Country")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(48);
+
+  const factionInput = new TextInputBuilder()
+    .setCustomId("apply_faction")
+    .setLabel("Faction")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(48);
+
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(robloxInput),
+    new ActionRowBuilder().addComponents(countryInput),
+    new ActionRowBuilder().addComponents(factionInput)
+  );
+
+  await interaction.showModal(modal);
+  return true;
+}
+
+async function handleApplyCreateModal(interaction, context) {
+  if (!interaction.isModalSubmit() || interaction.customId !== APPLY_CREATE_MODAL_ID) {
+    return false;
+  }
+
+  if (!interaction.inGuild()) {
+    await interaction.reply({ content: "Applications can only be submitted in a server.", ephemeral: true });
+    return true;
+  }
+
+  const settings = getGuildSettings(interaction.guild.id, context.config);
+  const roblox = interaction.fields.getTextInputValue("apply_roblox").trim();
+  const country = interaction.fields.getTextInputValue("apply_country").trim();
+  const faction = interaction.fields.getTextInputValue("apply_faction").trim();
+
+  const configuredChannelId = String(context.config.applicationsChannelId || "").trim();
+  const targetChannel = configuredChannelId
+    ? interaction.guild.channels.cache.get(configuredChannelId)
+      || await interaction.guild.channels.fetch(configuredChannelId).catch(() => null)
+    : interaction.channel;
+
+  if (!targetChannel || !targetChannel.isTextBased()) {
+    await interaction.reply({
+      content: "Applications channel is not configured or invalid.",
+      ephemeral: true
+    });
+    return true;
+  }
+
+  const applicationEmbed = new EmbedBuilder()
+    .setTitle("New Application")
+    .setColor(statusColor(settings, "active"))
+    .addFields(
+      { name: "User", value: `<@${interaction.user.id}>`, inline: true },
+      { name: "Roblox Username", value: roblox, inline: true },
+      { name: "Country", value: country, inline: true },
+      { name: "Faction", value: faction, inline: true }
+    )
+    .setFooter({ text: footerText(settings) })
+    .setTimestamp(new Date());
+
+  const reviewerRoleId = String(context.config.applicationsReviewerRoleId || "").trim();
+  const reviewerMention = reviewerRoleId ? `<@&${reviewerRoleId}>` : null;
+
+  await targetChannel.send({
+    content: reviewerMention,
+    embeds: [applicationEmbed]
+  });
+
+  upsertUserProfileFromTicket(interaction.guild.id, interaction.user.id, {
+    robloxUsername: roblox,
+    country,
+    faction
+  });
+
+  await interaction.reply({
+    content: `Application submitted successfully in ${targetChannel}.`,
+    ephemeral: true
+  });
+
+  return true;
 }
 
 function buildLeaderboardNavRows(requesterId, pageIndex, totalPages, limit, pageSize) {
@@ -1409,6 +1474,11 @@ const slashCommandBuilders = [
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false),
   new SlashCommandBuilder()
+    .setName("applypanel")
+    .setDescription("Post the application panel")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false),
+  new SlashCommandBuilder()
     .setName("ticketupdate")
     .setDescription("Post a ticket follow-up note and optional status")
     .setDMPermission(false)
@@ -1613,6 +1683,14 @@ function getMuteDurationMs(minutes) {
 }
 
 async function handleSlashCommand(interaction, context) {
+  if (await handleApplyCreateButton(interaction)) {
+    return;
+  }
+
+  if (await handleApplyCreateModal(interaction, context)) {
+    return;
+  }
+
   if (await handleTicketCreateButton(interaction, context)) {
     return;
   }
@@ -1663,9 +1741,9 @@ async function handleSlashCommand(interaction, context) {
     const panelEmbed = new EmbedBuilder()
       .setTitle("Ascend Entrenched Tickets")
       .setColor(statusColor(settings, "active"))
-      .setDescription("Press **Create Ticket** to submit your Roblox competitive profile for staff review.")
+      .setDescription("Press **Create Help Ticket** to open a private support ticket with staff.")
       .addFields(
-        { name: "Required", value: "Roblox Username, Country, Faction" },
+        { name: "Required", value: "Issue Subject and Details" },
         { name: "Status", value: settings.ticketEnabled ? "Ticket creation enabled" : "Ticket creation disabled" }
       )
       .setFooter({ text: footerText(settings) })
@@ -1677,9 +1755,33 @@ async function handleSlashCommand(interaction, context) {
         new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setCustomId(TICKET_CREATE_BUTTON_ID)
-            .setLabel("Create Ticket")
+            .setLabel("Create Help Ticket")
             .setStyle(ButtonStyle.Success)
             .setDisabled(!settings.ticketEnabled)
+        )
+      ]
+    });
+    return;
+  }
+
+  if (interaction.commandName === "applypanel") {
+    const settings = getGuildSettings(interaction.guild.id, context.config);
+    const panelEmbed = new EmbedBuilder()
+      .setTitle("Ascend Entrenched Applications")
+      .setColor(statusColor(settings, "active"))
+      .setDescription("Press **Apply Now** to submit your player application. This is separate from help tickets.")
+      .addFields({ name: "Required", value: "Roblox Username, Country, Faction" })
+      .setFooter({ text: footerText(settings) })
+      .setTimestamp(new Date());
+
+    await interaction.reply({
+      embeds: [panelEmbed],
+      components: [
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(APPLY_CREATE_BUTTON_ID)
+            .setLabel("Apply Now")
+            .setStyle(ButtonStyle.Primary)
         )
       ]
     });
