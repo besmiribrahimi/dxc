@@ -3,6 +3,7 @@ const config = require("./config");
 const { UpdateQueue } = require("./queue/UpdateQueue");
 const { buildEventEmbed } = require("./events");
 const { createApiServer } = require("./server/createApiServer");
+const { registerSlashCommands, handleSlashCommand } = require("./commands/slashCommands");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
@@ -41,12 +42,42 @@ async function handleAcceptedEvent(payload, eventType) {
 }
 
 async function start() {
-  client.once("ready", () => {
+  client.once("ready", async () => {
     console.log(`Discord bot online as ${client.user.tag}`);
+
+    try {
+      const registration = await registerSlashCommands(client, config);
+      if (registration.scope === "guild") {
+        console.log(`Registered ${registration.count} slash commands in guild ${registration.guildId}`);
+      } else {
+        console.log(`Registered ${registration.count} global slash commands`);
+      }
+    } catch (error) {
+      console.error("[Slash Command Registration Error]", error);
+    }
   });
 
   client.on("error", (error) => {
     console.error("[Discord Client Error]", error);
+  });
+
+  client.on("interactionCreate", async (interaction) => {
+    try {
+      await handleSlashCommand(interaction, {
+        config,
+        updateQueue,
+        handleAcceptedEvent
+      });
+    } catch (error) {
+      console.error("[Interaction Error]", error);
+
+      if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: "Command failed. Check bot logs.",
+          ephemeral: true
+        }).catch(() => {});
+      }
+    }
   });
 
   await client.login(config.discordToken);

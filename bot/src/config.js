@@ -11,6 +11,17 @@ function requireEnv(name) {
   return value;
 }
 
+function firstEnv(names, fallback = "") {
+  for (const name of names) {
+    const value = String(process.env[name] || "").trim();
+    if (value) {
+      return value;
+    }
+  }
+
+  return fallback;
+}
+
 function toPositiveInt(rawValue, fallback) {
   const parsed = Number.parseInt(String(rawValue || ""), 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -20,9 +31,20 @@ function toPositiveInt(rawValue, fallback) {
   return parsed;
 }
 
+const discordToken = firstEnv(["DISCORD_BOT_TOKEN", "DISCORD_TOKEN"]);
+if (!discordToken) {
+  throw new Error("Missing required environment variable: DISCORD_BOT_TOKEN (or DISCORD_TOKEN)");
+}
+
+const discordChannelId = firstEnv(["DISCORD_CHANNEL_ID", "CHANNEL_ID"]);
+if (!discordChannelId) {
+  throw new Error("Missing required environment variable: DISCORD_CHANNEL_ID (or CHANNEL_ID)");
+}
+
 module.exports = {
-  discordToken: requireEnv("DISCORD_BOT_TOKEN"),
-  discordChannelId: requireEnv("DISCORD_CHANNEL_ID"),
+  discordToken,
+  discordChannelId,
+  discordGuildId: firstEnv(["DISCORD_GUILD_ID", "GUILD_ID"]),
   port: toPositiveInt(process.env.PORT, 3001),
   webhookSharedSecret: String(process.env.WEBHOOK_SHARED_SECRET || "").trim(),
   queueIntervalMs: toPositiveInt(process.env.QUEUE_INTERVAL_MS, 1200),

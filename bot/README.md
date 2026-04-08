@@ -21,6 +21,7 @@ npm install
 - `DISCORD_CHANNEL_ID`
 
 Optional security and queue tuning:
+- `DISCORD_GUILD_ID` (recommended for instant slash command updates)
 - `WEBHOOK_SHARED_SECRET`
 - `QUEUE_INTERVAL_MS`
 - `MAX_QUEUE_SIZE`
@@ -51,6 +52,17 @@ Health endpoint:
 If `WEBHOOK_SHARED_SECRET` is set, include header:
 
 `x-webhook-secret: your_shared_secret`
+
+## 3.1) Slash Commands
+
+The bot auto-registers these commands at startup:
+
+- `/ping` - bot latency/health
+- `/queue` - webhook queue size and rate
+- `/webhooktest` - queue a test leaderboard embed
+
+If `DISCORD_GUILD_ID` is set, commands appear quickly in that guild.
+If not set, commands register globally and can take up to 1 hour to appear.
 
 ## 4) Web Payload Example
 
