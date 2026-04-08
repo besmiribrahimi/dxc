@@ -220,6 +220,14 @@ let opsHudNodes = null;
 let opsHudClockIntervalId = null;
 let opsHudSyncIntervalId = null;
 let lfgSyncIntervalId = null;
+
+function isAdminPanelPage() {
+  const pathname = String(window.location.pathname || "").toLowerCase();
+  return pathname.endsWith("/admin.html")
+    || pathname.endsWith("admin.html")
+    || pathname.endsWith("/admin")
+    || Boolean(document.querySelector(".admin-content"));
+}
 let opsHudMotdIntervalId = null;
 let opsHudMotdIndex = 0;
 let factionNewsRotateIntervalId = null;
@@ -627,6 +635,13 @@ async function fetchEntrenchedTimesNews() {
 }
 
 function ensureOpsHud() {
+  // Command Grid is disabled by request; keep HUD logic inert.
+  return null;
+
+  if (!isAdminPanelPage()) {
+    return null;
+  }
+
   if (opsHudNodes) {
     return opsHudNodes;
   }
@@ -901,14 +916,19 @@ function startOpsHud() {
 }
 
 function ensureFactionPulseMount() {
+  // Faction Pulse Radar is disabled by request.
+  return null;
+
+  if (!isAdminPanelPage()) {
+    return null;
+  }
+
   const existing = document.getElementById("factionPulse");
   if (existing) {
     return existing;
   }
 
-  const showcaseMain = document.querySelector(".content");
-  const leaderboardMain = document.querySelector(".leaderboard-content");
-  const host = showcaseMain || leaderboardMain;
+  const host = document.querySelector(".admin-content");
   if (!host) {
     return null;
   }
@@ -925,9 +945,9 @@ function ensureFactionPulseMount() {
     <div id="factionPulseGrid" class="faction-pulse-grid"></div>
   `;
 
-  const targetAnchor = host.querySelector(".leaderboard-highlight, .leaderboard-warroom-link, .players-section, .leaderboard-top-three");
+  const targetAnchor = host.querySelector("#adminPanel, #adminAuthCard");
   if (targetAnchor) {
-    targetAnchor.insertAdjacentElement("beforebegin", section);
+    targetAnchor.insertAdjacentElement("afterend", section);
   } else {
     host.insertAdjacentElement("afterbegin", section);
   }
@@ -978,9 +998,10 @@ function ensureFactionNewsMount() {
     return existing;
   }
 
+  const adminMain = document.querySelector(".admin-content");
   const showcaseMain = document.querySelector(".content");
   const leaderboardMain = document.querySelector(".leaderboard-content");
-  const host = showcaseMain || leaderboardMain;
+  const host = adminMain || showcaseMain || leaderboardMain;
   if (!host) {
     return null;
   }
@@ -1000,9 +1021,13 @@ function ensureFactionNewsMount() {
     <div id="factionNewsList" class="faction-news-list"></div>
   `;
 
-  const targetAnchor = host.querySelector("#factionPulse, .leaderboard-highlight, .leaderboard-warroom-link, .players-section, .leaderboard-top-three");
+  const targetAnchor = host.querySelector("#adminPanel, #adminAuthCard, #factionPulse, .leaderboard-highlight, .leaderboard-warroom-link, .players-section, .leaderboard-top-three");
   if (targetAnchor) {
-    targetAnchor.insertAdjacentElement("beforebegin", section);
+    if (targetAnchor.id === "adminPanel" || targetAnchor.id === "adminAuthCard") {
+      targetAnchor.insertAdjacentElement("afterend", section);
+    } else {
+      targetAnchor.insertAdjacentElement("beforebegin", section);
+    }
   } else {
     host.insertAdjacentElement("afterbegin", section);
   }
@@ -1535,8 +1560,7 @@ window.addEventListener("keydown", (event) => {
     return;
   }
 
-  const pathname = String(window.location.pathname || "").toLowerCase();
-  if (pathname.endsWith("/admin.html") || pathname.endsWith("admin.html")) {
+  if (isAdminPanelPage()) {
     return;
   }
 

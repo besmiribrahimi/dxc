@@ -31,6 +31,14 @@ let currentPlayers = [];
 let draggingPlayerKey = "";
 let draggingInitialized = false;
 
+function renderAdminNewsFeed(players) {
+  if (typeof window.renderFactionNewsFeed !== "function") {
+    return;
+  }
+
+  window.renderFactionNewsFeed(Array.isArray(players) ? players : []);
+}
+
 function safeText(value) {
   if (typeof escapeHtml === "function") {
     return escapeHtml(value);
@@ -514,6 +522,7 @@ async function loadPanelData() {
     currentConfig = config;
     currentPlayers = mergePlayersWithConfig(parsedPlayers, config);
     renderRows(currentPlayers);
+    renderAdminNewsFeed(currentPlayers);
     renderBotSettings(config);
 
     const hasManualOrder = Array.isArray(config?.order) && config.order.length > 0;
@@ -578,6 +587,7 @@ async function onSaveClick() {
     currentConfig = saved;
     currentPlayers = mergePlayersWithConfig(currentPlayers, saved);
     renderRows(currentPlayers);
+    renderAdminNewsFeed(currentPlayers);
 
     const botDispatch = saveResult.botDispatch;
     const botSuffix = botDispatch
