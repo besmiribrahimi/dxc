@@ -375,10 +375,6 @@ function mergePlayersWithConfig(players, config) {
         return b.level - a.level;
       }
 
-      if (b.kd !== a.kd) {
-        return b.kd - a.kd;
-      }
-
       return a.sourceIndex - b.sourceIndex;
     })
     .map(({ sourceIndex, ...player }) => player);
@@ -475,7 +471,7 @@ async function loadPanelData() {
     const hasManualOrder = Array.isArray(config?.order) && config.order.length > 0;
     const modeText = hasManualOrder
       ? "Mode: custom admin order"
-      : "Mode: leaderboard rank (Level/K/D)";
+      : "Mode: leaderboard rank (Level only, K/D ignored)";
 
     setSyncStatus(`Loaded ${currentPlayers.length} Players. ${modeText}. Drag with the :: handle to reorder. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
   } catch (error) {

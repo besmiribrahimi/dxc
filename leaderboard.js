@@ -245,7 +245,7 @@ function renderLeaderboard(players, avatarMap, options = {}) {
 
   const modeLabel = hasManualOrder
     ? "Players ranked by Admin custom order."
-    : "Players ranked by Level and K/D.";
+    : "Players ranked by Level only (K/D does not affect placement).";
   leaderboardStatusNode.textContent = `${players.length} ${modeLabel}${syncLabel}`;
 }
 
@@ -288,10 +288,6 @@ async function initLeaderboardPage() {
 
       if (b.level !== a.level) {
         return b.level - a.level;
-      }
-
-      if (b.kd !== a.kd) {
-        return b.kd - a.kd;
       }
 
       return a.sourceIndex - b.sourceIndex;

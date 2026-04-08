@@ -125,10 +125,6 @@ function buildRankedLeaderboard(config, limit) {
         return bStats.level - aStats.level;
       }
 
-      if (bStats.kd !== aStats.kd) {
-        return bStats.kd - aStats.kd;
-      }
-
       return a.localeCompare(b);
     })
     .slice(0, topLimit)
