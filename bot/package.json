@@ -1,20 +1,19 @@
 {
-  "name": "draxar-dm-bot",
-  "version": "1.0.0",
-  "description": "Simple Discord bot for admin DM broadcasts by role",
+  "name": "ascend-entrenched-bot",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Discord bot with webhook listener for leaderboard, status, and match events",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "start:pm2": "pm2 start ecosystem.config.cjs --env production",
-    "restart:pm2": "pm2 restart entrenched-1v1-bot",
-    "stop:pm2": "pm2 stop entrenched-1v1-bot && pm2 delete entrenched-1v1-bot",
-    "logs:pm2": "pm2 logs entrenched-1v1-bot"
+    "dev": "node --watch src/index.js"
   },
   "engines": {
     "node": ">=18.17.0"
   },
   "dependencies": {
     "discord.js": "^14.16.3",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2"
   }
 }

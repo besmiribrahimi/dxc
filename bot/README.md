@@ -1,68 +1,116 @@
-# Simple Discord Bot (Reset Structure)
+# Ascend Entrenched Bot Webhook Bridge
 
-The old slash commands were removed.
+Node.js Discord bot improvement using:
+- discord.js v14
+- Express REST listener
+- Queue-based rate limiting for burst updates
+- Modular event handlers (leaderboard, highlights, substitutions)
 
-The bot now loads commands from two separate folders:
+## 1) Setup
 
-- `src/commands/admin` for admin-only commands
-- `src/commands/member` for regular member commands
+1. Open a terminal in `bot`.
+2. Install dependencies:
 
-This gives you a clean base to add new commands next.
-
-## Setup
-
-1. Create a Discord application and bot in Discord Developer Portal.
-2. Enable these bot intents:
-   - Server Members Intent
-3. Invite the bot to your server with scopes:
-   - `bot`
-   - `applications.commands`
-4. Copy `.env.example` to `.env` and fill values:
-   - `DISCORD_TOKEN`
-   - `CLIENT_ID`
-   - `GUILD_ID`
-   - `COMMAND_PROFILE=leaderboard` (default; only leaderboard-related commands)
-5. Install dependencies:
-   - `npm install`
-6. Run the bot:
-   - `npm start`
-
-To load every legacy command again, set `COMMAND_PROFILE=all`.
-
-## Website Integration
-
-This bot supports website-backed stats sync.
-
-Member command:
-
-- `/webstats`
-- `/webleaderboard`
-
-Admin command:
-
-- `/websyncstatus` (optional `refresh`)
-
-See [WEBSITE_INTEGRATION.md](WEBSITE_INTEGRATION.md) for endpoint contract and website script examples.
-
-## Command File Format
-
-Each command file should export:
-
-- `data`: a `SlashCommandBuilder`
-- `execute`: `async (interaction, context) => { ... }`
-
-Example structure:
-
-```js
-module.exports = {
-   data, // SlashCommandBuilder instance
-   async execute(interaction, context) {
-      // command logic
-   },
-};
+```bash
+npm install
 ```
 
-## Notes
+3. Copy `.env.example` to `.env`.
+4. Fill these required values:
+- `DISCORD_BOT_TOKEN`
+- `DISCORD_CHANNEL_ID`
 
-- Slash commands are registered only for the server in `GUILD_ID` for fast updates.
-- If there are no command files, the bot will register 0 guild commands.
+Optional security and queue tuning:
+- `WEBHOOK_SHARED_SECRET`
+- `QUEUE_INTERVAL_MS`
+- `MAX_QUEUE_SIZE`
+- `PORT`
+
+## 2) Run
+
+```bash
+npm start
+```
+
+Dev watch mode:
+
+```bash
+npm run dev
+```
+
+## 3) API Endpoint
+
+POST updates to:
+
+`/webhook/update`
+
+Health endpoint:
+
+`/health`
+
+If `WEBHOOK_SHARED_SECRET` is set, include header:
+
+`x-webhook-secret: your_shared_secret`
+
+## 4) Web Payload Example
+
+### Standard leaderboard update (your current format)
+
+```json
+{
+  "group": "H",
+  "player": "20SovietSO21",
+  "status": "winner",
+  "score": 42,
+  "matchHighlight": "Player scored a double kill"
+}
+```
+
+### Optional event type: highlight
+
+```json
+{
+  "eventType": "highlight",
+  "group": "H",
+  "player": "20SovietSO21",
+  "status": "info",
+  "score": 42,
+  "matchHighlight": "Player scored a double kill"
+}
+```
+
+### Optional event type: substitution
+
+```json
+{
+  "eventType": "substitution",
+  "group": "H",
+  "playerOut": "Player_A",
+  "playerIn": "Player_B",
+  "reason": "Tactical swap"
+}
+```
+
+## 5) Embed Rules Implemented
+
+- Title: `Group {group} Update` (leaderboard)
+- Fields: Player, Status, Score, Match Highlight
+- Colors:
+  - winner = Green
+  - eliminated = Red
+  - info = Blue
+
+## 6) Extension Notes
+
+The project is intentionally modular:
+
+- `src/events/leaderboard.js`: leaderboard embed builder
+- `src/events/matchHighlights.js`: highlight embed builder
+- `src/events/substitutions.js`: substitution embed builder
+- `src/validators/payloadValidators.js`: per-event validation
+- `src/events/index.js`: event type routing and dispatch
+
+To add a future event:
+1. Create a new event module in `src/events`.
+2. Add validation in `src/validators/payloadValidators.js`.
+3. Register routing in `src/events/index.js`.

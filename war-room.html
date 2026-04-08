@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ascend Entrenched | ENTRENCHED War Room</title>
+  <meta name="description" content="ENTRENCHED WW1 faction intelligence, momentum points, and game overview.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preload" as="image" href="assets/brand/logo-mark-512.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="war-room-page">
+  <div class="page-glow" aria-hidden="true"></div>
+
+  <header class="hero">
+    <a class="site-corner-brand" href="index.html" aria-label="Ascend Entrenched home">
+      <img src="assets/brand/logo-mark-512.png" alt="Ascend Entrenched logo" width="56" height="56" decoding="async" fetchpriority="high">
+    </a>
+    <h1>Ascend Entrenched</h1>
+    <p>ENTRENCHED WW1 War Room</p>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a class="nav-link" href="index.html">Player Showcase</a>
+      <a class="nav-link" href="leaderboard.html">Leaderboard</a>
+      <a class="nav-link active" href="war-room.html">War Room</a>
+    </nav>
+  </header>
+
+  <main class="warroom-content">
+    <section class="warroom-intro" aria-label="War room intro">
+      <div>
+        <h2>Frontline Intelligence</h2>
+        <p>
+          Live faction momentum built from your leaderboard. This page tracks which regiment is currently
+          controlling the pressure line in ENTRENCHED WW1.
+        </p>
+      </div>
+      <div class="warroom-intro-actions">
+        <a class="warroom-link" href="https://www.roblox.com/games/3678761576/ENTRENCHED-WW1" target="_blank" rel="noreferrer noopener">Open ENTRENCHED WW1</a>
+        <a class="warroom-link secondary" href="leaderboard.html">Back To Leaderboard</a>
+      </div>
+    </section>
+
+    <section class="warroom-metrics-grid" aria-label="War room metrics">
+      <article class="warroom-card">
+        <span>Trench Time UTC</span>
+        <strong id="warRoomClock">--:--:--</strong>
+      </article>
+      <article class="warroom-card">
+        <span>Strongest Regiment</span>
+        <strong id="warRoomChampion">Scanning...</strong>
+      </article>
+      <article class="warroom-card">
+        <span>Average K/D</span>
+        <strong id="warRoomAvgKd">0.00</strong>
+      </article>
+      <article class="warroom-card">
+        <span>Active Operators</span>
+        <strong id="warRoomPlayerCount">0</strong>
+      </article>
+    </section>
+
+    <section class="warroom-map-section" aria-label="Empires of Entrenched tactical map">
+      <div class="warroom-map-head">
+        <h3>Empires Of Entrenched Theater</h3>
+        <p>EOE map intelligence with live faction pressure overlays from your current points system.</p>
+      </div>
+      <div id="warRoomMapFrame" class="warroom-map-frame">
+        <img
+          id="warRoomMapImage"
+          class="warroom-map-image"
+          src="map eoe.png"
+          alt="Empires of Entrenched 3 strategic territory map"
+          loading="lazy"
+        >
+        <a
+          class="warroom-map-discord"
+          href="https://discord.gg/An5jfrCa"
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          Join EOE Discord
+        </a>
+        <div class="warroom-map-overlay" aria-hidden="true"></div>
+        <div id="warRoomHotspots" class="warroom-hotspots" aria-label="Faction hotspots"></div>
+      </div>
+      <p id="warRoomMapStatus" class="warroom-map-status">Calibrating frontline overlays...</p>
+      <article id="warRoomHotspotInfo" class="warroom-hotspot-info" aria-live="polite">
+        <strong>Hover a map hotspot</strong>
+        <p>Move over a faction region to inspect live points and top operator.</p>
+      </article>
+      <div id="warRoomMapLeaders" class="warroom-map-badges" aria-label="Top map factions"></div>
+    </section>
+
+    <section class="warroom-layout" aria-label="Faction analytics and game intel">
+      <article class="warroom-panel">
+        <div class="warroom-panel-head">
+          <h3>Faction Momentum Index</h3>
+          <p id="warRoomSync" class="warroom-sync">Loading intel...</p>
+        </div>
+        <div id="warRoomPowerRows" class="warroom-power-rows"></div>
+      </article>
+
+      <article class="warroom-panel">
+        <div class="warroom-panel-head">
+          <h3>Top Operators</h3>
+          <p>Highest impact based on level and K/D blend.</p>
+        </div>
+        <div id="warRoomTopOperators" class="warroom-operators"></div>
+      </article>
+    </section>
+
+    <section class="warroom-game-info" aria-label="Game info">
+      <h3>About ENTRENCHED WW1</h3>
+      <div class="warroom-info-grid">
+        <article class="warroom-info-card">
+          <h4>Core Gameplay</h4>
+          <p>Loosely based on World War 1, with Entente and Central Powers trench warfare.</p>
+          <p>Features 9 classes and modes like frontline attack/defense, conquest, and domination.</p>
+        </article>
+
+        <article class="warroom-info-card">
+          <h4>Latest Public Update</h4>
+          <p>Version v1.12.1 Class Mastery update includes Neuve Chapelle 1915 and mastery charms.</p>
+          <p>Also lists map vote boost and gamepass gifting features.</p>
+        </article>
+
+        <article class="warroom-info-card">
+          <h4>Technical Snapshot</h4>
+          <p>Genre: Shooter (Deathmatch Shooter). Server size: 40 players.</p>
+          <p>Playable on PC, Mobile, and Console. Created 8/18/2019, updated 3/28/2026.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="warroom-points-note" aria-label="Points model">
+      <h3>Momentum Points Model</h3>
+      <p>
+        Faction score is calculated per player as <strong>(Level * 12) + (K/D * 18) + Rank Bonus</strong>,
+        then totaled by faction to show current frontline pressure.
+      </p>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+  <script src="warroom.js"></script>
+</body>
+</html>

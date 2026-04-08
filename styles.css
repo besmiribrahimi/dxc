@@ -81,6 +81,38 @@ body::after {
   position: relative;
 }
 
+.site-corner-brand {
+  position: absolute;
+  top: 1.05rem;
+  left: 1.05rem;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(147, 197, 253, 0.44);
+  background: rgba(2, 6, 23, 0.62);
+  box-shadow: 0 0 18px rgba(59, 130, 246, 0.28);
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+  z-index: 3;
+}
+
+.site-corner-brand img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: block;
+}
+
+.site-corner-brand:hover,
+.site-corner-brand:focus-visible {
+  transform: translateY(-1px) scale(1.03);
+  border-color: rgba(147, 197, 253, 0.72);
+  box-shadow: 0 0 22px rgba(59, 130, 246, 0.4);
+  outline: none;
+}
+
 .hero::before {
   content: "";
   position: absolute;
@@ -119,6 +151,8 @@ body::after {
   margin-top: 1.1rem;
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 0.5rem;
   padding: 0.36rem;
   border: 1px solid rgba(147, 197, 253, 0.24);
@@ -691,6 +725,197 @@ body::after {
   margin: 0 auto 4.5rem;
 }
 
+.war-room-panel {
+  position: relative;
+  margin-bottom: 1.2rem;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 18px;
+  padding: 1rem 1.1rem;
+  background:
+    linear-gradient(130deg, rgba(35, 10, 14, 0.92), rgba(15, 19, 35, 0.94) 48%, rgba(9, 14, 28, 0.96)),
+    radial-gradient(circle at 78% 20%, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0));
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 24px rgba(239, 68, 68, 0.14);
+  overflow: hidden;
+}
+
+.war-room-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(248, 113, 113, 0.07) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(248, 113, 113, 0.06) 1px, transparent 1px);
+  background-size: 56px 56px;
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+.war-room-header,
+.war-room-metrics,
+.war-room-power-rows {
+  position: relative;
+  z-index: 1;
+}
+
+.war-room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.war-room-header h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.2vw, 1.95rem);
+  font-family: "Rajdhani", sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.war-room-header p {
+  margin: 0.28rem 0 0;
+  color: #e8ced2;
+  font-size: 0.92rem;
+}
+
+.war-room-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  background: linear-gradient(125deg, rgba(185, 28, 28, 0.34), rgba(30, 64, 175, 0.24));
+  color: #fee2e2;
+  text-decoration: none;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  font-size: 0.72rem;
+  padding: 0.28rem 0.84rem;
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.war-room-cta:hover,
+.war-room-cta:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(248, 113, 113, 0.84);
+  box-shadow: 0 0 22px rgba(239, 68, 68, 0.28);
+  outline: none;
+}
+
+.war-room-metrics {
+  margin-top: 0.84rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.74rem;
+}
+
+.war-metric-card {
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: 12px;
+  background: rgba(15, 11, 21, 0.58);
+  padding: 0.72rem 0.8rem;
+}
+
+.war-metric-card span {
+  display: block;
+  color: #fbcaca;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.war-metric-card strong {
+  display: block;
+  margin-top: 0.14rem;
+  color: #ffe4e6;
+  font-size: clamp(1.2rem, 2.6vw, 1.6rem);
+  line-height: 1;
+  letter-spacing: 0.03em;
+  font-family: "Rajdhani", sans-serif;
+}
+
+.war-room-power-rows {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.62rem;
+}
+
+.war-power-row {
+  border: 1px solid rgba(248, 113, 113, 0.22);
+  border-radius: 11px;
+  background: rgba(13, 10, 20, 0.56);
+  padding: 0.6rem 0.74rem;
+}
+
+.war-power-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.war-power-faction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  min-height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.34);
+  background: rgba(185, 28, 28, 0.2);
+  color: #ffe4e6;
+  padding: 0.16rem 0.62rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.war-power-faction .faction-flag-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.war-power-head strong {
+  color: #fecaca;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+}
+
+.war-power-track {
+  margin-top: 0.45rem;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(127, 29, 29, 0.4);
+  overflow: hidden;
+}
+
+.war-power-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(248, 113, 113, 0.88), rgba(251, 191, 36, 0.74));
+  animation: war-bar-load 800ms ease;
+}
+
+.war-power-row p {
+  margin: 0.45rem 0 0;
+  color: #f8d0d6;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.war-room-empty {
+  margin: 0;
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  border-radius: 11px;
+  background: rgba(13, 10, 20, 0.56);
+  padding: 0.8rem;
+  color: #f8d0d6;
+  font-size: 0.9rem;
+}
+
 .leaderboard-top-three {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -960,6 +1185,619 @@ body::after {
   color: var(--text-soft);
   font-size: 1rem;
   letter-spacing: 0.04em;
+}
+
+.leaderboard-warroom-link {
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+body.war-room-page {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(185, 28, 28, 0.26), transparent 35%),
+    radial-gradient(circle at 80% 8%, rgba(30, 64, 175, 0.2), transparent 34%),
+    #080d18;
+}
+
+body.war-room-page::before {
+  background:
+    radial-gradient(circle at 12% 20%, rgba(239, 68, 68, 0.2), transparent 34%),
+    radial-gradient(circle at 75% 14%, rgba(59, 130, 246, 0.18), transparent 30%),
+    radial-gradient(circle at 64% 86%, rgba(248, 113, 113, 0.14), transparent 34%);
+}
+
+body.war-room-page::after {
+  background:
+    linear-gradient(90deg, rgba(248, 113, 113, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(147, 197, 253, 0.04) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.warroom-content {
+  width: min(1480px, 100% - 2rem);
+  margin: 0 auto 4.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.warroom-intro {
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 18px;
+  background:
+    linear-gradient(130deg, rgba(22, 11, 20, 0.94), rgba(14, 18, 34, 0.94)),
+    radial-gradient(circle at 78% 20%, rgba(239, 68, 68, 0.22), rgba(239, 68, 68, 0));
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.54), 0 0 24px rgba(239, 68, 68, 0.16);
+  padding: 1rem 1.1rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
+}
+
+.warroom-intro h2 {
+  margin: 0;
+  font-family: "Rajdhani", sans-serif;
+  font-size: clamp(1.5rem, 2.3vw, 2.2rem);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.warroom-intro p {
+  margin: 0.35rem 0 0;
+  color: #f4d4d8;
+  max-width: 76ch;
+}
+
+.warroom-intro-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.48rem;
+}
+
+.warroom-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.48);
+  background: linear-gradient(120deg, rgba(185, 28, 28, 0.34), rgba(30, 64, 175, 0.28));
+  color: #fee2e2;
+  text-decoration: none;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.74rem;
+  padding: 0.24rem 0.82rem;
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.warroom-link.secondary {
+  border-color: rgba(147, 197, 253, 0.4);
+  background: rgba(30, 64, 175, 0.2);
+  color: #dbeafe;
+}
+
+.warroom-link:hover,
+.warroom-link:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(248, 113, 113, 0.82);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.28);
+  outline: none;
+}
+
+.warroom-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.72rem;
+}
+
+.warroom-card {
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  border-radius: 14px;
+  background: rgba(16, 10, 20, 0.64);
+  padding: 0.72rem 0.82rem;
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.warroom-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(248, 113, 113, 0.5);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.42), 0 0 18px rgba(248, 113, 113, 0.2);
+}
+
+.warroom-card span {
+  display: block;
+  color: #fbcaca;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.warroom-card strong {
+  display: block;
+  margin-top: 0.14rem;
+  color: #ffe4e6;
+  font-size: clamp(1.22rem, 2.8vw, 1.7rem);
+  line-height: 1;
+  font-family: "Rajdhani", sans-serif;
+}
+
+.warroom-layout {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 0.86rem;
+}
+
+.warroom-panel,
+.warroom-game-info,
+.warroom-points-note {
+  border: 1px solid rgba(147, 197, 253, 0.2);
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(13, 20, 36, 0.92), rgba(9, 15, 28, 0.96));
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  padding: 0.95rem;
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.warroom-panel:hover,
+.warroom-game-info:hover,
+.warroom-points-note:hover {
+  transform: translateY(-3px);
+  border-color: rgba(147, 197, 253, 0.38);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.54), 0 0 20px rgba(147, 197, 253, 0.2);
+}
+
+.warroom-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.warroom-panel-head h3,
+.warroom-game-info h3,
+.warroom-points-note h3 {
+  margin: 0;
+  font-family: "Rajdhani", sans-serif;
+  font-size: clamp(1.25rem, 2vw, 1.7rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.warroom-panel-head p,
+.warroom-sync,
+.warroom-points-note p {
+  margin: 0;
+  color: #c8d8ed;
+}
+
+.warroom-power-rows {
+  margin-top: 0.78rem;
+  display: grid;
+  gap: 0.58rem;
+}
+
+.warroom-row {
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 11px;
+  background: rgba(16, 10, 20, 0.56);
+  padding: 0.58rem 0.68rem;
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.warroom-row:hover {
+  transform: translateX(4px);
+  border-color: rgba(248, 113, 113, 0.38);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.34);
+}
+
+.warroom-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.warroom-row-faction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  min-height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.36);
+  background: rgba(185, 28, 28, 0.2);
+  color: #ffe4e6;
+  padding: 0.14rem 0.6rem;
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.warroom-row-faction .faction-flag-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.warroom-row-head strong {
+  color: #fecaca;
+  font-size: 0.88rem;
+}
+
+.warroom-row-track {
+  margin-top: 0.42rem;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(127, 29, 29, 0.36);
+  overflow: hidden;
+}
+
+.warroom-row-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(248, 113, 113, 0.88), rgba(251, 191, 36, 0.74));
+  animation: warroom-bar-load 900ms ease;
+}
+
+.warroom-row p {
+  margin: 0.4rem 0 0;
+  color: #f7d2d7;
+  font-size: 0.8rem;
+}
+
+.warroom-operators {
+  margin-top: 0.72rem;
+  display: grid;
+  gap: 0.46rem;
+}
+
+.warroom-operator-row {
+  border: 1px solid rgba(147, 197, 253, 0.18);
+  border-radius: 11px;
+  background: rgba(8, 15, 30, 0.62);
+  padding: 0.46rem 0.56rem;
+  display: grid;
+  grid-template-columns: 48px 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.warroom-operator-row:hover {
+  transform: translateX(4px);
+  border-color: rgba(147, 197, 253, 0.36);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.warroom-operator-row img {
+  width: 44px;
+  height: 44px;
+  border-radius: 9px;
+  object-fit: cover;
+  border: 1px solid rgba(147, 197, 253, 0.25);
+  background: #091024;
+}
+
+.warroom-operator-rank {
+  min-width: 2.5rem;
+  min-height: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(127, 29, 29, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fecaca;
+}
+
+.warroom-operator-row strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.98rem;
+}
+
+.warroom-operator-row p {
+  margin: 0.08rem 0 0;
+  color: #bfd2eb;
+  font-size: 0.76rem;
+}
+
+.warroom-operator-kd {
+  font-size: 0.82rem;
+  color: #dbeafe;
+  font-weight: 700;
+}
+
+.warroom-game-info h3 {
+  margin-bottom: 0.78rem;
+}
+
+.warroom-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.72rem;
+}
+
+.warroom-info-card {
+  border: 1px solid rgba(147, 197, 253, 0.18);
+  border-radius: 12px;
+  background: rgba(8, 15, 30, 0.58);
+  padding: 0.72rem;
+}
+
+.warroom-info-card h4 {
+  margin: 0;
+  font-size: 1.02rem;
+  letter-spacing: 0.02em;
+}
+
+.warroom-info-card p {
+  margin: 0.42rem 0 0;
+  color: #c9d8ec;
+  font-size: 0.9rem;
+}
+
+.warroom-points-note p {
+  margin-top: 0.45rem;
+}
+
+.warroom-map-section {
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 18px;
+  background:
+    linear-gradient(130deg, rgba(18, 10, 19, 0.94), rgba(12, 17, 34, 0.95)),
+    radial-gradient(circle at 88% 14%, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0));
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.52), 0 0 20px rgba(248, 113, 113, 0.16);
+  padding: 0.92rem;
+  transition: border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.warroom-map-section:hover {
+  border-color: rgba(248, 113, 113, 0.52);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.56), 0 0 24px rgba(248, 113, 113, 0.24);
+}
+
+.warroom-map-head h3 {
+  margin: 0;
+  font-family: "Rajdhani", sans-serif;
+  font-size: clamp(1.3rem, 2.1vw, 1.8rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.warroom-map-head p {
+  margin: 0.28rem 0 0;
+  color: #e7ced3;
+}
+
+.warroom-map-frame {
+  --mx: 50%;
+  --my: 50%;
+  position: relative;
+  margin-top: 0.72rem;
+  border-radius: 14px;
+  border: 1px solid rgba(147, 197, 253, 0.24);
+  background: #070d18;
+  overflow: hidden;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.6);
+}
+
+.warroom-map-image {
+  width: 100%;
+  display: block;
+  transform-origin: center;
+  transition: transform 420ms ease, filter 420ms ease;
+}
+
+.warroom-map-discord {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(147, 197, 253, 0.58);
+  background: linear-gradient(120deg, rgba(30, 64, 175, 0.86), rgba(59, 130, 246, 0.78));
+  color: #eff6ff;
+  text-decoration: none;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 800;
+  padding: 0.2rem 0.62rem;
+  box-shadow: 0 8px 20px rgba(3, 9, 21, 0.5);
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.warroom-map-discord:hover,
+.warroom-map-discord:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(191, 219, 254, 0.92);
+  box-shadow: 0 10px 24px rgba(3, 9, 21, 0.55), 0 0 18px rgba(59, 130, 246, 0.42);
+  outline: none;
+}
+
+.warroom-map-frame:hover .warroom-map-image {
+  transform: scale(1.04);
+  filter: saturate(1.1) contrast(1.06);
+}
+
+.warroom-map-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at var(--mx) var(--my), rgba(248, 113, 113, 0.2), rgba(248, 113, 113, 0) 24%),
+    linear-gradient(180deg, rgba(3, 8, 20, 0.04), rgba(3, 8, 20, 0.44));
+  pointer-events: none;
+}
+
+.warroom-hotspots {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.warroom-hotspot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: inline-grid;
+  justify-items: center;
+  gap: 0.16rem;
+}
+
+.warroom-hotspot-ping {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(254, 202, 202, 0.9);
+  background: radial-gradient(circle, rgba(248, 113, 113, 0.95), rgba(185, 28, 28, 0.78));
+  box-shadow: 0 0 0 calc((var(--strength, 35%) / 100) * 10px) rgba(248, 113, 113, 0.2);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.warroom-hotspot-tag {
+  min-height: 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(254, 202, 202, 0.56);
+  background: rgba(127, 29, 29, 0.7);
+  color: #fff1f2;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.06rem 0.34rem;
+  line-height: 1.2;
+}
+
+.warroom-hotspot:hover .warroom-hotspot-ping,
+.warroom-hotspot:focus-visible .warroom-hotspot-ping,
+.warroom-hotspot.selected .warroom-hotspot-ping {
+  transform: scale(1.16);
+  border-color: rgba(255, 241, 242, 1);
+  box-shadow: 0 0 0 9px rgba(248, 113, 113, 0.28), 0 0 16px rgba(248, 113, 113, 0.5);
+}
+
+.warroom-hotspot:focus-visible {
+  outline: none;
+}
+
+.warroom-hotspot.selected .warroom-hotspot-tag {
+  border-color: rgba(191, 219, 254, 0.9);
+  background: rgba(30, 64, 175, 0.72);
+}
+
+.warroom-hotspot.inactive {
+  opacity: 0.5;
+}
+
+.warroom-hotspot.inactive .warroom-hotspot-ping {
+  border-color: rgba(148, 163, 184, 0.75);
+  background: radial-gradient(circle, rgba(100, 116, 139, 0.9), rgba(51, 65, 85, 0.78));
+  box-shadow: 0 0 0 7px rgba(51, 65, 85, 0.2);
+}
+
+.warroom-hotspot-info {
+  margin: 0.54rem 0 0;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  border-radius: 12px;
+  background: rgba(8, 15, 30, 0.7);
+  padding: 0.56rem 0.68rem;
+}
+
+.warroom-hotspot-info strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  font-size: 0.9rem;
+  color: #eef2ff;
+}
+
+.warroom-hotspot-info .faction-flag-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.warroom-hotspot-info p {
+  margin: 0.22rem 0 0;
+  color: #d8e4f3;
+  font-size: 0.84rem;
+}
+
+.warroom-map-status {
+  margin: 0.5rem 0 0;
+  color: #d4e0f0;
+  font-size: 0.9rem;
+}
+
+.warroom-map-badges {
+  margin-top: 0.62rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.52rem;
+}
+
+.warroom-map-badge {
+  border: 1px solid rgba(147, 197, 253, 0.22);
+  border-radius: 12px;
+  background:
+    linear-gradient(120deg, rgba(30, 64, 175, 0.16), rgba(127, 29, 29, 0.2)),
+    linear-gradient(90deg, rgba(248, 113, 113, 0.12), rgba(248, 113, 113, 0));
+  padding: 0.58rem 0.62rem;
+  border-left: 4px solid rgba(248, 113, 113, 0.35);
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.warroom-map-badge:hover {
+  transform: translateY(-3px);
+  border-color: rgba(147, 197, 253, 0.44);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.32);
+}
+
+.warroom-map-badge strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  color: #fef2f2;
+  font-size: 0.86rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.warroom-map-badge .faction-flag-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.warroom-map-badge span {
+  display: block;
+  margin-top: 0.24rem;
+  color: #d6e1f2;
+  font-size: 0.78rem;
+}
+
+.warroom-empty {
+  margin: 0;
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  border-radius: 11px;
+  background: rgba(16, 10, 20, 0.56);
+  padding: 0.76rem;
+  color: #f8d0d6;
 }
 
 .hidden {
@@ -1247,10 +2085,29 @@ body::after {
   }
 }
 
+@keyframes war-bar-load {
+  from {
+    width: 0;
+  }
+}
+
+@keyframes warroom-bar-load {
+  from {
+    width: 0;
+  }
+}
+
 @media (max-width: 760px) {
   .hero {
     min-height: 26vh;
     padding-top: 3.2rem;
+  }
+
+  .site-corner-brand {
+    top: 0.7rem;
+    left: 0.7rem;
+    width: 42px;
+    height: 42px;
   }
 
   .content {
@@ -1259,11 +2116,87 @@ body::after {
 
   .site-nav {
     width: min(380px, 100% - 0.6rem);
+    gap: 0.4rem;
+    padding: 0.4rem;
     justify-content: center;
   }
 
   .leaderboard-content {
     width: min(1480px, 100% - 1rem);
+  }
+
+  .warroom-content {
+    width: min(1480px, 100% - 1rem);
+  }
+
+  .leaderboard-warroom-link {
+    justify-content: stretch;
+  }
+
+  .leaderboard-warroom-link .leaderboard-button {
+    width: 100%;
+  }
+
+  .warroom-intro {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .warroom-metrics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .warroom-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .warroom-map-badges {
+    grid-template-columns: 1fr;
+  }
+
+  .warroom-map-discord {
+    top: 0.48rem;
+    right: 0.48rem;
+    min-height: 30px;
+    font-size: 0.66rem;
+    padding: 0.16rem 0.48rem;
+  }
+
+  .warroom-hotspot-ping {
+    width: 14px;
+    height: 14px;
+  }
+
+  .warroom-hotspot-tag {
+    font-size: 0.56rem;
+    padding: 0.04rem 0.28rem;
+  }
+
+  .warroom-panel-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .warroom-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .warroom-operator-row {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+  }
+
+  .warroom-operator-rank {
+    display: none;
+  }
+
+  .war-room-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .war-room-metrics {
+    grid-template-columns: 1fr;
+    gap: 0.54rem;
   }
 
   .admin-content {

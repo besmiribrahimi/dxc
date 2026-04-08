@@ -3,27 +3,41 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DraXar Competitive | Leaderboard</title>
-  <meta name="description" content="DraXar Competitive Player Leaderboard">
+  <title>Ascend Entrenched | Leaderboard</title>
+  <meta name="description" content="Ascend Entrenched Player Leaderboard">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="preload" as="image" href="assets/brand/logo-mark-512.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="page-glow" aria-hidden="true"></div>
 
   <header class="hero">
-    <h1>DraXar Competitive</h1>
+    <a class="site-corner-brand" href="index.html" aria-label="Ascend Entrenched home">
+      <img src="assets/brand/logo-mark-512.png" alt="Ascend Entrenched logo" width="56" height="56" decoding="async" fetchpriority="high">
+    </a>
+    <h1>Ascend Entrenched</h1>
     <p>Player Leaderboard</p>
-    <nav class="site-nav" aria-label="Main pages">
+    <nav class="site-nav" aria-label="Primary navigation">
       <a class="nav-link" href="index.html">Player Showcase</a>
       <a class="nav-link active" href="leaderboard.html">Leaderboard</a>
+      <a class="nav-link" href="war-room.html">War Room</a>
     </nav>
   </header>
 
   <main class="leaderboard-content">
     <p id="leaderboardStatus" class="leaderboard-status">Loading leaderboard...</p>
+
+    <div class="leaderboard-warroom-link">
+      <a class="leaderboard-button" href="war-room.html">Open ENTRENCHED WW1 War Room</a>
+    </div>
 
     <section class="leaderboard-top-three" id="leaderTopThree" aria-label="Top 3 Players"></section>
 

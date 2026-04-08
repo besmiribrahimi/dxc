@@ -152,7 +152,10 @@ async function saveAdminConfig(token, config) {
     throw new Error(result.data?.error || "Failed to save config");
   }
 
-  return result.data?.config || config;
+  return {
+    config: result.data?.config || config,
+    botDispatch: result.data?.botDispatch || null
+  };
 }
 
 function buildLevelOptions(selectedLevel) {
@@ -525,11 +528,18 @@ async function onSaveClick() {
     syncCurrentPlayersFromDom();
     const players = collectRowValues();
     const order = collectRowOrder();
-    const saved = await saveAdminConfig(token, { players, order });
+    const saveResult = await saveAdminConfig(token, { players, order });
+    const saved = saveResult.config;
     currentConfig = saved;
     currentPlayers = mergePlayersWithConfig(currentPlayers, saved);
     renderRows(currentPlayers);
-    setSyncStatus(`Global sync saved. Mode: custom admin order. Updated: ${formatSyncTime(saved.updatedAt)}.`);
+
+    const botDispatch = saveResult.botDispatch;
+    const botSuffix = botDispatch
+      ? ` Bot push: ${botDispatch.sent}/${botDispatch.attempted} sent${botDispatch.failed ? `, ${botDispatch.failed} failed` : ""}${botDispatch.skipped ? `, ${botDispatch.skipped} skipped` : ""}.`
+      : "";
+
+    setSyncStatus(`Global sync saved. Mode: custom admin order. Updated: ${formatSyncTime(saved.updatedAt)}.${botSuffix}`);
   } catch (error) {
     setSyncStatus(error instanceof Error ? error.message : "Save failed", true);
   }

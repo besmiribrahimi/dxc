@@ -1,0 +1,15 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Ascend Entrenched Logo</title>
+  <desc id="desc">Stylized white crest and rise mark on deep blue background.</desc>
+  <rect width="512" height="512" fill="#11225c"/>
+  <g fill="#ffffff">
+    <path d="M102 379C145 379 223 348 303 262C343 220 366 177 370 136C370 190 359 240 338 286C310 344 267 401 211 431C172 449 132 443 102 379Z"/>
+    <path d="M124 268C164 223 216 191 281 174C246 204 202 223 154 268C146 276 131 278 124 268Z"/>
+    <circle cx="286" cy="141" r="26"/>
+  </g>
+  <g fill="#11225c">
+    <rect x="175" y="269" width="23" height="112" rx="2"/>
+    <rect x="220" y="245" width="23" height="122" rx="2"/>
+    <rect x="265" y="220" width="23" height="124" rx="2"/>
+  </g>
+</svg>
