@@ -10,9 +10,11 @@ const passwordNode = document.getElementById("adminPassword");
 const loginStatusNode = document.getElementById("adminLoginStatus");
 const syncInfoNode = document.getElementById("adminSyncInfo");
 const rowsNode = document.getElementById("adminRows");
+const transferRowsNode = document.getElementById("adminTransferRows");
 const reloadButtonNode = document.getElementById("adminReloadBtn");
 const saveButtonNode = document.getElementById("adminSaveBtn");
 const logoutButtonNode = document.getElementById("adminLogoutBtn");
+const addTransferButtonNode = document.getElementById("adminAddTransferBtn");
 const notifyIdsNode = document.getElementById("adminNotifyIds");
 const notifyMessageNode = document.getElementById("adminNotifyMessage");
 const sendNotifyButtonNode = document.getElementById("adminSendNotifyBtn");
@@ -23,11 +25,13 @@ let currentConfig = {
   updatedAt: null,
   players: {},
   order: [],
+  transfers: [],
   botSettings: {
     notificationUserIds: []
   }
 };
 let currentPlayers = [];
+let currentTransfers = [];
 let draggingPlayerKey = "";
 let draggingInitialized = false;
 
@@ -102,6 +106,53 @@ function normalizeFactionValue(faction) {
   }
 
   return [...new Set(tokens)].join("/");
+}
+
+function normalizeTransferStatus(status) {
+  const value = String(status || "").trim().toLowerCase();
+  if (value === "official" || value === "agreed") {
+    return value;
+  }
+
+  return "rumor";
+}
+
+function normalizeTransferDate(dateValue) {
+  const value = String(dateValue || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  return "";
+}
+
+function normalizeTransferEntry(raw, index = 0) {
+  const entry = raw && typeof raw === "object" ? raw : {};
+  const playerName = String(entry.playerName || "").trim();
+  const fromFaction = normalizeFactionValue(entry.fromFaction || "N/A");
+  const toFaction = normalizeFactionValue(entry.toFaction || "N/A");
+
+  return {
+    id: String(entry.id || `transfer-${Date.now()}-${index}`).trim(),
+    playerName,
+    fromFaction,
+    toFaction,
+    fee: String(entry.fee || "").trim(),
+    transferDate: normalizeTransferDate(entry.transferDate),
+    status: normalizeTransferStatus(entry.status),
+    note: String(entry.note || "").trim().slice(0, 240)
+  };
+}
+
+function normalizeTransfers(rawTransfers) {
+  if (!Array.isArray(rawTransfers)) {
+    return [];
+  }
+
+  return rawTransfers
+    .slice(0, 120)
+    .map((entry, index) => normalizeTransferEntry(entry, index))
+    .filter((entry) => Boolean(entry.playerName));
 }
 
 function setLoginStatus(message, isError = false) {
@@ -213,7 +264,16 @@ async function fetchAdminConfig(token) {
     throw new Error(result.data?.error || "Failed to load admin config");
   }
 
-  return result.data?.config || { version: 1, updatedAt: null, players: {} };
+  return result.data?.config || {
+    version: 1,
+    updatedAt: null,
+    players: {},
+    order: [],
+    transfers: [],
+    botSettings: {
+      notificationUserIds: []
+    }
+  };
 }
 
 async function saveAdminConfig(token, config) {
@@ -346,6 +406,105 @@ function renderRows(players) {
   });
 
   initDragAndDrop();
+}
+
+function buildTransferStatusOptions(selectedStatus) {
+  const safeStatus = normalizeTransferStatus(selectedStatus);
+  return ["rumor", "agreed", "official"]
+    .map((status) => {
+      const selected = status === safeStatus ? " selected" : "";
+      const label = status.charAt(0).toUpperCase() + status.slice(1);
+      return `<option value="${status}"${selected}>${label}</option>`;
+    })
+    .join("");
+}
+
+function renderTransferRows(transfers) {
+  if (!transferRowsNode) {
+    return;
+  }
+
+  transferRowsNode.innerHTML = "";
+
+  if (!Array.isArray(transfers) || !transfers.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-transfer-empty";
+    empty.textContent = "No transfer entries yet. Click Add Transfer.";
+    transferRowsNode.append(empty);
+    return;
+  }
+
+  transfers.forEach((transfer, index) => {
+    const row = document.createElement("article");
+    row.className = "admin-transfer-row";
+    row.dataset.transferId = transfer.id || `transfer-${index}`;
+
+    row.innerHTML = `
+      <span><input class="admin-transfer-input admin-transfer-player" type="text" maxlength="40" value="${safeText(transfer.playerName)}" placeholder="Player name"></span>
+      <span><input class="admin-transfer-input admin-transfer-from" type="text" maxlength="24" value="${safeText(transfer.fromFaction)}" placeholder="From faction"></span>
+      <span><input class="admin-transfer-input admin-transfer-to" type="text" maxlength="24" value="${safeText(transfer.toFaction)}" placeholder="To faction"></span>
+      <span><input class="admin-transfer-input admin-transfer-fee" type="text" maxlength="30" value="${safeText(transfer.fee)}" placeholder="Fee / terms"></span>
+      <span><input class="admin-transfer-input admin-transfer-date" type="date" value="${safeText(normalizeTransferDate(transfer.transferDate))}"></span>
+      <span>
+        <select class="admin-transfer-select admin-transfer-status">
+          ${buildTransferStatusOptions(transfer.status)}
+        </select>
+      </span>
+      <span><input class="admin-transfer-input admin-transfer-note" type="text" maxlength="240" value="${safeText(transfer.note)}" placeholder="Brief note"></span>
+      <span><button type="button" class="admin-button danger admin-transfer-delete">Remove</button></span>
+    `;
+
+    const deleteButtonNode = row.querySelector(".admin-transfer-delete");
+    deleteButtonNode?.addEventListener("click", () => {
+      currentTransfers = currentTransfers.filter((item) => item.id !== row.dataset.transferId);
+      renderTransferRows(currentTransfers);
+      setSyncStatus("Transfer removed locally. Click Save Global Sync to publish.");
+    });
+
+    transferRowsNode.append(row);
+  });
+}
+
+function collectTransferValues() {
+  if (!transferRowsNode) {
+    return [];
+  }
+
+  return Array.from(transferRowsNode.querySelectorAll(".admin-transfer-row[data-transfer-id]"))
+    .map((row, index) => {
+      const playerName = String(row.querySelector(".admin-transfer-player")?.value || "").trim();
+      const fromFaction = normalizeFactionValue(row.querySelector(".admin-transfer-from")?.value || "N/A");
+      const toFaction = normalizeFactionValue(row.querySelector(".admin-transfer-to")?.value || "N/A");
+
+      if (!playerName || fromFaction === "N/A" || toFaction === "N/A") {
+        return null;
+      }
+
+      return normalizeTransferEntry({
+        id: String(row.dataset.transferId || `transfer-${Date.now()}-${index}`).trim(),
+        playerName,
+        fromFaction,
+        toFaction,
+        fee: row.querySelector(".admin-transfer-fee")?.value || "",
+        transferDate: row.querySelector(".admin-transfer-date")?.value || "",
+        status: row.querySelector(".admin-transfer-status")?.value || "rumor",
+        note: row.querySelector(".admin-transfer-note")?.value || ""
+      }, index);
+    })
+    .filter(Boolean);
+}
+
+function createBlankTransfer() {
+  return {
+    id: `transfer-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    playerName: "",
+    fromFaction: "N/A",
+    toFaction: "N/A",
+    fee: "",
+    transferDate: "",
+    status: "rumor",
+    note: ""
+  };
 }
 
 function getDragAfterElement(container, pointerY) {
@@ -537,7 +696,9 @@ async function loadPanelData() {
 
     currentConfig = config;
     currentPlayers = mergePlayersWithConfig(parsedPlayers, config);
+    currentTransfers = normalizeTransfers(config?.transfers);
     renderRows(currentPlayers);
+    renderTransferRows(currentTransfers);
     renderAdminNewsFeed(currentPlayers);
     renderBotSettings(config);
 
@@ -598,11 +759,14 @@ async function onSaveClick() {
     syncCurrentPlayersFromDom();
     const players = collectRowValues();
     const order = collectRowOrder();
-    const saveResult = await saveAdminConfig(token, { players, order });
+    currentTransfers = collectTransferValues();
+    const saveResult = await saveAdminConfig(token, { players, order, transfers: currentTransfers });
     const saved = saveResult.config;
     currentConfig = saved;
     currentPlayers = mergePlayersWithConfig(currentPlayers, saved);
+    currentTransfers = normalizeTransfers(saved?.transfers);
     renderRows(currentPlayers);
+    renderTransferRows(currentTransfers);
     renderAdminNewsFeed(currentPlayers);
 
     const botDispatch = saveResult.botDispatch;
@@ -681,12 +845,21 @@ function onLogoutClick() {
   setLoginStatus("Logged out.");
 }
 
+function onAddTransferClick() {
+  currentTransfers = [...currentTransfers, createBlankTransfer()];
+  renderTransferRows(currentTransfers);
+  setSyncStatus("Transfer added locally. Click Save Global Sync to publish.");
+}
+
 loginFormNode.addEventListener("submit", onLoginSubmit);
 reloadButtonNode.addEventListener("click", loadPanelData);
 saveButtonNode.addEventListener("click", onSaveClick);
 logoutButtonNode.addEventListener("click", onLogoutClick);
 if (sendNotifyButtonNode) {
   sendNotifyButtonNode.addEventListener("click", onSendNotifyClick);
+}
+if (addTransferButtonNode) {
+  addTransferButtonNode.addEventListener("click", onAddTransferClick);
 }
 
 if (getStoredToken()) {

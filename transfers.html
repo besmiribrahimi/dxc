@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ascend Entrenched | Leaderboard</title>
-  <meta name="description" content="Ascend Entrenched Player Leaderboard">
+  <title>Ascend Entrenched | Transfer Center</title>
+  <meta name="description" content="Live player transfer center for Ascend Entrenched factions.">
   <meta name="theme-color" content="#A63A2B">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ascend Entrenched">
-  <meta property="og:title" content="Ascend Entrenched | Leaderboard">
-  <meta property="og:description" content="Live Ascend Entrenched player leaderboard and rankings.">
+  <meta property="og:title" content="Ascend Entrenched | Transfer Center">
+  <meta property="og:description" content="Track confirmed and rumored faction transfers in one place.">
   <meta property="og:image" content="/assets/brand/logo-mark-512.png">
   <meta property="og:image:width" content="512">
   <meta property="og:image:height" content="512">
   <meta property="og:image:alt" content="Ascend Entrenched logo">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Ascend Entrenched | Leaderboard">
-  <meta name="twitter:description" content="Live Ascend Entrenched player leaderboard and rankings.">
+  <meta name="twitter:title" content="Ascend Entrenched | Transfer Center">
+  <meta name="twitter:description" content="Track confirmed and rumored faction transfers in one place.">
   <meta name="twitter:image" content="/assets/brand/logo-mark-512.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,7 +29,7 @@
   <link rel="preload" as="image" href="assets/brand/logo-mark-512.png">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="transfers-page">
   <div class="page-glow" aria-hidden="true"></div>
   <a
     class="official-discord-fab"
@@ -49,71 +49,45 @@
       <img src="assets/brand/logo-mark-512.png" alt="Ascend Entrenched logo" width="56" height="56" decoding="async" fetchpriority="high">
     </a>
     <h1>Ascend Entrenched</h1>
-    <p>Player Leaderboard</p>
+    <p>Transfer Center</p>
     <nav class="site-nav" aria-label="Primary navigation">
       <a class="nav-link" href="index.html">Player Showcase</a>
-      <a class="nav-link active" href="leaderboard.html">Leaderboard</a>
-      <a class="nav-link" href="transfers.html">Transfers</a>
+      <a class="nav-link" href="leaderboard.html">Leaderboard</a>
+      <a class="nav-link active" href="transfers.html">Transfers</a>
       <a class="nav-link" href="war-room.html">War Room</a>
     </nav>
   </header>
 
-  <main class="leaderboard-content">
-    <p id="leaderboardStatus" class="leaderboard-status">Loading leaderboard...</p>
-
-    <div class="leaderboard-warroom-link">
-      <a class="leaderboard-button" href="war-room.html">Open ENTRENCHED WW1 War Room</a>
-    </div>
-
-    <section class="leaderboard-top-three" id="leaderTopThree" aria-label="Top 3 Players"></section>
-
-    <section class="leaderboard-panel" aria-label="Full leaderboard ranking">
-      <div class="leaderboard-header">
-        <span>Rank</span>
-        <span>Player</span>
-        <span>Faction</span>
-        <span>Country</span>
-        <span>K/D</span>
-        <span>Level</span>
+  <main class="transfers-content">
+    <section class="transfer-headline" aria-label="Transfer market overview">
+      <div>
+        <h2>Faction Transfer Market</h2>
+        <p>Live movement from one clan to another with football-style transfer cards.</p>
       </div>
-      <div id="leaderboardRows"></div>
+      <div class="transfer-metrics" id="transferMetrics">
+        <article class="transfer-metric">
+          <span>Total Deals</span>
+          <strong id="transferMetricTotal">0</strong>
+        </article>
+        <article class="transfer-metric">
+          <span>Official</span>
+          <strong id="transferMetricOfficial">0</strong>
+        </article>
+        <article class="transfer-metric">
+          <span>Updated</span>
+          <strong id="transferMetricUpdated">--</strong>
+        </article>
+      </div>
     </section>
+
+    <section class="transfer-ticker" aria-label="Transfer ticker">
+      <div id="transferTickerTrack" class="transfer-ticker-track">Waiting for transfer updates...</div>
+    </section>
+
+    <section class="transfer-grid" id="transferGrid" aria-label="Transfer cards"></section>
   </main>
 
-  <div id="playerModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Player details">
-    <div class="modal-panel" role="document">
-      <button type="button" id="closeModal" class="modal-close" aria-label="Close Player popup">Close</button>
-
-      <div class="modal-left">
-        <img id="modalAvatar" src="" alt="Player avatar">
-      </div>
-
-      <div class="modal-right">
-        <h2 id="modalName">Player</h2>
-        <div class="meta-row">
-          <span>Faction</span>
-          <strong id="modalFaction">N/A</strong>
-        </div>
-        <div class="meta-row">
-          <span>Country</span>
-          <strong id="modalCountry">N/A</strong>
-        </div>
-        <div class="modal-stats">
-          <div class="modal-stat-box">
-            <span>Level</span>
-            <strong id="modalWins">0</strong>
-          </div>
-          <div class="modal-stat-box">
-            <span>K/D</span>
-            <strong id="modalKd">0.0</strong>
-          </div>
-        </div>
-        <a id="modalDiscord" class="discord-button" href="https://discord.com" target="_blank" rel="noreferrer noopener">Open Player Discord</a>
-      </div>
-    </div>
-  </div>
-
   <script src="script.js"></script>
-  <script src="leaderboard.js"></script>
+  <script src="transfers.js"></script>
 </body>
 </html>

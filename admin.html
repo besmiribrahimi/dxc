@@ -53,6 +53,7 @@
     <nav class="site-nav" aria-label="Primary navigation">
       <a class="nav-link" href="index.html">Player Showcase</a>
       <a class="nav-link" href="leaderboard.html">Leaderboard</a>
+      <a class="nav-link" href="transfers.html">Transfers</a>
       <a class="nav-link" href="war-room.html">War Room</a>
       <a class="nav-link active" href="admin.html">Admin</a>
     </nav>
@@ -96,6 +97,29 @@
           <button id="adminSendNotifyBtn" type="button" class="admin-button">Send Message To IDs</button>
         </div>
         <p id="adminBotOpsStatus" class="admin-status">Bot settings are not loaded yet.</p>
+      </section>
+
+      <section class="admin-card" aria-label="Transfer editor">
+        <div class="admin-panel-header">
+          <h2>Transfer Center</h2>
+          <div class="admin-actions">
+            <button id="adminAddTransferBtn" type="button" class="admin-button secondary">Add Transfer</button>
+          </div>
+        </div>
+        <p>Create and edit player transfers. These are shown on the Transfers page.</p>
+        <div class="admin-transfer-wrap">
+          <div class="admin-transfer-row admin-transfer-row-head" role="row">
+            <span>Player</span>
+            <span>From</span>
+            <span>To</span>
+            <span>Fee</span>
+            <span>Date</span>
+            <span>Status</span>
+            <span>Note</span>
+            <span>Action</span>
+          </div>
+          <div id="adminTransferRows" class="admin-transfer-rows"></div>
+        </div>
       </section>
 
       <div class="admin-table-wrap">

@@ -15,7 +15,9 @@ module.exports = async function handler(req, res) {
       config: {
         version: 1,
         updatedAt: null,
-        players: {}
+        players: {},
+        order: [],
+        transfers: []
       },
       warning: error instanceof Error ? error.message : "KV not available"
     });

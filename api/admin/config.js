@@ -63,6 +63,55 @@ function normalizePlayers(rawPlayers) {
   return normalized;
 }
 
+function normalizeTransferStatus(raw) {
+  const value = String(raw || "").trim().toLowerCase();
+  if (value === "official" || value === "agreed") {
+    return value;
+  }
+
+  return "rumor";
+}
+
+function normalizeTransferDate(raw) {
+  const value = String(raw || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  return "";
+}
+
+function normalizeTransfers(rawTransfers) {
+  if (!Array.isArray(rawTransfers)) {
+    return [];
+  }
+
+  return rawTransfers
+    .slice(0, 120)
+    .map((entry, index) => {
+      const item = entry && typeof entry === "object" ? entry : {};
+      const playerName = String(item.playerName || "").trim();
+      const fromFaction = normalizeFaction(item.fromFaction);
+      const toFaction = normalizeFaction(item.toFaction);
+
+      if (!playerName || fromFaction === "N/A" || toFaction === "N/A") {
+        return null;
+      }
+
+      return {
+        id: String(item.id || `transfer-${Date.now()}-${index}`).trim(),
+        playerName,
+        fromFaction,
+        toFaction,
+        fee: String(item.fee || "").trim(),
+        transferDate: normalizeTransferDate(item.transferDate),
+        status: normalizeTransferStatus(item.status),
+        note: String(item.note || "").trim().slice(0, 240)
+      };
+    })
+    .filter(Boolean);
+}
+
 function normalizeOrder(rawOrder, playerKeys) {
   const keys = Array.isArray(playerKeys) ? playerKeys : [];
   const valid = new Set(keys);
@@ -353,6 +402,7 @@ module.exports = async function handler(req, res) {
       updatedAt: null,
       players: {},
       order: [],
+      transfers: [],
       botSettings: {
         applicationsPanelChannelId: "",
         applicationsChannelId: "",
@@ -363,6 +413,8 @@ module.exports = async function handler(req, res) {
     const body = parseJsonBody(req);
     const players = normalizePlayers(body?.players);
     const order = normalizeOrder(body?.order, Object.keys(players));
+    const hasTransfersInBody = Array.isArray(body?.transfers);
+    const transfers = normalizeTransfers(hasTransfersInBody ? body?.transfers : previousConfig?.transfers);
     const existingBotSettings = previousConfig?.botSettings && typeof previousConfig.botSettings === "object"
       ? previousConfig.botSettings
       : {
@@ -375,6 +427,7 @@ module.exports = async function handler(req, res) {
       updatedAt: new Date().toISOString(),
       players,
       order,
+      transfers,
       botSettings: existingBotSettings
     };
 
