@@ -183,6 +183,7 @@ const WEB_SYNC_ENDPOINT = "/api/leaderboard-config";
 const OPS_SYNC_INTERVAL_MS = 90000;
 const OPS_MOTD_INTERVAL_MS = 8000;
 const FACTION_NEWS_ROTATE_MS = 7000;
+const NEWS_FEED_FILES = ["new.txt", "news.txt"];
 const OPS_MOTD_MESSAGES = [
   "Ascend Entrenched live grid online.",
   "Leaderboard intelligence stream active.",
@@ -488,6 +489,140 @@ function computeFactionPulse(players) {
     }));
 }
 
+function summarizeArticleText(text, maxLength = 220) {
+  const clean = normalizeText(text);
+  if (!clean) {
+    return "No summary available.";
+  }
+
+  if (clean.length <= maxLength) {
+    return clean;
+  }
+
+  return `${clean.slice(0, maxLength).trim()}...`;
+}
+
+function detectArticleTag(text) {
+  const target = String(text || "").toUpperCase();
+  const knownTokens = [
+    "AH", "URF", "DK", "CZSK", "NDV", "RKA", "TWA", "TCL", "TAE", "AEF", "IA", "DSA", "TSC"
+  ];
+
+  const found = knownTokens.filter((token) => {
+    const pattern = new RegExp(`(^|[^A-Z0-9])${token}([^A-Z0-9]|$)`, "i");
+    return pattern.test(target);
+  });
+
+  if (!found.length) {
+    return "Community";
+  }
+
+  return found.slice(0, 2).join("/");
+}
+
+function parseEntrenchedTimesArticles(rawText) {
+  const text = String(rawText || "").replace(/\r/g, "");
+  const lines = text.split("\n");
+  const articles = [];
+  let current = null;
+
+  lines.forEach((rawLine) => {
+    const line = String(rawLine || "");
+    const headingMatch = line.match(/^\s*#\s+(.+)$/);
+    if (headingMatch) {
+      if (current && current.title) {
+        articles.push(current);
+      }
+
+      current = {
+        title: normalizeText(headingMatch[1]),
+        lines: []
+      };
+      return;
+    }
+
+    if (!current) {
+      return;
+    }
+
+    current.lines.push(line);
+  });
+
+  if (current && current.title) {
+    articles.push(current);
+  }
+
+  const normalized = articles
+    .map((entry) => {
+      const paragraphs = entry.lines
+        .map((line) => normalizeText(line))
+        .filter(Boolean);
+      const body = paragraphs.join(" ");
+      const urlMatch = body.match(/https?:\/\/\S+/i);
+      const link = urlMatch ? urlMatch[0] : "";
+      const cleanBody = link ? body.replace(link, "").trim() : body;
+
+      return {
+        title: entry.title,
+        tag: detectArticleTag(`${entry.title} ${cleanBody}`),
+        body: cleanBody,
+        summary: summarizeArticleText(cleanBody),
+        link
+      };
+    })
+    .filter((entry) => Boolean(entry.title));
+
+  if (normalized.length) {
+    return normalized;
+  }
+
+  const blocks = text
+    .split(/\n\s*\n+/)
+    .map((chunk) => normalizeText(chunk))
+    .filter(Boolean);
+
+  return blocks.slice(0, 8).map((chunk, index) => {
+    const [firstSentence, ...rest] = chunk.split(".");
+    const title = firstSentence ? `${firstSentence.trim()}.` : `Community Update ${index + 1}`;
+    const body = rest.join(".").trim() || chunk;
+
+    return {
+      title,
+      tag: detectArticleTag(chunk),
+      body,
+      summary: summarizeArticleText(body),
+      link: ""
+    };
+  });
+}
+
+async function fetchEntrenchedTimesNews() {
+  for (const fileName of NEWS_FEED_FILES) {
+    try {
+      const response = await fetch(fileName, { cache: "no-store" });
+      if (!response.ok) {
+        continue;
+      }
+
+      const raw = await response.text();
+      const articles = parseEntrenchedTimesArticles(raw);
+      if (articles.length) {
+        return {
+          source: fileName,
+          articles
+        };
+      }
+    } catch {
+      // Try next candidate file.
+    }
+  }
+
+  return {
+    source: "",
+    articles: []
+  };
+}
+
 function ensureOpsHud() {
   if (opsHudNodes) {
     return opsHudNodes;
@@ -761,7 +896,7 @@ function ensureFactionNewsMount() {
   return section;
 }
 
-function renderFactionNewsFeed(players) {
+async function renderFactionNewsFeed(players) {
   const mount = ensureFactionNewsMount();
   if (!mount) {
     return;
@@ -771,6 +906,44 @@ function renderFactionNewsFeed(players) {
   const listNode = mount.querySelector("#factionNewsList");
   const updatedNode = mount.querySelector("#factionNewsUpdated");
   if (!headlineNode || !listNode || !updatedNode) {
+    return;
+  }
+
+  const remoteNews = await fetchEntrenchedTimesNews();
+  const remoteArticles = Array.isArray(remoteNews.articles) ? remoteNews.articles : [];
+
+  if (remoteArticles.length) {
+    const headlineItems = remoteArticles.map((article) => article.title).filter(Boolean);
+    const topBriefings = remoteArticles.slice(0, 6);
+
+    headlineNode.textContent = headlineItems[0] || "Entrenched Times feed active.";
+    listNode.innerHTML = topBriefings.map((item) => {
+      const linkMarkup = item.link
+        ? `<a class="faction-news-link" href="${item.link}" target="_blank" rel="noreferrer noopener">Open source</a>`
+        : "";
+
+      return `
+        <article class="faction-news-item">
+          <span>${escapeHtml(item.tag || "Community")}</span>
+          <h4>${escapeHtml(item.title || "Untitled Update")}</h4>
+          <p>${escapeHtml(item.summary || "No summary available.")}</p>
+          ${linkMarkup}
+        </article>
+      `;
+    }).join("");
+
+    updatedNode.textContent = `Entrenched Times • ${remoteNews.source} • ${new Date().toLocaleTimeString("en-GB", { hour12: false })} UTC`;
+
+    if (factionNewsRotateIntervalId) {
+      clearInterval(factionNewsRotateIntervalId);
+    }
+
+    let index = 0;
+    factionNewsRotateIntervalId = window.setInterval(() => {
+      index = (index + 1) % headlineItems.length;
+      headlineNode.textContent = headlineItems[index];
+    }, FACTION_NEWS_ROTATE_MS);
+
     return;
   }
 
