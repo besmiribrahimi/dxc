@@ -81,6 +81,8 @@ module.exports = {
   discordGuildId: firstEnv(["DISCORD_GUILD_ID", "GUILD_ID"]),
   leaderboardApiUrl: resolveLeaderboardApiUrl(),
   leaderboardChannelId: firstEnv(["LEADERBOARD_CHANNEL_ID"]),
+  leaderboardAutoPostEnabled: ["true", "1", "on", "yes"].includes(String(process.env.LEADERBOARD_AUTO_POST_ENABLED || "").trim().toLowerCase()),
+  leaderboardAutoPostIntervalHours: toPositiveInt(process.env.LEADERBOARD_AUTO_POST_INTERVAL_HOURS, 6),
   ticketEnabled: !["false", "0", "off", "no"].includes(String(process.env.TICKET_ENABLED || "").trim().toLowerCase()),
   defaultTicketCategoryId: firstEnv(["TICKET_CATEGORY_ID"]),
   defaultTicketLogChannelId: firstEnv(["TICKET_LOG_CHANNEL_ID"]),

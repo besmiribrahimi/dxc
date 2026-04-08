@@ -5,6 +5,7 @@ const { buildEventEmbed } = require("./events");
 const { createApiServer } = require("./server/createApiServer");
 const { registerSlashCommands, handleSlashCommand } = require("./commands/slashCommands");
 const { saveRuntimeSettings } = require("./runtimeSettings");
+const { startLeaderboardAutoPoster } = require("./services/leaderboardAutoPoster");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
@@ -17,6 +18,8 @@ const updateQueue = new UpdateQueue({
     console.error("[Queue Task Error]", metadata, error);
   }
 });
+
+let stopLeaderboardAutoPoster = null;
 
 async function resolveTargetChannel() {
   const fromCache = client.channels.cache.get(config.discordChannelId);
@@ -59,6 +62,14 @@ async function start() {
       }
     } catch (error) {
       console.error("[Slash Command Registration Error]", error);
+    }
+
+    if (!stopLeaderboardAutoPoster) {
+      stopLeaderboardAutoPoster = startLeaderboardAutoPoster({
+        client,
+        config,
+        logger: console
+      });
     }
   });
 
@@ -106,6 +117,22 @@ process.on("unhandledRejection", (reason) => {
 
 process.on("uncaughtException", (error) => {
   console.error("[Uncaught Exception]", error);
+});
+
+process.on("SIGINT", () => {
+  if (typeof stopLeaderboardAutoPoster === "function") {
+    stopLeaderboardAutoPoster();
+  }
+
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  if (typeof stopLeaderboardAutoPoster === "function") {
+    stopLeaderboardAutoPoster();
+  }
+
+  process.exit(0);
 });
 
 start().catch((error) => {

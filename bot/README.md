@@ -72,14 +72,20 @@ npm run dev
 - `/setup view`
 - `/setup tickets enabled category log_channel ping_role reviewer_role`
 - `/setup ticket_access action role`
-- `/setup leaderboard channel endpoint`
+- `/setup leaderboard channel endpoint auto_post every_hours`
 - `/setup style info_color winner_color active_color eliminated_color highlight_color footer highlight_enabled`
 
 Examples:
 - `/setup tickets enabled:true ping_role:@Staff reviewer_role:@Admins`
 - `/setup ticket_access action:add role:@Verified`
 - `/setup leaderboard endpoint:https://dxc-chi.vercel.app`
+- `/setup leaderboard channel:#leaderboard auto_post:true every_hours:6`
 - `/setup style winner_color:#FFD700 active_color:#C8A2C8`
+
+Auto-post notes:
+- `auto_post:true` enables scheduled posting in the configured leaderboard channel.
+- `every_hours` accepts values from 1 to 168.
+- The bot checks schedule once per minute and posts when the interval is due.
 
 ## Leaderboard Color Rules
 

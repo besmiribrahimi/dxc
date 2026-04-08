@@ -897,6 +897,9 @@ function buildSetupViewEmbed(settings) {
         value: [
           `Channel: ${settings.leaderboardChannelId ? `<#${settings.leaderboardChannelId}>` : "Not set"}`,
           `Endpoint: ${settings.leaderboardEndpoint || "Not set"}`,
+          `Auto Post: ${settings.leaderboardAutoPostEnabled ? "Enabled" : "Disabled"}`,
+          `Every: ${settings.leaderboardAutoPostIntervalHours || 6} hour(s)`,
+          `Last Auto Post: ${settings.leaderboardAutoPostLastRunAt ? new Date(settings.leaderboardAutoPostLastRunAt).toLocaleString() : "Never"}`,
           `Highlight Enabled: ${settings.highlightEnabled ? "Yes" : "No"}`
         ].join("\n")
       },
@@ -999,8 +1002,10 @@ async function handleSetupCommand(interaction, context) {
   if (subcommand === "leaderboard") {
     const channel = interaction.options.getChannel("channel");
     const endpointInput = interaction.options.getString("endpoint");
+    const autoPost = interaction.options.getBoolean("auto_post");
+    const everyHours = interaction.options.getInteger("every_hours");
 
-    if (!channel && !endpointInput) {
+    if (!channel && !endpointInput && autoPost === null && !everyHours) {
       const settings = getGuildSettings(guildId, context.config);
       await interaction.reply({ embeds: [buildSetupViewEmbed(settings)], ephemeral: true });
       return;
@@ -1022,6 +1027,29 @@ async function handleSetupCommand(interaction, context) {
       }
 
       patch.leaderboardEndpoint = resolved;
+    }
+
+    if (autoPost !== null) {
+      patch.leaderboardAutoPostEnabled = autoPost;
+    }
+
+    if (everyHours) {
+      patch.leaderboardAutoPostIntervalHours = everyHours;
+    }
+
+    const current = getGuildSettings(guildId, context.config);
+    const effectiveChannelId = patch.leaderboardChannelId || current.leaderboardChannelId;
+    const effectiveEndpoint = patch.leaderboardEndpoint || current.leaderboardEndpoint || context.config.leaderboardApiUrl;
+    const effectiveAutoPost = typeof patch.leaderboardAutoPostEnabled === "boolean"
+      ? patch.leaderboardAutoPostEnabled
+      : current.leaderboardAutoPostEnabled;
+
+    if (effectiveAutoPost && (!effectiveChannelId || !effectiveEndpoint)) {
+      await interaction.reply({
+        content: "Auto posting requires both leaderboard channel and endpoint configured.",
+        ephemeral: true
+      });
+      return;
     }
 
     const next = patchGuildSettings(guildId, patch, context.config);
@@ -1311,6 +1339,18 @@ function setupCommandBuilder() {
           option
             .setName("endpoint")
             .setDescription("Leaderboard base URL or /api/leaderboard-config endpoint")
+        )
+        .addBooleanOption((option) =>
+          option
+            .setName("auto_post")
+            .setDescription("Enable or disable automatic leaderboard posts")
+        )
+        .addIntegerOption((option) =>
+          option
+            .setName("every_hours")
+            .setDescription("Auto-post interval in hours (1-168)")
+            .setMinValue(1)
+            .setMaxValue(168)
         )
     )
     .addSubcommand((subcommand) =>

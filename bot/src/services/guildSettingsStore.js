@@ -21,6 +21,20 @@ function toPositiveInt(rawValue, fallback) {
   return parsed;
 }
 
+function normalizeIsoDate(value) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  return parsed.toISOString();
+}
+
 function normalizeHexColor(value, fallback) {
   const raw = String(value || "").trim().toUpperCase();
   if (/^#[0-9A-F]{6}$/.test(raw)) {
@@ -62,6 +76,9 @@ function defaultGuildSettings(config) {
     ticketAllowedRoleIds: uniqueIds(splitCsvIds(config.defaultTicketAllowedRoleIds)),
     leaderboardChannelId: String(config.leaderboardChannelId || config.discordChannelId || "").trim(),
     leaderboardEndpoint: String(config.leaderboardApiUrl || "").trim(),
+    leaderboardAutoPostEnabled: Boolean(config.leaderboardAutoPostEnabled),
+    leaderboardAutoPostIntervalHours: toPositiveInt(config.leaderboardAutoPostIntervalHours, 6),
+    leaderboardAutoPostLastRunAt: "",
     highlightEnabled: true,
     brandingFooter: String(config.brandingFooter || "Ascend Entrenched").trim() || "Ascend Entrenched",
     colors: {
@@ -87,6 +104,11 @@ function sanitizeGuildSettings(raw, defaults) {
     ticketAllowedRoleIds: uniqueIds(input.ticketAllowedRoleIds || defaults.ticketAllowedRoleIds),
     leaderboardChannelId: String(input.leaderboardChannelId || defaults.leaderboardChannelId || "").trim(),
     leaderboardEndpoint: String(input.leaderboardEndpoint || defaults.leaderboardEndpoint || "").trim(),
+    leaderboardAutoPostEnabled: typeof input.leaderboardAutoPostEnabled === "boolean"
+      ? input.leaderboardAutoPostEnabled
+      : defaults.leaderboardAutoPostEnabled,
+    leaderboardAutoPostIntervalHours: Math.max(1, Math.min(168, toPositiveInt(input.leaderboardAutoPostIntervalHours, defaults.leaderboardAutoPostIntervalHours))),
+    leaderboardAutoPostLastRunAt: normalizeIsoDate(input.leaderboardAutoPostLastRunAt),
     highlightEnabled: typeof input.highlightEnabled === "boolean" ? input.highlightEnabled : defaults.highlightEnabled,
     brandingFooter: String(input.brandingFooter || defaults.brandingFooter || "Ascend Entrenched").trim() || "Ascend Entrenched",
     colors: {
