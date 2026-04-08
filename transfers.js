@@ -220,15 +220,20 @@ function renderTransferCards(transfers, rosterMap, avatarMap) {
           </div>
 
           <div class="transfer-lane">
-            <div class="transfer-faction-block">
+            <div class="transfer-faction-block transfer-faction-block-from">
               <span>From</span>
               ${fromFactionMarkup}
             </div>
             <span class="transfer-arrow" aria-hidden="true">-></span>
-            <div class="transfer-faction-block">
+            <div class="transfer-faction-block transfer-faction-block-to">
               <span>To</span>
               ${toFactionMarkup}
             </div>
+          </div>
+
+          <div class="transfer-direction-strip" aria-hidden="true">
+            <span class="transfer-direction transfer-direction-out">-> OUT</span>
+            <span class="transfer-direction transfer-direction-in">-> IN</span>
           </div>
 
           <div class="transfer-meta-row">

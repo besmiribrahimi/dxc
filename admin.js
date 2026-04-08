@@ -419,10 +419,47 @@ function buildTransferStatusOptions(selectedStatus) {
     .join("");
 }
 
+function getSortedCurrentPlayerNames() {
+  return [...new Set(
+    currentPlayers
+      .map((player) => String(player?.name || "").trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+}
+
+function findCurrentPlayerByName(playerName) {
+  const needle = String(playerName || "").trim().toLowerCase();
+  if (!needle) {
+    return null;
+  }
+
+  return currentPlayers.find((player) => String(player?.name || "").trim().toLowerCase() === needle) || null;
+}
+
+function ensureTransferPlayerDatalist(playerNames) {
+  const listId = "adminTransferPlayerList";
+  let listNode = document.getElementById(listId);
+
+  if (!listNode) {
+    listNode = document.createElement("datalist");
+    listNode.id = listId;
+    document.body.append(listNode);
+  }
+
+  listNode.innerHTML = playerNames
+    .map((name) => `<option value="${safeText(name)}"></option>`)
+    .join("");
+
+  return listId;
+}
+
 function renderTransferRows(transfers) {
   if (!transferRowsNode) {
     return;
   }
+
+  const playerNames = getSortedCurrentPlayerNames();
+  const playerListId = ensureTransferPlayerDatalist(playerNames);
 
   transferRowsNode.innerHTML = "";
 
@@ -440,7 +477,10 @@ function renderTransferRows(transfers) {
     row.dataset.transferId = transfer.id || `transfer-${index}`;
 
     row.innerHTML = `
-      <span><input class="admin-transfer-input admin-transfer-player" type="text" maxlength="40" value="${safeText(transfer.playerName)}" placeholder="Player name"></span>
+      <span class="admin-transfer-player-wrap">
+        <input class="admin-transfer-input admin-transfer-player" type="text" maxlength="40" list="${playerListId}" value="${safeText(transfer.playerName)}" placeholder="Player name">
+        <small class="admin-transfer-player-hint"></small>
+      </span>
       <span><input class="admin-transfer-input admin-transfer-from" type="text" maxlength="24" value="${safeText(transfer.fromFaction)}" placeholder="From faction"></span>
       <span><input class="admin-transfer-input admin-transfer-to" type="text" maxlength="24" value="${safeText(transfer.toFaction)}" placeholder="To faction"></span>
       <span><input class="admin-transfer-input admin-transfer-fee" type="text" maxlength="30" value="${safeText(transfer.fee)}" placeholder="Fee / terms"></span>
@@ -453,6 +493,35 @@ function renderTransferRows(transfers) {
       <span><input class="admin-transfer-input admin-transfer-note" type="text" maxlength="240" value="${safeText(transfer.note)}" placeholder="Brief note"></span>
       <span><button type="button" class="admin-button danger admin-transfer-delete">Remove</button></span>
     `;
+
+    const playerInputNode = row.querySelector(".admin-transfer-player");
+    const fromInputNode = row.querySelector(".admin-transfer-from");
+    const playerHintNode = row.querySelector(".admin-transfer-player-hint");
+
+    const syncPlayerHint = () => {
+      const rosterPlayer = findCurrentPlayerByName(playerInputNode?.value || "");
+      const hasRosterMatch = Boolean(rosterPlayer);
+      row.classList.toggle("admin-transfer-has-player", hasRosterMatch);
+
+      if (playerHintNode) {
+        playerHintNode.textContent = hasRosterMatch
+          ? `Current faction: ${rosterPlayer.faction}`
+          : "Use a current player for quick faction auto-fill";
+      }
+
+      if (!hasRosterMatch || !fromInputNode) {
+        return;
+      }
+
+      const currentFrom = normalizeFactionValue(fromInputNode.value || "N/A");
+      if (currentFrom === "N/A") {
+        fromInputNode.value = rosterPlayer.faction;
+      }
+    };
+
+    playerInputNode?.addEventListener("change", syncPlayerHint);
+    playerInputNode?.addEventListener("blur", syncPlayerHint);
+    syncPlayerHint();
 
     const deleteButtonNode = row.querySelector(".admin-transfer-delete");
     deleteButtonNode?.addEventListener("click", () => {
@@ -473,7 +542,9 @@ function collectTransferValues() {
   return Array.from(transferRowsNode.querySelectorAll(".admin-transfer-row[data-transfer-id]"))
     .map((row, index) => {
       const playerName = String(row.querySelector(".admin-transfer-player")?.value || "").trim();
-      const fromFaction = normalizeFactionValue(row.querySelector(".admin-transfer-from")?.value || "N/A");
+      const rosterPlayer = findCurrentPlayerByName(playerName);
+      const rawFromFaction = String(row.querySelector(".admin-transfer-from")?.value || "").trim();
+      const fromFaction = normalizeFactionValue(rawFromFaction || rosterPlayer?.faction || "N/A");
       const toFaction = normalizeFactionValue(row.querySelector(".admin-transfer-to")?.value || "N/A");
 
       if (!playerName || fromFaction === "N/A" || toFaction === "N/A") {
