@@ -7,17 +7,50 @@ function normalizeBaseUrl(url) {
   return value.replace(/\/+$/, "");
 }
 
+function ensureLeaderboardPath(pathname) {
+  const rawPath = String(pathname || "");
+  const cleaned = rawPath.replace(/\/+$/, "") || "/";
+
+  if (cleaned === "/api/leaderboard-config") {
+    return cleaned;
+  }
+
+  if (cleaned.endsWith("/api/leaderboard-config")) {
+    return cleaned;
+  }
+
+  if (cleaned === "/api" || cleaned.endsWith("/api")) {
+    return `${cleaned}/leaderboard-config`;
+  }
+
+  if (cleaned === "/") {
+    return "/api/leaderboard-config";
+  }
+
+  return `${cleaned}/api/leaderboard-config`;
+}
+
 function resolveLeaderboardEndpoint(input) {
   const raw = normalizeBaseUrl(input);
   if (!raw) {
     return "";
   }
 
-  if (raw.endsWith("/api/leaderboard-config")) {
-    return raw;
-  }
+  try {
+    const url = new URL(raw);
+    url.pathname = ensureLeaderboardPath(url.pathname);
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    if (raw.endsWith("/api/leaderboard-config")) {
+      return raw;
+    }
 
-  return `${raw}/api/leaderboard-config`;
+    if (raw.endsWith("/api")) {
+      return `${raw}/leaderboard-config`;
+    }
+
+    return `${raw}/api/leaderboard-config`;
+  }
 }
 
 function clampLevel(value) {
@@ -158,7 +191,7 @@ async function fetchLeaderboardData(endpointOrBaseUrl) {
   });
 
   if (!response.ok) {
-    throw new Error(`Leaderboard API failed with HTTP ${response.status}`);
+    throw new Error(`Leaderboard API failed with HTTP ${response.status} at ${endpoint}`);
   }
 
   const payload = await response.json();
