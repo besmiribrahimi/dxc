@@ -1313,6 +1313,66 @@ function getPlayerStats(name, isTopPlayer) {
   return { level, kd };
 }
 
+function clampSyncedLevel(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 1;
+  }
+
+  return Math.max(1, Math.min(10, Math.round(numeric)));
+}
+
+function clampSyncedKd(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 1.0;
+  }
+
+  return Math.max(0, Math.min(9.9, Number(numeric.toFixed(1))));
+}
+
+async function fetchWebSyncConfig() {
+  try {
+    const response = await fetch(WEB_SYNC_ENDPOINT, { cache: "no-store" });
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json();
+    if (!payload?.ok || !payload?.config || typeof payload.config !== "object") {
+      return null;
+    }
+
+    return payload.config;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeSyncedPlayers(config) {
+  const raw = config?.players;
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+
+  const output = {};
+  Object.entries(raw).forEach(([nameKey, stats]) => {
+    const key = String(nameKey || "").trim().toLowerCase();
+    if (!key) {
+      return;
+    }
+
+    const faction = sanitizeFactionValue(stats?.faction);
+    output[key] = {
+      faction: faction === "N/A" ? "" : faction,
+      level: clampSyncedLevel(stats?.level),
+      kd: clampSyncedKd(stats?.kd)
+    };
+  });
+
+  return output;
+}
+
 function getBodyAvatarApiUrl(userId) {
   const params = new URLSearchParams({
     userIds: String(userId || fallbackAvatarId),
@@ -1577,16 +1637,26 @@ async function init() {
     return;
   }
 
-  const lines = await loadPlayerLines();
+  const [lines, syncedConfig] = await Promise.all([
+    loadPlayerLines(),
+    fetchWebSyncConfig()
+  ]);
+  const syncedPlayers = normalizeSyncedPlayers(syncedConfig);
+
   const players = lines
     .map(parsePlayerLine)
     .filter(Boolean);
 
   players.forEach((player) => {
+    const key = String(player.name || "").toLowerCase();
+    const override = syncedPlayers[key];
     const isTop = player.name.toLowerCase() === TOP_PLAYER_NAME.toLowerCase();
     const stats = getPlayerStats(player.name, isTop);
-    player.level = stats.level;
-    player.kd = stats.kd;
+    player.level = override?.level ?? stats.level;
+    player.kd = override?.kd ?? stats.kd;
+    if (override?.faction) {
+      player.faction = override.faction;
+    }
   });
 
   const avatarMap = await fetchAvatarUrls(players);
