@@ -1400,6 +1400,23 @@ function normalizeSyncedClass(value) {
   return normalizePlayerClassValue(value);
 }
 
+function getDeviceIconSvg(device, iconClass = "player-device-icon") {
+  const normalized = normalizeSyncedDevice(device);
+  if (normalized === "PC") {
+    return `<svg class="${iconClass}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="12" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M8 20h8M10 16h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>`;
+  }
+
+  if (normalized === "Mobile") {
+    return `<svg class="${iconClass}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="7" y="2" width="10" height="20" rx="2.2" ry="2.2" fill="none" stroke="currentColor" stroke-width="1.8"></rect><circle cx="12" cy="18" r="1" fill="currentColor"></circle></svg>`;
+  }
+
+  if (normalized === "Controller") {
+    return `<svg class="${iconClass}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.5 10h11l2.1 4.1a2.8 2.8 0 0 1-3.7 3.8L13.8 16h-3.6L8.1 17.9a2.8 2.8 0 0 1-3.7-3.8L6.5 10z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="M9 13h2M10 12v2M15.2 13.1h.01M16.8 14.5h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>`;
+  }
+
+  return `<svg class="${iconClass}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"></circle><path d="M9.2 9.2h5.6v5.6H9.2z" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>`;
+}
+
 function normalizeSyncedDiscordId(value) {
   const normalized = String(value || "").trim().replace(/[<@!>]/g, "");
   if (/^\d{8,}$/.test(normalized)) {
@@ -1608,7 +1625,7 @@ function buildPlayerCard(player, index, avatarMap) {
       ${factionChipMarkup}
       <div class="player-meta-row">
         <span class="player-meta-chip">${classIconMarkup}${escapeHtml(classLabel)}</span>
-        <span class="player-meta-chip">${escapeHtml(deviceLabel)}</span>
+        <span class="player-meta-chip">${getDeviceIconSvg(deviceLabel)}${escapeHtml(deviceLabel)}</span>
       </div>
       <h3 class="player-name">${player.name}</h3>
     </div>

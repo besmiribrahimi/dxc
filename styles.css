@@ -580,6 +580,13 @@ body::after {
   border: 1px solid rgba(147, 197, 253, 0.36);
 }
 
+.player-device-icon {
+  width: 14px;
+  height: 14px;
+  color: #cfe0ff;
+  flex-shrink: 0;
+}
+
 .player-card:hover .player-overlay,
 .player-card:focus-visible .player-overlay {
   transform: translateY(-2px);
@@ -1592,6 +1599,29 @@ body::after {
   letter-spacing: 0.03em;
 }
 
+.podium-detail-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.podium-class-icon,
+.podium-device-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.podium-class-icon {
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(147, 197, 253, 0.36);
+}
+
+.podium-device-icon {
+  color: #cfe0ff;
+}
+
 .leaderboard-panel {
   border: 1px solid rgba(147, 197, 253, 0.24);
   border-radius: 18px;
@@ -1659,6 +1689,54 @@ body::after {
   align-items: center;
   gap: 0.62rem;
   min-width: 0;
+}
+
+.leader-row-main {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.leader-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.leader-detail-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  min-height: 26px;
+  border: 1px solid rgba(147, 197, 253, 0.24);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.28);
+  color: #d6e4f8;
+  font-size: 0.74rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 0.16rem 0.5rem;
+}
+
+.leader-class-icon,
+.leader-device-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.leader-class-icon {
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(147, 197, 253, 0.34);
+}
+
+.leader-device-icon {
+  color: #cfe0ff;
+}
+
+.leader-mobile-only {
+  display: none;
 }
 
 .leader-avatar {
@@ -3517,13 +3595,17 @@ body.war-room-page::after {
     gap: 0.35rem;
   }
 
-  .leader-row-meta span {
+  .leader-detail-chip {
     border: 1px solid rgba(147, 197, 253, 0.14);
     border-radius: 8px;
     padding: 0.22rem 0.38rem;
     font-size: 0.76rem;
     color: #cfddf1;
     background: rgba(2, 6, 23, 0.24);
+  }
+
+  .leader-mobile-only {
+    display: inline-flex;
   }
 
   .leader-faction,

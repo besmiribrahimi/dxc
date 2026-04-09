@@ -104,6 +104,28 @@ function normalizePlayerClassValue(value) {
   return "Unknown";
 }
 
+function getClassIconMarkup(playerClass, iconClass = "leader-class-icon") {
+  const classLabel = normalizePlayerClassValue(playerClass);
+  if (typeof getClassIconPath !== "function") {
+    return "";
+  }
+
+  const iconPath = getClassIconPath(classLabel);
+  if (!iconPath) {
+    return "";
+  }
+
+  return `<img class="${iconClass}" src="${iconPath}" alt="" loading="lazy" aria-hidden="true">`;
+}
+
+function getDeviceIconMarkup(device, iconClass = "leader-device-icon") {
+  if (typeof getDeviceIconSvg === "function") {
+    return getDeviceIconSvg(device, iconClass);
+  }
+
+  return "";
+}
+
 function normalizeDiscordId(value) {
   const normalized = String(value || "").trim().replace(/[<@!>]/g, "");
   if (/^\d{8,}$/.test(normalized)) {
@@ -242,6 +264,10 @@ function buildTopThreeCard(player, rank, avatarMap) {
   const avatarUrl = getResolvedAvatar(player, avatarMap);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   const levelBadgeUrl = getLevelBadgePath(player.level);
+  const classLabel = normalizePlayerClassValue(player.playerClass);
+  const deviceLabel = normalizeDeviceValue(player.device);
+  const classIconMarkup = getClassIconMarkup(classLabel, "podium-class-icon");
+  const deviceIconMarkup = getDeviceIconMarkup(deviceLabel, "podium-device-icon");
   const factionMarkup = buildFactionChipHtml(player.faction, {
     chipClass: "leader-faction-chip",
     maxItems: 1,
@@ -257,8 +283,8 @@ function buildTopThreeCard(player, rank, avatarMap) {
       ${factionMarkup}
       <div class="podium-meta">
         <span class="podium-stat">${countryToFlag(player.country)} ${player.country}</span>
-        <span class="podium-stat">Class ${normalizePlayerClassValue(player.playerClass)}</span>
-        <span class="podium-stat">Device ${normalizeDeviceValue(player.device)}</span>
+        <span class="podium-stat podium-detail-chip">${classIconMarkup}<span>${classLabel}</span></span>
+        <span class="podium-stat podium-detail-chip">${deviceIconMarkup}<span>${deviceLabel}</span></span>
         <span class="podium-stat">K/D ${Number(player.kd).toFixed(1)}</span>
         <span class="podium-stat podium-level"><img class="level-badge" src="${levelBadgeUrl}" alt="Level ${player.level}" loading="lazy">Level ${player.level}</span>
       </div>
@@ -295,6 +321,10 @@ function buildLeaderboardRow(player, rank, avatarMap) {
   const avatarUrl = getResolvedAvatar(player, avatarMap);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   const levelBadgeUrl = getLevelBadgePath(player.level);
+  const classLabel = normalizePlayerClassValue(player.playerClass);
+  const deviceLabel = normalizeDeviceValue(player.device);
+  const classIconMarkup = getClassIconMarkup(classLabel, "leader-class-icon");
+  const deviceIconMarkup = getDeviceIconMarkup(deviceLabel, "leader-device-icon");
 
   const factionMarkup = buildFactionChipHtml(player.faction, {
     chipClass: "leader-faction-chip",
@@ -314,12 +344,12 @@ function buildLeaderboardRow(player, rank, avatarMap) {
         </span>
       </span>
       <div class="leader-row-meta">
-        <span>${countryToFlag(player.country)} ${player.country}</span>
-        <span>Faction ${splitFactionTokens(player.faction).join("/")}</span>
-        <span>Class ${normalizePlayerClassValue(player.playerClass)}</span>
-        <span>Device ${normalizeDeviceValue(player.device)}</span>
-        <span>K/D ${Number(player.kd).toFixed(1)}</span>
-        <span>Level ${player.level}</span>
+        <span class="leader-detail-chip">${classIconMarkup}<span>${classLabel}</span></span>
+        <span class="leader-detail-chip">${deviceIconMarkup}<span>${deviceLabel}</span></span>
+        <span class="leader-detail-chip leader-mobile-only">${countryToFlag(player.country)} ${player.country}</span>
+        <span class="leader-detail-chip leader-mobile-only">Faction ${splitFactionTokens(player.faction).join("/")}</span>
+        <span class="leader-detail-chip leader-mobile-only">K/D ${Number(player.kd).toFixed(1)}</span>
+        <span class="leader-detail-chip leader-mobile-only">Level ${player.level}</span>
       </div>
     </div>
     <span class="leader-faction">${factionMarkup}</span>
