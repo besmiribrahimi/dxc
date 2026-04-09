@@ -494,7 +494,7 @@ body::after {
   outline: none;
 }
 
-.player-card img {
+.player-card > .player-image {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -505,8 +505,8 @@ body::after {
   z-index: 0;
 }
 
-.player-card:hover img,
-.player-card:focus-visible img {
+.player-card:hover > .player-image,
+.player-card:focus-visible > .player-image {
   transform: scale(1.09);
 }
 
