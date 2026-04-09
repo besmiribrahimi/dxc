@@ -3053,6 +3053,310 @@ body.war-room-page::after {
   overflow: hidden;
 }
 
+.admin-weekly-generator {
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-weekly-generator::before {
+  content: "";
+  position: absolute;
+  inset: -30% auto auto -10%;
+  width: 54%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0) 70%);
+  pointer-events: none;
+}
+
+.admin-weekly-controls {
+  margin-top: 0.8rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.44rem;
+  max-width: 880px;
+}
+
+.admin-weekly-controls label,
+.admin-weekly-message-label {
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c4d6ed;
+}
+
+.admin-weekly-message-label {
+  margin-top: 0.86rem;
+  display: block;
+}
+
+.admin-weekly-board {
+  margin-top: 0.86rem;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  border-radius: 16px;
+  padding: 0.86rem;
+  display: grid;
+  gap: 0.72rem;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(239, 68, 68, 0.16), rgba(239, 68, 68, 0) 42%),
+    radial-gradient(circle at 88% 8%, rgba(96, 165, 250, 0.2), rgba(96, 165, 250, 0) 38%),
+    linear-gradient(148deg, rgba(4, 10, 26, 0.92), rgba(10, 18, 37, 0.96));
+}
+
+.admin-weekly-board-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.admin-weekly-board-head h3 {
+  margin: 0;
+  font-family: "Rajdhani", sans-serif;
+  font-size: clamp(1.16rem, 1.9vw, 1.56rem);
+  letter-spacing: 0.03em;
+}
+
+.admin-weekly-board-head p {
+  margin: 0.08rem 0 0;
+  color: #c5d7ee;
+  font-size: 0.84rem;
+}
+
+.admin-weekly-board-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.44);
+  background: rgba(127, 29, 29, 0.36);
+  color: #fecaca;
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 0.1rem 0.56rem;
+}
+
+.admin-weekly-podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.66rem;
+}
+
+.admin-weekly-podium-card {
+  position: relative;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  border-radius: 14px;
+  padding: 0.68rem;
+  background: linear-gradient(155deg, rgba(9, 14, 30, 0.9), rgba(12, 20, 38, 0.82));
+  display: grid;
+  justify-items: center;
+  gap: 0.32rem;
+  min-height: 234px;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.1);
+}
+
+.admin-weekly-podium-card.rank-1 {
+  border-color: rgba(251, 191, 36, 0.48);
+  background: linear-gradient(155deg, rgba(33, 23, 7, 0.92), rgba(20, 15, 8, 0.82));
+}
+
+.admin-weekly-podium-card.rank-2 {
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+.admin-weekly-podium-card.rank-3 {
+  border-color: rgba(251, 146, 60, 0.48);
+}
+
+.admin-weekly-rank {
+  position: absolute;
+  top: 0.52rem;
+  right: 0.52rem;
+  min-width: 2.2rem;
+  min-height: 1.66rem;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.34);
+  background: rgba(2, 6, 23, 0.64);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.admin-weekly-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 18px;
+  object-fit: cover;
+  border: 1px solid rgba(147, 197, 253, 0.44);
+  background: #0a1020;
+  margin-top: 0.1rem;
+}
+
+.admin-weekly-podium-card h3 {
+  margin: 0;
+  font-size: 1.02rem;
+  letter-spacing: 0.01em;
+}
+
+.admin-weekly-podium-card p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #d6e4f6;
+}
+
+.admin-weekly-faction-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.admin-weekly-faction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.34);
+  background: rgba(30, 64, 175, 0.25);
+  color: #dbeafe;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.08rem 0.46rem;
+}
+
+.admin-weekly-faction-chip .faction-flag-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.admin-weekly-stats {
+  margin-top: 0.16rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.admin-weekly-stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  background: rgba(2, 6, 23, 0.66);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d7e7fb;
+  padding: 0 0.5rem;
+}
+
+.admin-weekly-list {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.admin-weekly-row {
+  display: grid;
+  grid-template-columns: 56px 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.56rem;
+  border: 1px solid rgba(147, 197, 253, 0.24);
+  border-radius: 12px;
+  padding: 0.44rem 0.5rem;
+  background: rgba(6, 11, 25, 0.72);
+}
+
+.admin-weekly-row-rank {
+  min-height: 30px;
+  border-radius: 9px;
+  border: 1px solid rgba(147, 197, 253, 0.34);
+  background: rgba(2, 6, 23, 0.58);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.admin-weekly-row-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  object-fit: cover;
+  border: 1px solid rgba(147, 197, 253, 0.32);
+  background: #0a1020;
+}
+
+.admin-weekly-row-main {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.admin-weekly-row-main strong {
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-weekly-row-meta {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  color: #cedff4;
+  font-size: 0.73rem;
+}
+
+.admin-weekly-row-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.26rem;
+}
+
+.admin-weekly-row-stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.28);
+  background: rgba(2, 6, 23, 0.58);
+  color: #d9e7fa;
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 0.5rem;
+}
+
+.admin-weekly-empty {
+  margin: 0;
+  min-height: 164px;
+  border: 1px dashed rgba(147, 197, 253, 0.34);
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.52);
+  display: grid;
+  align-content: center;
+  gap: 0.26rem;
+  text-align: center;
+  padding: 0.9rem;
+}
+
+.admin-weekly-empty h3 {
+  margin: 0;
+}
+
+.admin-weekly-empty p {
+  margin: 0;
+  color: #bfd2ea;
+}
+
 .admin-row {
   display: grid;
   grid-template-columns: 108px minmax(220px, 1.2fr) minmax(170px, 1fr) minmax(140px, 0.9fr) minmax(228px, 1.2fr) 124px 124px 124px;
@@ -3575,6 +3879,29 @@ body.war-room-page::after {
   .admin-level-select,
   .admin-kd-input {
     width: 100%;
+  }
+
+  .admin-weekly-board-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-weekly-podium {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-weekly-row {
+    grid-template-columns: 54px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .admin-weekly-row-avatar {
+    display: none;
+  }
+
+  .admin-weekly-row-stats {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .leaderboard-top-three {

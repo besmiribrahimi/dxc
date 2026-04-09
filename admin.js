@@ -27,6 +27,13 @@ const notifyIdsNode = document.getElementById("adminNotifyIds");
 const notifyMessageNode = document.getElementById("adminNotifyMessage");
 const sendNotifyButtonNode = document.getElementById("adminSendNotifyBtn");
 const botOpsStatusNode = document.getElementById("adminBotOpsStatus");
+const weeklyTopGenerateButtonNode = document.getElementById("adminWeeklyTopGenerateBtn");
+const weeklyTopCopyButtonNode = document.getElementById("adminWeeklyTopCopyBtn");
+const weeklyTopTitleNode = document.getElementById("adminWeeklyTopTitle");
+const weeklyTopWeekNode = document.getElementById("adminWeeklyTopWeek");
+const weeklyTopBoardNode = document.getElementById("adminWeeklyTopBoard");
+const weeklyTopMessageNode = document.getElementById("adminWeeklyTopMessage");
+const weeklyTopStatusNode = document.getElementById("adminWeeklyTopStatus");
 
 let currentConfig = {
   version: 1,
@@ -359,6 +366,7 @@ function renderSyncedPlayerRows(players) {
       renderSyncedPlayerRows(currentExtraPlayers);
       renderTransferRows(currentTransfers);
       renderAdminNewsFeed(currentPlayers);
+      renderWeeklyTopTenPreview();
       setSyncStatus("Synced player removed locally. Click Save Global Sync to publish.");
     });
 
@@ -438,6 +446,192 @@ function setBotOpsStatus(message, isError = false) {
 
   botOpsStatusNode.textContent = message;
   botOpsStatusNode.classList.toggle("error", isError);
+}
+
+function setWeeklyTopStatus(message, isError = false) {
+  if (!weeklyTopStatusNode) {
+    return;
+  }
+
+  weeklyTopStatusNode.textContent = message;
+  weeklyTopStatusNode.classList.toggle("error", isError);
+}
+
+function getDefaultWeeklyTopWeekLabel() {
+  const now = new Date();
+  const month = now.toLocaleString(undefined, { month: "short" });
+  const day = String(now.getDate()).padStart(2, "0");
+  const year = now.getFullYear();
+  return `Week of ${month} ${day}, ${year}`;
+}
+
+function getWeeklyTopTenPlayers() {
+  if (!Array.isArray(currentPlayers) || !currentPlayers.length) {
+    return [];
+  }
+
+  return currentPlayers.slice(0, 10).map((player, index) => ({
+    ...player,
+    weeklyRank: index + 1
+  }));
+}
+
+function buildWeeklyFactionMarkup(faction) {
+  const normalized = normalizeFactionValue(faction);
+  if (typeof buildFactionChipHtml === "function") {
+    return buildFactionChipHtml(normalized, {
+      chipClass: "admin-weekly-faction-chip",
+      maxItems: 1
+    });
+  }
+
+  return `<span class="admin-weekly-faction-chip">${safeText(normalized)}</span>`;
+}
+
+function buildWeeklyTopTenMessage(topTenPlayers, headline, weekLabel) {
+  const title = String(headline || "").trim() || "Weekly Top 10 in Ascend Entrenched";
+  const week = String(weekLabel || "").trim() || getDefaultWeeklyTopWeekLabel();
+
+  const lines = [
+    title,
+    week,
+    "",
+    "Top 10 Operators"
+  ];
+
+  topTenPlayers.forEach((player, index) => {
+    const faction = normalizeFactionValue(player.faction);
+    const country = String(player.country || "N/A").trim() || "N/A";
+    const level = clampLevel(player.level);
+    const kd = clampKd(player.kd).toFixed(1);
+    lines.push(`#${index + 1} ${player.name} | ${faction} | ${country} | LVL ${level} | K/D ${kd}`);
+  });
+
+  lines.push("");
+  lines.push("Weekly Top 10 in Ascend Entrenched. Keep grinding and see you on the battlefield.");
+  return lines.join("\n");
+}
+
+function renderWeeklyTopTenPreview(options = {}) {
+  if (!weeklyTopBoardNode || !weeklyTopMessageNode) {
+    return;
+  }
+
+  const { announce = false } = options;
+  const topTenPlayers = getWeeklyTopTenPlayers();
+  const headline = String(weeklyTopTitleNode?.value || "").trim() || "Weekly Top 10 in Ascend Entrenched";
+  const weekLabel = String(weeklyTopWeekNode?.value || "").trim() || getDefaultWeeklyTopWeekLabel();
+
+  if (!topTenPlayers.length) {
+    weeklyTopBoardNode.innerHTML = `
+      <article class="admin-weekly-empty">
+        <h3>No ranking data yet</h3>
+        <p>Load admin roster data first, then generate your weekly Top 10 board.</p>
+      </article>
+    `;
+    weeklyTopMessageNode.value = "";
+    if (announce) {
+      setWeeklyTopStatus("No players loaded yet for weekly Top 10.", true);
+    }
+    return;
+  }
+
+  const topThree = topTenPlayers.slice(0, 3);
+  const lowerRanks = topTenPlayers.slice(3);
+
+  const podiumMarkup = topThree.map((player) => {
+    const rank = Number(player.weeklyRank);
+    const avatarUrl = getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
+    const factionMarkup = buildWeeklyFactionMarkup(player.faction);
+    const level = clampLevel(player.level);
+    const kd = clampKd(player.kd).toFixed(1);
+
+    return `
+      <article class="admin-weekly-podium-card rank-${rank}">
+        <span class="admin-weekly-rank">#${rank}</span>
+        <img class="admin-weekly-avatar" src="${avatarUrl}" alt="${safeText(player.name)} avatar" loading="lazy" referrerpolicy="no-referrer">
+        <h3>${safeText(player.name)}</h3>
+        <div class="admin-weekly-faction-wrap">${factionMarkup}</div>
+        <p>${countryToFlag(player.country)} ${safeText(player.country || "N/A")}</p>
+        <div class="admin-weekly-stats">
+          <span>LVL ${level}</span>
+          <span>K/D ${kd}</span>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  const rowsMarkup = lowerRanks.map((player) => {
+    const rank = Number(player.weeklyRank);
+    const avatarUrl = getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
+    const factionMarkup = buildWeeklyFactionMarkup(player.faction);
+    const level = clampLevel(player.level);
+    const kd = clampKd(player.kd).toFixed(1);
+
+    return `
+      <article class="admin-weekly-row">
+        <span class="admin-weekly-row-rank">#${rank}</span>
+        <img class="admin-weekly-row-avatar" src="${avatarUrl}" alt="${safeText(player.name)} avatar" loading="lazy" referrerpolicy="no-referrer">
+        <div class="admin-weekly-row-main">
+          <strong>${safeText(player.name)}</strong>
+          <div class="admin-weekly-row-meta">
+            <span>${countryToFlag(player.country)} ${safeText(player.country || "N/A")}</span>
+            <span>${factionMarkup}</span>
+          </div>
+        </div>
+        <div class="admin-weekly-row-stats">
+          <span>LVL ${level}</span>
+          <span>K/D ${kd}</span>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  weeklyTopBoardNode.innerHTML = `
+    <div class="admin-weekly-board-head">
+      <div>
+        <h3>${safeText(headline)}</h3>
+        <p>${safeText(weekLabel)}</p>
+      </div>
+      <span class="admin-weekly-board-tag">Ascend Entrenched Rankings</span>
+    </div>
+    <div class="admin-weekly-podium">${podiumMarkup}</div>
+    <div class="admin-weekly-list">${rowsMarkup}</div>
+  `;
+
+  weeklyTopMessageNode.value = buildWeeklyTopTenMessage(topTenPlayers, headline, weekLabel);
+  if (announce) {
+    setWeeklyTopStatus(`Weekly Top 10 generated for ${topTenPlayers.length} players.`);
+  }
+}
+
+function onWeeklyTopGenerateClick() {
+  syncCurrentPlayersFromInputs();
+  renderWeeklyTopTenPreview({ announce: true });
+}
+
+async function onWeeklyTopCopyClick() {
+  const text = String(weeklyTopMessageNode?.value || "").trim();
+  if (!text) {
+    setWeeklyTopStatus("Generate a weekly Top 10 message first.", true);
+    return;
+  }
+
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else if (weeklyTopMessageNode) {
+      weeklyTopMessageNode.focus();
+      weeklyTopMessageNode.select();
+      document.execCommand("copy");
+      weeklyTopMessageNode.setSelectionRange(0, 0);
+      weeklyTopMessageNode.blur();
+    }
+
+    setWeeklyTopStatus("Weekly Top 10 message copied to clipboard.");
+  } catch {
+    setWeeklyTopStatus("Copy failed. Select the message manually and copy.", true);
+  }
 }
 
 function normalizeDiscordIds(rawValue) {
@@ -699,6 +893,7 @@ function renderRows(players) {
 
       syncCurrentPlayersFromDom();
       renderRows(currentPlayers);
+      renderWeeklyTopTenPreview();
       setSyncStatus("Order updated locally. Click Save Global Sync to publish.");
     });
 
@@ -1098,6 +1293,7 @@ async function loadPanelData() {
     renderSyncedPlayerRows(currentExtraPlayers);
     renderAdminNewsFeed(currentPlayers);
     renderBotSettings(config);
+    renderWeeklyTopTenPreview();
 
     const hasManualOrder = Array.isArray(config?.order) && config.order.length > 0;
     const modeText = hasManualOrder
@@ -1173,6 +1369,7 @@ async function onSaveClick() {
     renderTransferRows(currentTransfers);
     renderSyncedPlayerRows(currentExtraPlayers);
     renderAdminNewsFeed(currentPlayers);
+    renderWeeklyTopTenPreview();
 
     const botDispatch = saveResult.botDispatch;
     const botSuffix = botDispatch
@@ -1301,6 +1498,7 @@ function onAddSyncedPlayerClick() {
   renderSyncedPlayerRows(currentExtraPlayers);
   renderTransferRows(currentTransfers);
   renderAdminNewsFeed(currentPlayers);
+  renderWeeklyTopTenPreview();
   resetSyncedPlayerInputs();
   setSyncStatus("Synced player added locally. Click Save Global Sync to publish.");
 }
@@ -1323,6 +1521,18 @@ if (addTransferButtonNode) {
 }
 if (addSyncedPlayerButtonNode) {
   addSyncedPlayerButtonNode.addEventListener("click", onAddSyncedPlayerClick);
+}
+if (weeklyTopGenerateButtonNode) {
+  weeklyTopGenerateButtonNode.addEventListener("click", onWeeklyTopGenerateClick);
+}
+if (weeklyTopCopyButtonNode) {
+  weeklyTopCopyButtonNode.addEventListener("click", onWeeklyTopCopyClick);
+}
+if (weeklyTopTitleNode) {
+  weeklyTopTitleNode.addEventListener("input", () => renderWeeklyTopTenPreview());
+}
+if (weeklyTopWeekNode) {
+  weeklyTopWeekNode.addEventListener("input", () => renderWeeklyTopTenPreview());
 }
 
 if (getStoredToken()) {

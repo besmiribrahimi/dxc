@@ -169,6 +169,32 @@
         </div>
       </section>
 
+      <section class="admin-card admin-weekly-generator" aria-label="Weekly top 10 generator">
+        <div class="admin-panel-header">
+          <h2>Weekly Top 10 Generator</h2>
+          <div class="admin-actions">
+            <button id="adminWeeklyTopGenerateBtn" type="button" class="admin-button">Generate Weekly Top 10</button>
+            <button id="adminWeeklyTopCopyBtn" type="button" class="admin-button secondary">Copy Message</button>
+          </div>
+        </div>
+
+        <p>Create a post-ready Weekly Top 10 board from the current admin ranking and share it instantly.</p>
+
+        <div class="admin-weekly-controls">
+          <label for="adminWeeklyTopTitle">Headline</label>
+          <input id="adminWeeklyTopTitle" class="admin-bot-input" type="text" maxlength="90" value="Weekly Top 10 in Ascend Entrenched">
+
+          <label for="adminWeeklyTopWeek">Week Label</label>
+          <input id="adminWeeklyTopWeek" class="admin-bot-input" type="text" maxlength="48" placeholder="Week of Apr 09, 2026">
+        </div>
+
+        <section id="adminWeeklyTopBoard" class="admin-weekly-board" aria-label="Weekly top 10 preview board"></section>
+
+        <label for="adminWeeklyTopMessage" class="admin-weekly-message-label">Generated Message</label>
+        <textarea id="adminWeeklyTopMessage" class="admin-bot-textarea" rows="8" spellcheck="false" placeholder="Generated Weekly Top 10 message appears here..."></textarea>
+        <p id="adminWeeklyTopStatus" class="admin-status">Waiting for weekly Top 10 generation.</p>
+      </section>
+
       <div class="admin-table-wrap">
         <div class="admin-row admin-row-head" role="row">
           <span>Order</span>
