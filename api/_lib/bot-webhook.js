@@ -66,11 +66,19 @@ async function postBotWebhook(payload) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const authHeaders = secret
+      ? {
+          "x-webhook-secret": secret,
+          Authorization: `Bearer ${secret}`,
+          "x-api-key": secret
+        }
+      : {};
+
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(secret ? { "x-webhook-secret": secret } : {})
+        ...authHeaders
       },
       body: JSON.stringify(payload),
       signal: controller.signal
@@ -78,10 +86,15 @@ async function postBotWebhook(payload) {
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
+      const remoteError = data?.error || `Webhook failed with status ${response.status}`;
+      const isAuthError = response.status === 401 || response.status === 403 || /unauthorized|forbidden/i.test(String(remoteError));
+
       return {
         ok: false,
         status: response.status,
-        error: data?.error || `Webhook failed with status ${response.status}`
+        error: isAuthError
+          ? `${remoteError}. Check BOT_WEBHOOK_SECRET and bot endpoint auth config.`
+          : remoteError
       };
     }
 

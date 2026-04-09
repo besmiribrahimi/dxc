@@ -891,7 +891,13 @@ async function onSendNotifyClick() {
       const details = Array.isArray(result.data?.details) && result.data.details.length
         ? ` (${result.data.details.join("; ")})`
         : "";
-      setBotOpsStatus(`${result.data?.error || "Failed to dispatch bot notification."}${details}`, true);
+      const rawError = String(result.data?.error || "Failed to dispatch bot notification.");
+      if (/unauthorized webhook request|forbidden|unauthorized/i.test(rawError)) {
+        setBotOpsStatus("Bot rejected webhook auth. You are signed into admin, but BOT_WEBHOOK_SECRET (and bot endpoint auth) must match.", true);
+        return;
+      }
+
+      setBotOpsStatus(`${rawError}${details}`, true);
       return;
     }
 
