@@ -50,7 +50,7 @@ const fallbackPlayerLines = [
   "49. pvpkinnng - Faction: N/A | Country: UK -69159138956948277",
   "50. FTF_Dingleberrysolos - Faction: N/A | Country: UK -1461318954134802479",
   "51. Catalinharang - Faction: RKA | Country: Canada -1463584787561189479",
-  "52. Vorblt - Faction: TWA | Country: Turkey -1257448531262963787",
+  "52. VORBIT - Faction: TWA | Country: Turkey -1257448531262963787",
   "53. roman_gail2 - Faction: SERMETYA | Country: Germany -731075264154566706",
   "54. PfannKuch_en - Faction: TWA | Country: Germany -1014962921597567076",
   "55. Alvem09 - Faction: SWL | Country: Brasil -984954494414635009"
@@ -102,7 +102,7 @@ const avatarIdMap = new Map([
   ["tamika2006s", 187119271],
   ["thatrandomperson142", 3544844417],
   ["catalinharang", 4036413145],
-  ["vorblt", 978660497],
+  ["vorbit", 978660497],
   ["roman_gail2", 1546182804],
   ["pfannkuch_en", 2889634744],
   ["alvem09", 3556158912],
