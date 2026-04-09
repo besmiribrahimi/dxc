@@ -104,6 +104,27 @@ function normalizePlayerClassValue(value) {
   return "Unknown";
 }
 
+function normalizePlayerClassList(value) {
+  const source = Array.isArray(value)
+    ? value
+    : String(value || "")
+      .split(/[\/,&|;]+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+  const normalized = [];
+  source.forEach((entry) => {
+    const role = normalizePlayerClassValue(entry);
+    if (role === "Unknown" || normalized.includes(role)) {
+      return;
+    }
+
+    normalized.push(role);
+  });
+
+  return normalized.slice(0, 3);
+}
+
 function getClassIconMarkup(playerClass, iconClass = "leader-class-icon") {
   const classLabel = normalizePlayerClassValue(playerClass);
   if (typeof getClassIconPath !== "function") {
@@ -157,9 +178,11 @@ function normalizeConfigPlayers(config) {
       return;
     }
 
+    const classList = normalizePlayerClassList(stats?.classes ?? stats?.class);
     output[key] = {
       faction: normalizeFactionOverride(stats?.faction),
-      class: normalizePlayerClassValue(stats?.class),
+      class: classList[0] || "Unknown",
+      classes: classList,
       level: clampLevel(stats?.level),
       kd: Number(clampKd(stats?.kd).toFixed(1)),
       device: normalizeDeviceValue(stats?.device)
@@ -189,6 +212,7 @@ function normalizeExtraPlayers(config) {
         name,
         faction: normalizeFactionOverride(item.faction || "N/A") || "N/A",
         class: normalizePlayerClassValue(item.class),
+        classes: normalizePlayerClassList(item.classes ?? item.class),
         country: String(item.country || "N/A").trim() || "N/A",
         discordId: normalizeDiscordId(item.discordId),
         userId: normalizeOptionalUserId(item.userId),
@@ -264,9 +288,14 @@ function buildTopThreeCard(player, rank, avatarMap) {
   const avatarUrl = getResolvedAvatar(player, avatarMap);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   const levelBadgeUrl = getLevelBadgePath(player.level);
-  const classLabel = normalizePlayerClassValue(player.playerClass);
+  const classList = normalizePlayerClassList(player.playerClasses ?? player.playerClass);
   const deviceLabel = normalizeDeviceValue(player.device);
-  const classIconMarkup = getClassIconMarkup(classLabel, "podium-class-icon");
+  const classChipsMarkup = (classList.length ? classList : ["Unknown"])
+    .map((classLabel) => {
+      const classIconMarkup = getClassIconMarkup(classLabel, "podium-class-icon");
+      return `<span class="podium-stat podium-detail-chip">${classIconMarkup}<span>${classLabel}</span></span>`;
+    })
+    .join("");
   const deviceIconMarkup = getDeviceIconMarkup(deviceLabel, "podium-device-icon");
   const factionMarkup = buildFactionChipHtml(player.faction, {
     chipClass: "leader-faction-chip",
@@ -283,7 +312,7 @@ function buildTopThreeCard(player, rank, avatarMap) {
       ${factionMarkup}
       <div class="podium-meta">
         <span class="podium-stat">${countryToFlag(player.country)} ${player.country}</span>
-        <span class="podium-stat podium-detail-chip">${classIconMarkup}<span>${classLabel}</span></span>
+        ${classChipsMarkup}
         <span class="podium-stat podium-detail-chip">${deviceIconMarkup}<span>${deviceLabel}</span></span>
         <span class="podium-stat">K/D ${Number(player.kd).toFixed(1)}</span>
         <span class="podium-stat podium-level"><img class="level-badge" src="${levelBadgeUrl}" alt="Level ${player.level}" loading="lazy">Level ${player.level}</span>
@@ -321,9 +350,14 @@ function buildLeaderboardRow(player, rank, avatarMap) {
   const avatarUrl = getResolvedAvatar(player, avatarMap);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   const levelBadgeUrl = getLevelBadgePath(player.level);
-  const classLabel = normalizePlayerClassValue(player.playerClass);
+  const classList = normalizePlayerClassList(player.playerClasses ?? player.playerClass);
   const deviceLabel = normalizeDeviceValue(player.device);
-  const classIconMarkup = getClassIconMarkup(classLabel, "leader-class-icon");
+  const classChipsMarkup = (classList.length ? classList : ["Unknown"])
+    .map((classLabel) => {
+      const classIconMarkup = getClassIconMarkup(classLabel, "leader-class-icon");
+      return `<span class="leader-detail-chip">${classIconMarkup}<span>${classLabel}</span></span>`;
+    })
+    .join("");
   const deviceIconMarkup = getDeviceIconMarkup(deviceLabel, "leader-device-icon");
 
   const factionMarkup = buildFactionChipHtml(player.faction, {
@@ -344,7 +378,7 @@ function buildLeaderboardRow(player, rank, avatarMap) {
         </span>
       </span>
       <div class="leader-row-meta">
-        <span class="leader-detail-chip">${classIconMarkup}<span>${classLabel}</span></span>
+        ${classChipsMarkup}
         <span class="leader-detail-chip">${deviceIconMarkup}<span>${deviceLabel}</span></span>
         <span class="leader-detail-chip leader-mobile-only">${countryToFlag(player.country)} ${player.country}</span>
         <span class="leader-detail-chip leader-mobile-only">Faction ${splitFactionTokens(player.faction).join("/")}</span>
@@ -428,6 +462,7 @@ async function initLeaderboardPage() {
     playersFromLines.push({
       name: entry.name,
       faction: entry.faction,
+      playerClasses: normalizePlayerClassList(entry.classes ?? entry.class),
       playerClass: normalizePlayerClassValue(entry.class),
       country: entry.country,
       discordId: entry.discordId,
@@ -450,7 +485,9 @@ async function initLeaderboardPage() {
       player.level = override?.level ?? stats.level;
       player.wins = player.level;
       player.kd = override?.kd ?? stats.kd;
-      player.playerClass = normalizePlayerClassValue(override?.class ?? player.playerClass);
+      const classList = normalizePlayerClassList(override?.classes ?? override?.class ?? player.playerClasses ?? player.playerClass);
+      player.playerClasses = classList;
+      player.playerClass = classList[0] || normalizePlayerClassValue(player.playerClass);
       player.device = normalizeDeviceValue(override?.device ?? player.device);
       if (override?.faction) {
         player.faction = override.faction;

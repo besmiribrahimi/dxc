@@ -3055,12 +3055,24 @@ body.war-room-page::after {
 
 .admin-row {
   display: grid;
-  grid-template-columns: 108px minmax(220px, 1.2fr) minmax(170px, 1fr) minmax(140px, 0.9fr) 124px 124px 124px 124px;
+  grid-template-columns: 108px minmax(220px, 1.2fr) minmax(170px, 1fr) minmax(140px, 0.9fr) minmax(228px, 1.2fr) 124px 124px 124px;
   align-items: center;
   gap: 0.74rem;
   padding: 0.74rem 0.88rem;
   border-bottom: 1px solid rgba(147, 197, 253, 0.1);
   background: rgba(10, 18, 33, 0.42);
+}
+
+.admin-class-stack {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.34rem;
+}
+
+.admin-class-stack .admin-class-select {
+  min-height: 38px;
+  font-size: 0.82rem;
+  padding: 0.26rem 0.4rem;
 }
 
 .admin-row:not(.admin-row-head) {

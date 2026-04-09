@@ -133,6 +133,52 @@ function normalizeDeviceValue(value) {
   return "Unknown";
 }
 
+function normalizePlayerClassValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "engineer") {
+    return "Engineer";
+  }
+
+  if (normalized === "officer") {
+    return "Officer";
+  }
+
+  if (normalized === "recon") {
+    return "Recon";
+  }
+
+  if (normalized === "rifleman") {
+    return "Rifleman";
+  }
+
+  if (normalized === "skirmisher") {
+    return "Skirmisher";
+  }
+
+  return "Unknown";
+}
+
+function normalizePlayerClassList(value) {
+  const source = Array.isArray(value)
+    ? value
+    : String(value || "")
+      .split(/[\/,&|;]+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+  const normalized = [];
+  source.forEach((entry) => {
+    const role = normalizePlayerClassValue(entry);
+    if (role === "Unknown" || normalized.includes(role)) {
+      return;
+    }
+
+    normalized.push(role);
+  });
+
+  return normalized.slice(0, 3);
+}
+
 function normalizeDiscordId(value) {
   const normalized = String(value || "").trim().replace(/[<@!>]/g, "");
   if (/^\d{8,}$/.test(normalized)) {
@@ -169,6 +215,8 @@ function normalizeExtraPlayers(raw) {
         id: String(item.id || `extra-player-${Date.now()}-${index}`).trim(),
         name,
         faction: String(item.faction || "N/A").trim().toUpperCase() || "N/A",
+        class: normalizePlayerClassValue(item.class),
+        classes: normalizePlayerClassList(item.classes ?? item.class),
         country: String(item.country || "N/A").trim() || "N/A",
         discordId: normalizeDiscordId(item.discordId),
         userId: normalizeOptionalUserId(item.userId),

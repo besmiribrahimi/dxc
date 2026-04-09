@@ -231,11 +231,11 @@ const factionTokenAliasMap = new Map([
   ["CSZK", "CZSK"]
 ]);
 const classIconMap = new Map([
-  ["ENGINEER", "classes%20icons/Engineer_Icon.webp"],
-  ["OFFICER", "classes%20icons/Officer-icon.webp"],
-  ["RECON", "classes%20icons/Recon_Icon.webp"],
-  ["RIFLEMAN", "classes%20icons/Rifleman-icon.webp"],
-  ["SKIRMISHER", "classes%20icons/Skirmisher-icon.webp"]
+  ["ENGINEER", "classes icons/Engineer_Icon.webp"],
+  ["OFFICER", "classes icons/Officer-icon.webp"],
+  ["RECON", "classes icons/Recon_Icon.webp"],
+  ["RIFLEMAN", "classes icons/Rifleman-icon.webp"],
+  ["SKIRMISHER", "classes icons/Skirmisher-icon.webp"]
 ]);
 
 let opsHudNodes = null;
@@ -320,9 +320,31 @@ function normalizePlayerClassValue(value) {
   return "Unknown";
 }
 
+function normalizePlayerClassList(value) {
+  const source = Array.isArray(value)
+    ? value
+    : String(value || "")
+      .split(/[\/,&|;]+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+  const normalized = [];
+  source.forEach((entry) => {
+    const role = normalizePlayerClassValue(entry);
+    if (role === "Unknown" || normalized.includes(role)) {
+      return;
+    }
+
+    normalized.push(role);
+  });
+
+  return normalized.slice(0, 3);
+}
+
 function getClassIconPath(playerClass) {
   const key = String(normalizePlayerClassValue(playerClass) || "Unknown").toUpperCase();
-  return classIconMap.get(key) || "";
+  const iconPath = classIconMap.get(key) || "";
+  return iconPath ? encodeURI(iconPath) : "";
 }
 
 function getFactionFlagPath(token) {
@@ -390,6 +412,7 @@ function parsePlayerLine(rawLine) {
     bodyAvatarUrl: "",
     level: 1,
     kd: 0,
+    playerClasses: [],
     playerClass: "Unknown",
     device: "Unknown"
   };
@@ -1400,6 +1423,10 @@ function normalizeSyncedClass(value) {
   return normalizePlayerClassValue(value);
 }
 
+function normalizeSyncedClassList(value) {
+  return normalizePlayerClassList(value);
+}
+
 function getDeviceIconSvg(device, iconClass = "player-device-icon") {
   const normalized = normalizeSyncedDevice(device);
   if (normalized === "PC") {
@@ -1467,9 +1494,11 @@ function normalizeSyncedPlayers(config) {
     }
 
     const faction = sanitizeFactionValue(stats?.faction);
+    const classList = normalizeSyncedClassList(stats?.classes ?? stats?.class);
     output[key] = {
       faction: faction === "N/A" ? "" : faction,
-      class: normalizeSyncedClass(stats?.class),
+      class: classList[0] || "Unknown",
+      classes: classList,
       level: clampSyncedLevel(stats?.level),
       kd: clampSyncedKd(stats?.kd),
       device: normalizeSyncedDevice(stats?.device)
@@ -1503,6 +1532,7 @@ function normalizeSyncedExtraPlayers(config) {
         name,
         faction: sanitizeFactionValue(item.faction || "N/A"),
         class: normalizeSyncedClass(item.class),
+        classes: normalizeSyncedClassList(item.classes ?? item.class),
         country: normalizeText(item.country) || "N/A",
         discordId: normalizeSyncedDiscordId(item.discordId),
         userId: Number.isFinite(resolvedUserId) ? resolvedUserId : fallbackAvatarId,
@@ -1607,11 +1637,17 @@ function buildPlayerCard(player, index, avatarMap) {
     getFallbackAvatarUrl(player.name);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   player.avatarUrl = primaryAvatar;
-  const classLabel = normalizePlayerClassValue(player.playerClass);
-  const classIconPath = getClassIconPath(classLabel);
-  const classIconMarkup = classIconPath
-    ? `<img class="player-class-icon" src="${classIconPath}" alt="${escapeHtml(classLabel)} class icon" loading="lazy">`
-    : "";
+  const classList = normalizePlayerClassList(player.playerClasses ?? player.playerClass);
+  const classChipsMarkup = (classList.length ? classList : ["Unknown"])
+    .map((classLabel) => {
+      const classIconPath = getClassIconPath(classLabel);
+      const classIconMarkup = classIconPath
+        ? `<img class="player-class-icon" src="${classIconPath}" alt="${escapeHtml(classLabel)} class icon" loading="lazy">`
+        : "";
+
+      return `<span class="player-meta-chip">${classIconMarkup}${escapeHtml(classLabel)}</span>`;
+    })
+    .join("");
   const deviceLabel = normalizeSyncedDevice(player.device);
   const factionChipMarkup = buildFactionChipHtml(player.faction, {
     chipClass: "player-faction-chip",
@@ -1624,7 +1660,7 @@ function buildPlayerCard(player, index, avatarMap) {
       <span class="player-label">Player</span>
       ${factionChipMarkup}
       <div class="player-meta-row">
-        <span class="player-meta-chip">${classIconMarkup}${escapeHtml(classLabel)}</span>
+        ${classChipsMarkup}
         <span class="player-meta-chip">${getDeviceIconSvg(deviceLabel)}${escapeHtml(deviceLabel)}</span>
       </div>
       <h3 class="player-name">${player.name}</h3>
@@ -1808,6 +1844,7 @@ async function init() {
     players.push({
       name: entry.name,
       faction: entry.faction,
+      playerClasses: normalizeSyncedClassList(entry.classes ?? entry.class),
       playerClass: normalizeSyncedClass(entry.class),
       country: entry.country,
       discordId: entry.discordId,
@@ -1827,7 +1864,9 @@ async function init() {
     const stats = getPlayerStats(player.name, isTop);
     player.level = override?.level ?? stats.level;
     player.kd = override?.kd ?? stats.kd;
-    player.playerClass = normalizeSyncedClass(override?.class ?? player.playerClass);
+    const classList = normalizeSyncedClassList(override?.classes ?? override?.class ?? player.playerClasses ?? player.playerClass);
+    player.playerClasses = classList;
+    player.playerClass = classList[0] || normalizeSyncedClass(player.playerClass);
     player.device = normalizeSyncedDevice(override?.device ?? player.device);
     if (override?.faction) {
       player.faction = override.faction;
