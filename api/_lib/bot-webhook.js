@@ -23,7 +23,7 @@ function getWebhookUrl() {
 }
 
 function getWebhookSecret() {
-  return firstEnv(["BOT_WEBHOOK_SECRET"]);
+  return firstEnv(["BOT_WEBHOOK_SECRET", "WEBHOOK_SHARED_SECRET"]);
 }
 
 function getWebhookTimeoutMs() {
@@ -88,12 +88,15 @@ async function postBotWebhook(payload) {
     if (!response.ok) {
       const remoteError = data?.error || `Webhook failed with status ${response.status}`;
       const isAuthError = response.status === 401 || response.status === 403 || /unauthorized|forbidden/i.test(String(remoteError));
+      const missingSecretHint = isAuthError && !secret
+        ? " BOT_WEBHOOK_SECRET (or WEBHOOK_SHARED_SECRET) is missing on website env."
+        : "";
 
       return {
         ok: false,
         status: response.status,
         error: isAuthError
-          ? `${remoteError}. Check BOT_WEBHOOK_SECRET and bot endpoint auth config.`
+          ? `${remoteError}. Check BOT_WEBHOOK_SECRET and bot endpoint auth config.${missingSecretHint}`
           : remoteError
       };
     }
