@@ -38,6 +38,7 @@ function buildDefaultConfig() {
     updatedAt: null,
     players: {},
     order: [],
+    extraPlayers: [],
     transfers: [],
     botSettings: {
       applicationsPanelChannelId: "",
@@ -115,6 +116,68 @@ function normalizeTransfers(raw) {
     .filter(Boolean);
 }
 
+function normalizeDeviceValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "pc" || normalized === "desktop") {
+    return "PC";
+  }
+
+  if (normalized === "mobile" || normalized === "phone" || normalized === "tablet") {
+    return "Mobile";
+  }
+
+  if (normalized === "controller" || normalized === "console" || normalized === "gamepad") {
+    return "Controller";
+  }
+
+  return "Unknown";
+}
+
+function normalizeDiscordId(value) {
+  const normalized = String(value || "").trim().replace(/[<@!>]/g, "");
+  if (/^\d{8,}$/.test(normalized)) {
+    return normalized;
+  }
+
+  return "";
+}
+
+function normalizeOptionalUserId(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return "";
+  }
+
+  return /^\d{3,}$/.test(normalized) ? normalized : "";
+}
+
+function normalizeExtraPlayers(raw) {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .slice(0, 120)
+    .map((entry, index) => {
+      const item = entry && typeof entry === "object" ? entry : {};
+      const name = String(item.name || item.playerName || "").trim();
+      if (!name) {
+        return null;
+      }
+
+      return {
+        id: String(item.id || `extra-player-${Date.now()}-${index}`).trim(),
+        name,
+        faction: String(item.faction || "N/A").trim().toUpperCase() || "N/A",
+        country: String(item.country || "N/A").trim() || "N/A",
+        discordId: normalizeDiscordId(item.discordId),
+        userId: normalizeOptionalUserId(item.userId),
+        device: normalizeDeviceValue(item.device)
+      };
+    })
+    .filter(Boolean);
+}
+
 async function runCommand(command) {
   const url = getUpstashUrl();
   const token = getUpstashToken();
@@ -172,6 +235,8 @@ async function getLeaderboardConfig() {
       parsed.order = [];
     }
 
+    parsed.extraPlayers = normalizeExtraPlayers(parsed.extraPlayers);
+
     parsed.transfers = normalizeTransfers(parsed.transfers);
 
     parsed.botSettings = normalizeBotSettings(parsed.botSettings);
@@ -189,6 +254,7 @@ async function saveLeaderboardConfig(config) {
     updatedAt: String(config?.updatedAt || new Date().toISOString()),
     players: config?.players && typeof config.players === "object" ? config.players : {},
     order: Array.isArray(config?.order) ? config.order.map((value) => String(value || "").trim().toLowerCase()).filter(Boolean) : [],
+    extraPlayers: normalizeExtraPlayers(config?.extraPlayers),
     transfers: normalizeTransfers(config?.transfers),
     botSettings: normalizeBotSettings(config?.botSettings)
   };

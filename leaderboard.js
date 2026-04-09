@@ -62,6 +62,41 @@ function normalizeFactionOverride(value) {
   return [...new Set(tokens)].join("/");
 }
 
+function normalizeDeviceValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "pc" || normalized === "desktop") {
+    return "PC";
+  }
+
+  if (normalized === "mobile" || normalized === "phone" || normalized === "tablet") {
+    return "Mobile";
+  }
+
+  if (normalized === "controller" || normalized === "console" || normalized === "gamepad") {
+    return "Controller";
+  }
+
+  return "Unknown";
+}
+
+function normalizeDiscordId(value) {
+  const normalized = String(value || "").trim().replace(/[<@!>]/g, "");
+  if (/^\d{8,}$/.test(normalized)) {
+    return normalized;
+  }
+
+  return "";
+}
+
+function normalizeOptionalUserId(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return "";
+  }
+
+  return /^\d{3,}$/.test(normalized) ? normalized : "";
+}
+
 function normalizeConfigPlayers(config) {
   const raw = config?.players;
   if (!raw || typeof raw !== "object") {
@@ -78,11 +113,40 @@ function normalizeConfigPlayers(config) {
     output[key] = {
       faction: normalizeFactionOverride(stats?.faction),
       level: clampLevel(stats?.level),
-      kd: Number(clampKd(stats?.kd).toFixed(1))
+      kd: Number(clampKd(stats?.kd).toFixed(1)),
+      device: normalizeDeviceValue(stats?.device)
     };
   });
 
   return output;
+}
+
+function normalizeExtraPlayers(config) {
+  const raw = config?.extraPlayers;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .slice(0, 120)
+    .map((entry, index) => {
+      const item = entry && typeof entry === "object" ? entry : {};
+      const name = String(item.name || item.playerName || "").trim();
+      if (!name) {
+        return null;
+      }
+
+      return {
+        id: String(item.id || `extra-player-${index}`).trim(),
+        name,
+        faction: normalizeFactionOverride(item.faction || "N/A") || "N/A",
+        country: String(item.country || "N/A").trim() || "N/A",
+        discordId: normalizeDiscordId(item.discordId),
+        userId: normalizeOptionalUserId(item.userId),
+        device: normalizeDeviceValue(item.device)
+      };
+    })
+    .filter(Boolean);
 }
 
 function normalizeConfigOrder(config, validKeys) {
@@ -223,6 +287,7 @@ function buildLeaderboardRow(player, rank, avatarMap) {
       <div class="leader-row-meta">
         <span>${countryToFlag(player.country)} ${player.country}</span>
         <span>Faction ${splitFactionTokens(player.faction).join("/")}</span>
+        <span>Device ${normalizeDeviceValue(player.device)}</span>
         <span>K/D ${Number(player.kd).toFixed(1)}</span>
         <span>Level ${player.level}</span>
       </div>
@@ -285,10 +350,36 @@ async function initLeaderboardPage() {
   const lines = await loadPlayerLines();
   const remoteConfig = await fetchRemoteConfig();
   const syncedPlayers = normalizeConfigPlayers(remoteConfig);
+  const syncedExtraPlayers = normalizeExtraPlayers(remoteConfig);
 
-  const players = lines
+  const playersFromLines = lines
     .map(parsePlayerLine)
-    .filter(Boolean)
+    .filter(Boolean);
+
+  const seenKeys = new Set(playersFromLines.map((player) => String(player.name || "").trim().toLowerCase()));
+  syncedExtraPlayers.forEach((entry) => {
+    const key = String(entry.name || "").trim().toLowerCase();
+    if (!key || seenKeys.has(key)) {
+      return;
+    }
+
+    seenKeys.add(key);
+    const resolvedUserId = Number(entry.userId || fallbackAvatarId);
+    playersFromLines.push({
+      name: entry.name,
+      faction: entry.faction,
+      country: entry.country,
+      discordId: entry.discordId,
+      userId: Number.isFinite(resolvedUserId) ? resolvedUserId : fallbackAvatarId,
+      avatarUrl: "",
+      bodyAvatarUrl: "",
+      level: 1,
+      kd: 0,
+      device: normalizeDeviceValue(entry.device)
+    });
+  });
+
+  const players = playersFromLines
     .map((player, sourceIndex) => {
       const stats = getLeaderboardStats(player.name);
       const key = player.name.toLowerCase();
@@ -298,6 +389,7 @@ async function initLeaderboardPage() {
       player.level = override?.level ?? stats.level;
       player.wins = player.level;
       player.kd = override?.kd ?? stats.kd;
+      player.device = normalizeDeviceValue(override?.device ?? player.device);
       if (override?.faction) {
         player.faction = override.faction;
       }

@@ -24,6 +24,41 @@ function clampKd(value) {
   return Math.max(0, Math.min(9.9, Number(numeric.toFixed(1))));
 }
 
+function normalizeDeviceValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "pc" || normalized === "desktop") {
+    return "PC";
+  }
+
+  if (normalized === "mobile" || normalized === "phone" || normalized === "tablet") {
+    return "Mobile";
+  }
+
+  if (normalized === "controller" || normalized === "console" || normalized === "gamepad") {
+    return "Controller";
+  }
+
+  return "Unknown";
+}
+
+function normalizeDiscordId(value) {
+  const normalized = String(value || "").trim().replace(/[<@!>]/g, "");
+  if (/^\d{8,}$/.test(normalized)) {
+    return normalized;
+  }
+
+  return "";
+}
+
+function normalizeOptionalUserId(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return "";
+  }
+
+  return /^\d{3,}$/.test(normalized) ? normalized : "";
+}
+
 function normalizeFaction(value) {
   const normalized = String(value || "").replace(/\s+/g, " ").trim().toUpperCase();
   if (!normalized || normalized === "N/A") {
@@ -56,11 +91,39 @@ function normalizePlayers(rawPlayers) {
     normalized[key] = {
       faction: normalizeFaction(stats.faction),
       level: clampLevel(stats.level),
-      kd: clampKd(stats.kd)
+      kd: clampKd(stats.kd),
+      device: normalizeDeviceValue(stats.device)
     };
   });
 
   return normalized;
+}
+
+function normalizeExtraPlayers(rawExtraPlayers) {
+  if (!Array.isArray(rawExtraPlayers)) {
+    return [];
+  }
+
+  return rawExtraPlayers
+    .slice(0, 120)
+    .map((entry, index) => {
+      const item = entry && typeof entry === "object" ? entry : {};
+      const name = String(item.name || item.playerName || "").trim();
+      if (!name) {
+        return null;
+      }
+
+      return {
+        id: String(item.id || `extra-player-${Date.now()}-${index}`).trim(),
+        name,
+        faction: normalizeFaction(item.faction || "N/A"),
+        country: String(item.country || "N/A").trim() || "N/A",
+        discordId: normalizeDiscordId(item.discordId),
+        userId: normalizeOptionalUserId(item.userId),
+        device: normalizeDeviceValue(item.device)
+      };
+    })
+    .filter(Boolean);
 }
 
 function normalizeTransferStatus(raw) {
@@ -402,6 +465,7 @@ module.exports = async function handler(req, res) {
       updatedAt: null,
       players: {},
       order: [],
+      extraPlayers: [],
       transfers: [],
       botSettings: {
         applicationsPanelChannelId: "",
@@ -413,6 +477,8 @@ module.exports = async function handler(req, res) {
     const body = parseJsonBody(req);
     const players = normalizePlayers(body?.players);
     const order = normalizeOrder(body?.order, Object.keys(players));
+    const hasExtraPlayersInBody = Array.isArray(body?.extraPlayers);
+    const extraPlayers = normalizeExtraPlayers(hasExtraPlayersInBody ? body?.extraPlayers : previousConfig?.extraPlayers);
     const hasTransfersInBody = Array.isArray(body?.transfers);
     const transfers = normalizeTransfers(hasTransfersInBody ? body?.transfers : previousConfig?.transfers);
     const existingBotSettings = previousConfig?.botSettings && typeof previousConfig.botSettings === "object"
@@ -427,6 +493,7 @@ module.exports = async function handler(req, res) {
       updatedAt: new Date().toISOString(),
       players,
       order,
+      extraPlayers,
       transfers,
       botSettings: existingBotSettings
     };

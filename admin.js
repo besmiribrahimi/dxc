@@ -15,6 +15,14 @@ const reloadButtonNode = document.getElementById("adminReloadBtn");
 const saveButtonNode = document.getElementById("adminSaveBtn");
 const logoutButtonNode = document.getElementById("adminLogoutBtn");
 const addTransferButtonNode = document.getElementById("adminAddTransferBtn");
+const addSyncedPlayerButtonNode = document.getElementById("adminAddSyncedPlayerBtn");
+const newPlayerNameNode = document.getElementById("adminNewPlayerName");
+const newPlayerFactionNode = document.getElementById("adminNewPlayerFaction");
+const newPlayerCountryNode = document.getElementById("adminNewPlayerCountry");
+const newPlayerDiscordIdNode = document.getElementById("adminNewPlayerDiscordId");
+const newPlayerUserIdNode = document.getElementById("adminNewPlayerUserId");
+const newPlayerDeviceNode = document.getElementById("adminNewPlayerDevice");
+const syncedPlayerRowsNode = document.getElementById("adminSyncedPlayerRows");
 const notifyIdsNode = document.getElementById("adminNotifyIds");
 const notifyMessageNode = document.getElementById("adminNotifyMessage");
 const sendNotifyButtonNode = document.getElementById("adminSendNotifyBtn");
@@ -25,12 +33,15 @@ let currentConfig = {
   updatedAt: null,
   players: {},
   order: [],
+  extraPlayers: [],
   transfers: [],
   botSettings: {
     notificationUserIds: []
   }
 };
 let currentPlayers = [];
+let currentExtraPlayers = [];
+let currentRosterLines = [];
 let currentTransfers = [];
 let draggingPlayerKey = "";
 let draggingInitialized = false;
@@ -106,6 +117,202 @@ function normalizeFactionValue(faction) {
   }
 
   return [...new Set(tokens)].join("/");
+}
+
+function normalizeDeviceValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "pc" || normalized === "desktop") {
+    return "PC";
+  }
+
+  if (normalized === "mobile" || normalized === "phone" || normalized === "tablet") {
+    return "Mobile";
+  }
+
+  if (normalized === "controller" || normalized === "console" || normalized === "gamepad") {
+    return "Controller";
+  }
+
+  return "Unknown";
+}
+
+function normalizeDiscordId(value) {
+  const normalized = String(value || "").trim().replace(/[<@!>]/g, "");
+  if (/^\d{8,}$/.test(normalized)) {
+    return normalized;
+  }
+
+  return "";
+}
+
+function normalizeOptionalUserId(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return "";
+  }
+
+  return /^\d{3,}$/.test(normalized) ? normalized : "";
+}
+
+function normalizeExtraPlayerEntry(raw, index = 0) {
+  const entry = raw && typeof raw === "object" ? raw : {};
+  const name = String(entry.name || entry.playerName || "").trim();
+
+  return {
+    id: String(entry.id || `extra-player-${Date.now()}-${index}`).trim(),
+    name,
+    faction: normalizeFactionValue(entry.faction || "N/A"),
+    country: String(entry.country || "N/A").trim() || "N/A",
+    discordId: normalizeDiscordId(entry.discordId),
+    userId: normalizeOptionalUserId(entry.userId),
+    device: normalizeDeviceValue(entry.device)
+  };
+}
+
+function normalizeExtraPlayers(rawExtraPlayers) {
+  if (!Array.isArray(rawExtraPlayers)) {
+    return [];
+  }
+
+  return rawExtraPlayers
+    .slice(0, 120)
+    .map((entry, index) => normalizeExtraPlayerEntry(entry, index))
+    .filter((entry) => Boolean(entry.name));
+}
+
+function createPlayerFromSyncedEntry(entry) {
+  const name = String(entry?.name || "").trim();
+  const lower = name.toLowerCase();
+  const mappedUserId = typeof avatarIdMap?.get === "function" ? avatarIdMap.get(lower) : null;
+  const resolvedUserId = Number(entry?.userId || mappedUserId || fallbackAvatarId);
+
+  return {
+    name,
+    faction: normalizeFactionValue(entry?.faction || "N/A"),
+    country: String(entry?.country || "N/A").trim() || "N/A",
+    discordId: normalizeDiscordId(entry?.discordId),
+    userId: Number.isFinite(resolvedUserId) ? resolvedUserId : fallbackAvatarId,
+    avatarUrl: "",
+    bodyAvatarUrl: "",
+    level: 1,
+    kd: 1.0,
+    device: normalizeDeviceValue(entry?.device),
+    isExtra: true
+  };
+}
+
+function buildMergedRosterPlayers(lines, extraPlayers) {
+  const merged = [];
+  const seenKeys = new Set();
+
+  (Array.isArray(lines) ? lines : [])
+    .map(parsePlayerLine)
+    .filter(Boolean)
+    .forEach((player) => {
+      const key = String(player.name || "").trim().toLowerCase();
+      if (!key || seenKeys.has(key)) {
+        return;
+      }
+
+      seenKeys.add(key);
+      merged.push({ ...player, device: "Unknown", isExtra: false });
+    });
+
+  normalizeExtraPlayers(extraPlayers).forEach((entry) => {
+    const key = String(entry.name || "").trim().toLowerCase();
+    if (!key || seenKeys.has(key)) {
+      return;
+    }
+
+    seenKeys.add(key);
+    merged.push(createPlayerFromSyncedEntry(entry));
+  });
+
+  return merged;
+}
+
+function resetSyncedPlayerInputs() {
+  if (newPlayerNameNode) {
+    newPlayerNameNode.value = "";
+  }
+
+  if (newPlayerFactionNode) {
+    newPlayerFactionNode.value = "N/A";
+  }
+
+  if (newPlayerCountryNode) {
+    newPlayerCountryNode.value = "";
+  }
+
+  if (newPlayerDiscordIdNode) {
+    newPlayerDiscordIdNode.value = "";
+  }
+
+  if (newPlayerUserIdNode) {
+    newPlayerUserIdNode.value = "";
+  }
+
+  if (newPlayerDeviceNode) {
+    newPlayerDeviceNode.value = "Unknown";
+  }
+}
+
+function renderSyncedPlayerRows(players) {
+  if (!syncedPlayerRowsNode) {
+    return;
+  }
+
+  syncedPlayerRowsNode.innerHTML = "";
+
+  if (!Array.isArray(players) || !players.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-transfer-empty";
+    empty.textContent = "No synced players added from Admin yet.";
+    syncedPlayerRowsNode.append(empty);
+    return;
+  }
+
+  players.forEach((entry, index) => {
+    const row = document.createElement("article");
+    row.className = "admin-transfer-row";
+    row.dataset.syncedPlayerId = entry.id || `extra-player-${index}`;
+
+    row.innerHTML = `
+      <span>${safeText(entry.name)}</span>
+      <span>${safeText(entry.faction)}</span>
+      <span>${safeText(entry.country)}</span>
+      <span>${safeText(entry.discordId || "-")}</span>
+      <span>${safeText(entry.userId || "Auto")}</span>
+      <span>${safeText(entry.device)}</span>
+      <span>Admin Sync</span>
+      <span><button type="button" class="admin-button danger admin-synced-player-delete">Remove</button></span>
+    `;
+
+    const removeNode = row.querySelector(".admin-synced-player-delete");
+    removeNode?.addEventListener("click", () => {
+      const rowValues = collectRowValues();
+      const rowOrder = collectRowOrder();
+      currentConfig = {
+        ...currentConfig,
+        players: {
+          ...(currentConfig?.players && typeof currentConfig.players === "object" ? currentConfig.players : {}),
+          ...rowValues
+        },
+        order: rowOrder.length ? rowOrder : (Array.isArray(currentConfig?.order) ? currentConfig.order : [])
+      };
+
+      currentExtraPlayers = currentExtraPlayers.filter((item) => item.id !== row.dataset.syncedPlayerId);
+      const mergedRosterPlayers = buildMergedRosterPlayers(currentRosterLines, currentExtraPlayers);
+      currentPlayers = mergePlayersWithConfig(mergedRosterPlayers, currentConfig, currentExtraPlayers);
+      renderRows(currentPlayers);
+      renderSyncedPlayerRows(currentExtraPlayers);
+      renderTransferRows(currentTransfers);
+      renderAdminNewsFeed(currentPlayers);
+      setSyncStatus("Synced player removed locally. Click Save Global Sync to publish.");
+    });
+
+    syncedPlayerRowsNode.append(row);
+  });
 }
 
 function normalizeTransferStatus(status) {
@@ -269,6 +476,7 @@ async function fetchAdminConfig(token) {
     updatedAt: null,
     players: {},
     order: [],
+    extraPlayers: [],
     transfers: [],
     botSettings: {
       notificationUserIds: []
@@ -347,6 +555,7 @@ function renderRows(players) {
     const row = document.createElement("article");
     row.className = "admin-row";
     row.dataset.playerKey = player.key;
+    row.dataset.playerDevice = normalizeDeviceValue(player.device);
 
     const avatarUrl = getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
     const fallback = getFallbackAvatarUrl(player.name);
@@ -359,7 +568,10 @@ function renderRows(players) {
       </span>
       <span class="admin-player-cell">
         <img class="admin-avatar" src="${avatarUrl}" alt="${safeText(player.name)} avatar" loading="lazy" referrerpolicy="no-referrer">
-        <strong>${safeText(player.name)}</strong>
+        <span>
+          <strong>${safeText(player.name)}</strong>
+          <small>Device ${safeText(normalizeDeviceValue(player.device))}</small>
+        </span>
       </span>
       <span>
         <input class="admin-faction-input" data-player-key="${safeText(player.key)}" type="text" maxlength="36" value="${safeText(normalizeFactionValue(player.faction))}" placeholder="AH/URF">
@@ -637,10 +849,15 @@ function initDragAndDrop() {
   });
 }
 
-function mergePlayersWithConfig(players, config) {
+function mergePlayersWithConfig(players, config, extraPlayers = []) {
+  const extraMap = new Map(
+    normalizeExtraPlayers(extraPlayers).map((entry) => [String(entry.name || "").trim().toLowerCase(), entry])
+  );
+
   const merged = players.map((player, sourceIndex) => {
       const key = player.name.toLowerCase();
       const override = config?.players?.[key] || {};
+      const extra = extraMap.get(key) || null;
       const defaults = getDefaultStats(player.name);
 
       return {
@@ -649,7 +866,9 @@ function mergePlayersWithConfig(players, config) {
         key,
         faction: normalizeFactionValue(override.faction ?? player.faction),
         level: clampLevel(override.level ?? defaults.level),
-        kd: clampKd(override.kd ?? defaults.kd)
+        kd: clampKd(override.kd ?? defaults.kd),
+        device: normalizeDeviceValue(override.device ?? extra?.device ?? player.device),
+        isExtra: Boolean(extra)
       };
     });
 
@@ -738,8 +957,9 @@ function collectRowValues() {
     const faction = normalizeFactionValue(factionNode ? factionNode.value : "N/A");
     const level = clampLevel(levelNode ? levelNode.value : 1);
     const kd = clampKd(kdNode ? kdNode.value : 1.0);
+    const device = normalizeDeviceValue(row.dataset.playerDevice);
 
-    result[key] = { faction, level, kd };
+    result[key] = { faction, level, kd, device };
   });
 
   return result;
@@ -761,15 +981,16 @@ async function loadPanelData() {
       fetchAdminConfig(token)
     ]);
 
-    const parsedPlayers = lines
-      .map(parsePlayerLine)
-      .filter(Boolean);
+    currentRosterLines = Array.isArray(lines) ? lines : [];
 
     currentConfig = config;
-    currentPlayers = mergePlayersWithConfig(parsedPlayers, config);
+    currentExtraPlayers = normalizeExtraPlayers(config?.extraPlayers);
+    const mergedRosterPlayers = buildMergedRosterPlayers(currentRosterLines, currentExtraPlayers);
+    currentPlayers = mergePlayersWithConfig(mergedRosterPlayers, config, currentExtraPlayers);
     currentTransfers = normalizeTransfers(config?.transfers);
     renderRows(currentPlayers);
     renderTransferRows(currentTransfers);
+    renderSyncedPlayerRows(currentExtraPlayers);
     renderAdminNewsFeed(currentPlayers);
     renderBotSettings(config);
 
@@ -778,7 +999,7 @@ async function loadPanelData() {
       ? "Mode: custom admin order"
       : "Mode: leaderboard rank (Level only, K/D ignored)";
 
-    setSyncStatus(`Loaded ${currentPlayers.length} Players. ${modeText}. Drag with the :: handle to reorder. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
+    setSyncStatus(`Loaded ${currentPlayers.length} Players (${currentExtraPlayers.length} admin-synced). ${modeText}. Drag with the :: handle to reorder. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
     setBotOpsStatus("DM sender ready.");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load panel data";
@@ -831,13 +1052,21 @@ async function onSaveClick() {
     const players = collectRowValues();
     const order = collectRowOrder();
     currentTransfers = collectTransferValues();
-    const saveResult = await saveAdminConfig(token, { players, order, transfers: currentTransfers });
+    const saveResult = await saveAdminConfig(token, {
+      players,
+      order,
+      extraPlayers: currentExtraPlayers,
+      transfers: currentTransfers
+    });
     const saved = saveResult.config;
     currentConfig = saved;
-    currentPlayers = mergePlayersWithConfig(currentPlayers, saved);
+    currentExtraPlayers = normalizeExtraPlayers(saved?.extraPlayers);
+    const mergedRosterPlayers = buildMergedRosterPlayers(currentRosterLines, currentExtraPlayers);
+    currentPlayers = mergePlayersWithConfig(mergedRosterPlayers, saved, currentExtraPlayers);
     currentTransfers = normalizeTransfers(saved?.transfers);
     renderRows(currentPlayers);
     renderTransferRows(currentTransfers);
+    renderSyncedPlayerRows(currentExtraPlayers);
     renderAdminNewsFeed(currentPlayers);
 
     const botDispatch = saveResult.botDispatch;
@@ -922,6 +1151,55 @@ function onLogoutClick() {
   setLoginStatus("Logged out.");
 }
 
+function onAddSyncedPlayerClick() {
+  const nextEntry = normalizeExtraPlayerEntry({
+    id: `extra-player-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    name: newPlayerNameNode?.value,
+    faction: newPlayerFactionNode?.value,
+    country: newPlayerCountryNode?.value,
+    discordId: newPlayerDiscordIdNode?.value,
+    userId: newPlayerUserIdNode?.value,
+    device: newPlayerDeviceNode?.value
+  });
+
+  if (!nextEntry.name) {
+    setSyncStatus("Enter a player username before adding.", true);
+    return;
+  }
+
+  if (nextEntry.country === "N/A") {
+    setSyncStatus("Enter a country for the synced player.", true);
+    return;
+  }
+
+  const key = nextEntry.name.toLowerCase();
+  if (currentPlayers.some((player) => String(player?.name || "").trim().toLowerCase() === key)) {
+    setSyncStatus("That player already exists in the roster sync list.", true);
+    return;
+  }
+
+  const rowValues = collectRowValues();
+  const rowOrder = collectRowOrder();
+  currentConfig = {
+    ...currentConfig,
+    players: {
+      ...(currentConfig?.players && typeof currentConfig.players === "object" ? currentConfig.players : {}),
+      ...rowValues
+    },
+    order: rowOrder.length ? rowOrder : (Array.isArray(currentConfig?.order) ? currentConfig.order : [])
+  };
+
+  currentExtraPlayers = [...currentExtraPlayers, nextEntry];
+  const mergedRosterPlayers = buildMergedRosterPlayers(currentRosterLines, currentExtraPlayers);
+  currentPlayers = mergePlayersWithConfig(mergedRosterPlayers, currentConfig, currentExtraPlayers);
+  renderRows(currentPlayers);
+  renderSyncedPlayerRows(currentExtraPlayers);
+  renderTransferRows(currentTransfers);
+  renderAdminNewsFeed(currentPlayers);
+  resetSyncedPlayerInputs();
+  setSyncStatus("Synced player added locally. Click Save Global Sync to publish.");
+}
+
 function onAddTransferClick() {
   currentTransfers = [...currentTransfers, createBlankTransfer()];
   renderTransferRows(currentTransfers);
@@ -937,6 +1215,9 @@ if (sendNotifyButtonNode) {
 }
 if (addTransferButtonNode) {
   addTransferButtonNode.addEventListener("click", onAddTransferClick);
+}
+if (addSyncedPlayerButtonNode) {
+  addSyncedPlayerButtonNode.addEventListener("click", onAddSyncedPlayerClick);
 }
 
 if (getStoredToken()) {

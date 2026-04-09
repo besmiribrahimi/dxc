@@ -1340,6 +1340,41 @@ function clampSyncedKd(value) {
   return Math.max(0, Math.min(9.9, Number(numeric.toFixed(1))));
 }
 
+function normalizeSyncedDevice(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "pc" || normalized === "desktop") {
+    return "PC";
+  }
+
+  if (normalized === "mobile" || normalized === "phone" || normalized === "tablet") {
+    return "Mobile";
+  }
+
+  if (normalized === "controller" || normalized === "console" || normalized === "gamepad") {
+    return "Controller";
+  }
+
+  return "Unknown";
+}
+
+function normalizeSyncedDiscordId(value) {
+  const normalized = String(value || "").trim().replace(/[<@!>]/g, "");
+  if (/^\d{8,}$/.test(normalized)) {
+    return normalized;
+  }
+
+  return "";
+}
+
+function normalizeSyncedUserId(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return "";
+  }
+
+  return /^\d{3,}$/.test(normalized) ? normalized : "";
+}
+
 async function fetchWebSyncConfig() {
   try {
     const response = await fetch(WEB_SYNC_ENDPOINT, { cache: "no-store" });
@@ -1375,11 +1410,44 @@ function normalizeSyncedPlayers(config) {
     output[key] = {
       faction: faction === "N/A" ? "" : faction,
       level: clampSyncedLevel(stats?.level),
-      kd: clampSyncedKd(stats?.kd)
+      kd: clampSyncedKd(stats?.kd),
+      device: normalizeSyncedDevice(stats?.device)
     };
   });
 
   return output;
+}
+
+function normalizeSyncedExtraPlayers(config) {
+  const raw = config?.extraPlayers;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .slice(0, 120)
+    .map((entry, index) => {
+      const item = entry && typeof entry === "object" ? entry : {};
+      const name = normalizeText(item.name || item.playerName);
+      if (!name) {
+        return null;
+      }
+
+      const lower = name.toLowerCase();
+      const mappedUserId = avatarIdMap.get(lower) || fallbackAvatarId;
+      const resolvedUserId = Number(normalizeSyncedUserId(item.userId) || mappedUserId);
+
+      return {
+        id: String(item.id || `extra-player-${index}`).trim(),
+        name,
+        faction: sanitizeFactionValue(item.faction || "N/A"),
+        country: normalizeText(item.country) || "N/A",
+        discordId: normalizeSyncedDiscordId(item.discordId),
+        userId: Number.isFinite(resolvedUserId) ? resolvedUserId : fallbackAvatarId,
+        device: normalizeSyncedDevice(item.device)
+      };
+    })
+    .filter(Boolean);
 }
 
 function getBodyAvatarApiUrl(userId) {
@@ -1651,10 +1719,33 @@ async function init() {
     fetchWebSyncConfig()
   ]);
   const syncedPlayers = normalizeSyncedPlayers(syncedConfig);
+  const syncedExtraPlayers = normalizeSyncedExtraPlayers(syncedConfig);
 
   const players = lines
     .map(parsePlayerLine)
     .filter(Boolean);
+
+  const existingKeys = new Set(players.map((player) => String(player.name || "").trim().toLowerCase()));
+  syncedExtraPlayers.forEach((entry) => {
+    const key = String(entry.name || "").trim().toLowerCase();
+    if (!key || existingKeys.has(key)) {
+      return;
+    }
+
+    existingKeys.add(key);
+    players.push({
+      name: entry.name,
+      faction: entry.faction,
+      country: entry.country,
+      discordId: entry.discordId,
+      userId: entry.userId,
+      avatarUrl: "",
+      bodyAvatarUrl: "",
+      level: 1,
+      kd: 0,
+      device: entry.device
+    });
+  });
 
   players.forEach((player) => {
     const key = String(player.name || "").toLowerCase();
@@ -1663,6 +1754,7 @@ async function init() {
     const stats = getPlayerStats(player.name, isTop);
     player.level = override?.level ?? stats.level;
     player.kd = override?.kd ?? stats.kd;
+    player.device = normalizeSyncedDevice(override?.device ?? player.device);
     if (override?.faction) {
       player.faction = override.faction;
     }

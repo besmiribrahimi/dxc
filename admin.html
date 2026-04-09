@@ -121,6 +121,54 @@
         </div>
       </section>
 
+      <section class="admin-card" aria-label="Synced player editor">
+        <div class="admin-panel-header">
+          <h2>Synced Players</h2>
+          <div class="admin-actions">
+            <button id="adminAddSyncedPlayerBtn" type="button" class="admin-button secondary">Add Synced Player</button>
+          </div>
+        </div>
+        <p>Add players directly from Admin so they appear in synced leaderboard data.</p>
+        <div class="admin-bot-grid">
+          <label for="adminNewPlayerName">Roblox Username</label>
+          <input id="adminNewPlayerName" class="admin-bot-input" type="text" maxlength="40" placeholder="Player username">
+
+          <label for="adminNewPlayerFaction">Faction</label>
+          <input id="adminNewPlayerFaction" class="admin-bot-input" type="text" maxlength="36" placeholder="AH / URF / N/A" value="N/A">
+
+          <label for="adminNewPlayerCountry">Country</label>
+          <input id="adminNewPlayerCountry" class="admin-bot-input" type="text" maxlength="40" placeholder="UK / USA / India">
+
+          <label for="adminNewPlayerDiscordId">Discord ID</label>
+          <input id="adminNewPlayerDiscordId" class="admin-bot-input" type="text" maxlength="24" placeholder="123456789...">
+
+          <label for="adminNewPlayerUserId">Roblox User ID (optional)</label>
+          <input id="adminNewPlayerUserId" class="admin-bot-input" type="text" maxlength="24" placeholder="1449714856">
+
+          <label for="adminNewPlayerDevice">Playing Device</label>
+          <select id="adminNewPlayerDevice" class="admin-bot-input">
+            <option value="Unknown">Unknown</option>
+            <option value="PC">PC</option>
+            <option value="Mobile">Mobile</option>
+            <option value="Controller">Controller</option>
+          </select>
+        </div>
+
+        <div class="admin-transfer-wrap" style="margin-top:0.7rem;">
+          <div class="admin-transfer-row admin-transfer-row-head" role="row">
+            <span>Player</span>
+            <span>Faction</span>
+            <span>Country</span>
+            <span>Discord ID</span>
+            <span>User ID</span>
+            <span>Device</span>
+            <span>Source</span>
+            <span>Action</span>
+          </div>
+          <div id="adminSyncedPlayerRows" class="admin-transfer-rows"></div>
+        </div>
+      </section>
+
       <div class="admin-table-wrap">
         <div class="admin-row admin-row-head" role="row">
           <span>Order</span>
