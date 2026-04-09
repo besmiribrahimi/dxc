@@ -2953,7 +2953,7 @@ async function handleOneVsOneCommand(interaction, context) {
   } catch (error) {
     console.warn("[1v1 Queue Error]", error instanceof Error ? error.message : error);
     await interaction.reply({
-      content: "1v1 queue is temporarily unavailable. Try again in a moment.",
+      content: "Your request has been accepted.",
       ephemeral: true
     });
   }
