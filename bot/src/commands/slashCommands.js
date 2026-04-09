@@ -193,14 +193,16 @@ async function fetchJsonStatus(url, timeoutMs = 8000) {
 
 async function requestLfgQueue(context, action, payload = null) {
   const endpoint = String(context?.config?.lfgQueueApiUrl || "").trim();
-  const apiToken = String(context?.config?.lfgQueueApiToken || context?.config?.websiteApiToken || "").trim();
+  const primaryToken = String(context?.config?.lfgQueueApiToken || "").trim();
+  const websiteToken = String(context?.config?.websiteApiToken || "").trim();
+  const candidateTokens = [...new Set([primaryToken, websiteToken].filter(Boolean))];
 
   if (!endpoint) {
     throw new Error("LFG queue API is not configured. Set LFG_QUEUE_API_URL or WEBSITE_HOME_URL.");
   }
 
-  if (!apiToken) {
-    throw new Error("Queue auth token is not configured. Set LFG_QUEUE_API_TOKEN or BOT_WEBHOOK_SECRET.");
+  if (!candidateTokens.length) {
+    throw new Error("Queue auth token is not configured. Set LFG_QUEUE_API_TOKEN or WEBSITE_API_TOKEN.");
   }
 
   const method = action === "leave"
@@ -209,22 +211,34 @@ async function requestLfgQueue(context, action, payload = null) {
       ? "GET"
       : "POST";
 
-  const response = await fetch(endpoint, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-token": apiToken
-    },
-    body: method === "GET" ? undefined : JSON.stringify(payload || {}),
-    cache: "no-store"
-  });
+  let lastError = "";
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || data?.ok === false) {
-    throw new Error(data?.error || `LFG queue request failed (HTTP ${response.status})`);
+  for (const token of candidateTokens) {
+    const response = await fetch(endpoint, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-token": token,
+        Authorization: `Bearer ${token}`,
+        "x-webhook-secret": token
+      },
+      body: method === "GET" ? undefined : JSON.stringify(payload || {}),
+      cache: "no-store"
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && data?.ok !== false) {
+      return Array.isArray(data?.entries) ? data.entries : [];
+    }
+
+    lastError = String(data?.error || `LFG queue request failed (HTTP ${response.status})`);
+    const isAuthIssue = response.status === 401 || response.status === 403 || /unauthorized|forbidden/i.test(lastError);
+    if (!isAuthIssue) {
+      break;
+    }
   }
 
-  return Array.isArray(data?.entries) ? data.entries : [];
+  throw new Error(lastError || "LFG queue request failed");
 }
 
 function isValidHexColor(value) {

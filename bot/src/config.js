@@ -113,10 +113,10 @@ module.exports = {
   websiteApiToken: firstEnv(["WEBSITE_API_TOKEN", "ADMIN_PANEL_SECRET"]),
   lfgQueueApiToken: firstEnv([
     "LFG_QUEUE_API_TOKEN",
-    "BOT_WEBHOOK_SECRET",
     "WEBSITE_API_TOKEN",
-    "WEBHOOK_SHARED_SECRET",
-    "ADMIN_PANEL_SECRET"
+    "ADMIN_PANEL_SECRET",
+    "BOT_WEBHOOK_SECRET",
+    "WEBHOOK_SHARED_SECRET"
   ]),
   lfgQueueApiUrl: resolveLfgQueueApiUrl(),
   leaderboardApiUrl: resolveLeaderboardApiUrl(),
