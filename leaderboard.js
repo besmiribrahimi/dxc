@@ -79,6 +79,31 @@ function normalizeDeviceValue(value) {
   return "Unknown";
 }
 
+function normalizePlayerClassValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "engineer") {
+    return "Engineer";
+  }
+
+  if (normalized === "officer") {
+    return "Officer";
+  }
+
+  if (normalized === "recon") {
+    return "Recon";
+  }
+
+  if (normalized === "rifleman") {
+    return "Rifleman";
+  }
+
+  if (normalized === "skirmisher") {
+    return "Skirmisher";
+  }
+
+  return "Unknown";
+}
+
 function normalizeDiscordId(value) {
   const normalized = String(value || "").trim().replace(/[<@!>]/g, "");
   if (/^\d{8,}$/.test(normalized)) {
@@ -112,6 +137,7 @@ function normalizeConfigPlayers(config) {
 
     output[key] = {
       faction: normalizeFactionOverride(stats?.faction),
+      class: normalizePlayerClassValue(stats?.class),
       level: clampLevel(stats?.level),
       kd: Number(clampKd(stats?.kd).toFixed(1)),
       device: normalizeDeviceValue(stats?.device)
@@ -140,6 +166,7 @@ function normalizeExtraPlayers(config) {
         id: String(item.id || `extra-player-${index}`).trim(),
         name,
         faction: normalizeFactionOverride(item.faction || "N/A") || "N/A",
+        class: normalizePlayerClassValue(item.class),
         country: String(item.country || "N/A").trim() || "N/A",
         discordId: normalizeDiscordId(item.discordId),
         userId: normalizeOptionalUserId(item.userId),
@@ -230,6 +257,8 @@ function buildTopThreeCard(player, rank, avatarMap) {
       ${factionMarkup}
       <div class="podium-meta">
         <span class="podium-stat">${countryToFlag(player.country)} ${player.country}</span>
+        <span class="podium-stat">Class ${normalizePlayerClassValue(player.playerClass)}</span>
+        <span class="podium-stat">Device ${normalizeDeviceValue(player.device)}</span>
         <span class="podium-stat">K/D ${Number(player.kd).toFixed(1)}</span>
         <span class="podium-stat podium-level"><img class="level-badge" src="${levelBadgeUrl}" alt="Level ${player.level}" loading="lazy">Level ${player.level}</span>
       </div>
@@ -287,6 +316,7 @@ function buildLeaderboardRow(player, rank, avatarMap) {
       <div class="leader-row-meta">
         <span>${countryToFlag(player.country)} ${player.country}</span>
         <span>Faction ${splitFactionTokens(player.faction).join("/")}</span>
+        <span>Class ${normalizePlayerClassValue(player.playerClass)}</span>
         <span>Device ${normalizeDeviceValue(player.device)}</span>
         <span>K/D ${Number(player.kd).toFixed(1)}</span>
         <span>Level ${player.level}</span>
@@ -368,6 +398,7 @@ async function initLeaderboardPage() {
     playersFromLines.push({
       name: entry.name,
       faction: entry.faction,
+      playerClass: normalizePlayerClassValue(entry.class),
       country: entry.country,
       discordId: entry.discordId,
       userId: Number.isFinite(resolvedUserId) ? resolvedUserId : fallbackAvatarId,
@@ -389,6 +420,7 @@ async function initLeaderboardPage() {
       player.level = override?.level ?? stats.level;
       player.wins = player.level;
       player.kd = override?.kd ?? stats.kd;
+      player.playerClass = normalizePlayerClassValue(override?.class ?? player.playerClass);
       player.device = normalizeDeviceValue(override?.device ?? player.device);
       if (override?.faction) {
         player.faction = override.faction;

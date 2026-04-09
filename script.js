@@ -230,6 +230,13 @@ const factionFlagMap = new Map([
 const factionTokenAliasMap = new Map([
   ["CSZK", "CZSK"]
 ]);
+const classIconMap = new Map([
+  ["ENGINEER", "classes%20icons/Engineer_Icon.webp"],
+  ["OFFICER", "classes%20icons/Officer-icon.webp"],
+  ["RECON", "classes%20icons/Recon_Icon.webp"],
+  ["RIFLEMAN", "classes%20icons/Rifleman-icon.webp"],
+  ["SKIRMISHER", "classes%20icons/Skirmisher-icon.webp"]
+]);
 
 let opsHudNodes = null;
 let opsHudClockIntervalId = null;
@@ -286,6 +293,36 @@ function sanitizeFactionValue(faction) {
   }
 
   return tokens.join("/");
+}
+
+function normalizePlayerClassValue(value) {
+  const normalized = normalizeText(value).toLowerCase();
+  if (normalized === "engineer") {
+    return "Engineer";
+  }
+
+  if (normalized === "officer") {
+    return "Officer";
+  }
+
+  if (normalized === "recon") {
+    return "Recon";
+  }
+
+  if (normalized === "rifleman") {
+    return "Rifleman";
+  }
+
+  if (normalized === "skirmisher") {
+    return "Skirmisher";
+  }
+
+  return "Unknown";
+}
+
+function getClassIconPath(playerClass) {
+  const key = String(normalizePlayerClassValue(playerClass) || "Unknown").toUpperCase();
+  return classIconMap.get(key) || "";
 }
 
 function getFactionFlagPath(token) {
@@ -352,7 +389,9 @@ function parsePlayerLine(rawLine) {
     avatarUrl: "",
     bodyAvatarUrl: "",
     level: 1,
-    kd: 0
+    kd: 0,
+    playerClass: "Unknown",
+    device: "Unknown"
   };
 }
 
@@ -1357,6 +1396,10 @@ function normalizeSyncedDevice(value) {
   return "Unknown";
 }
 
+function normalizeSyncedClass(value) {
+  return normalizePlayerClassValue(value);
+}
+
 function normalizeSyncedDiscordId(value) {
   const normalized = String(value || "").trim().replace(/[<@!>]/g, "");
   if (/^\d{8,}$/.test(normalized)) {
@@ -1409,6 +1452,7 @@ function normalizeSyncedPlayers(config) {
     const faction = sanitizeFactionValue(stats?.faction);
     output[key] = {
       faction: faction === "N/A" ? "" : faction,
+      class: normalizeSyncedClass(stats?.class),
       level: clampSyncedLevel(stats?.level),
       kd: clampSyncedKd(stats?.kd),
       device: normalizeSyncedDevice(stats?.device)
@@ -1441,6 +1485,7 @@ function normalizeSyncedExtraPlayers(config) {
         id: String(item.id || `extra-player-${index}`).trim(),
         name,
         faction: sanitizeFactionValue(item.faction || "N/A"),
+        class: normalizeSyncedClass(item.class),
         country: normalizeText(item.country) || "N/A",
         discordId: normalizeSyncedDiscordId(item.discordId),
         userId: Number.isFinite(resolvedUserId) ? resolvedUserId : fallbackAvatarId,
@@ -1545,6 +1590,12 @@ function buildPlayerCard(player, index, avatarMap) {
     getFallbackAvatarUrl(player.name);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   player.avatarUrl = primaryAvatar;
+  const classLabel = normalizePlayerClassValue(player.playerClass);
+  const classIconPath = getClassIconPath(classLabel);
+  const classIconMarkup = classIconPath
+    ? `<img class="player-class-icon" src="${classIconPath}" alt="${escapeHtml(classLabel)} class icon" loading="lazy">`
+    : "";
+  const deviceLabel = normalizeSyncedDevice(player.device);
   const factionChipMarkup = buildFactionChipHtml(player.faction, {
     chipClass: "player-faction-chip",
     maxItems: 1
@@ -1555,6 +1606,10 @@ function buildPlayerCard(player, index, avatarMap) {
     <div class="player-overlay">
       <span class="player-label">Player</span>
       ${factionChipMarkup}
+      <div class="player-meta-row">
+        <span class="player-meta-chip">${classIconMarkup}${escapeHtml(classLabel)}</span>
+        <span class="player-meta-chip">${escapeHtml(deviceLabel)}</span>
+      </div>
       <h3 class="player-name">${player.name}</h3>
     </div>
   `;
@@ -1736,6 +1791,7 @@ async function init() {
     players.push({
       name: entry.name,
       faction: entry.faction,
+      playerClass: normalizeSyncedClass(entry.class),
       country: entry.country,
       discordId: entry.discordId,
       userId: entry.userId,
@@ -1754,6 +1810,7 @@ async function init() {
     const stats = getPlayerStats(player.name, isTop);
     player.level = override?.level ?? stats.level;
     player.kd = override?.kd ?? stats.kd;
+    player.playerClass = normalizeSyncedClass(override?.class ?? player.playerClass);
     player.device = normalizeSyncedDevice(override?.device ?? player.device);
     if (override?.faction) {
       player.faction = override.faction;

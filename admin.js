@@ -136,6 +136,31 @@ function normalizeDeviceValue(value) {
   return "Unknown";
 }
 
+function normalizePlayerClassValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "engineer") {
+    return "Engineer";
+  }
+
+  if (normalized === "officer") {
+    return "Officer";
+  }
+
+  if (normalized === "recon") {
+    return "Recon";
+  }
+
+  if (normalized === "rifleman") {
+    return "Rifleman";
+  }
+
+  if (normalized === "skirmisher") {
+    return "Skirmisher";
+  }
+
+  return "Unknown";
+}
+
 function normalizeDiscordId(value) {
   const normalized = String(value || "").trim().replace(/[<@!>]/g, "");
   if (/^\d{8,}$/.test(normalized)) {
@@ -165,6 +190,7 @@ function normalizeExtraPlayerEntry(raw, index = 0) {
     country: String(entry.country || "N/A").trim() || "N/A",
     discordId: normalizeDiscordId(entry.discordId),
     userId: normalizeOptionalUserId(entry.userId),
+    class: normalizePlayerClassValue(entry.class),
     device: normalizeDeviceValue(entry.device)
   };
 }
@@ -196,6 +222,7 @@ function createPlayerFromSyncedEntry(entry) {
     bodyAvatarUrl: "",
     level: 1,
     kd: 1.0,
+    playerClass: normalizePlayerClassValue(entry?.class),
     device: normalizeDeviceValue(entry?.device),
     isExtra: true
   };
@@ -515,6 +542,20 @@ function buildLevelOptions(selectedLevel) {
   return options.join("");
 }
 
+function buildClassOptions(selectedClass) {
+  const safeClass = normalizePlayerClassValue(selectedClass);
+  return ["Unknown", "Engineer", "Officer", "Recon", "Rifleman", "Skirmisher"]
+    .map((role) => `<option value="${role}"${role === safeClass ? " selected" : ""}>${role}</option>`)
+    .join("");
+}
+
+function buildDeviceOptions(selectedDevice) {
+  const safeDevice = normalizeDeviceValue(selectedDevice);
+  return ["Unknown", "PC", "Mobile", "Controller"]
+    .map((device) => `<option value="${device}"${device === safeDevice ? " selected" : ""}>${device}</option>`)
+    .join("");
+}
+
 function formatSyncTime(isoValue) {
   if (!isoValue) {
     return "Never";
@@ -555,6 +596,7 @@ function renderRows(players) {
     const row = document.createElement("article");
     row.className = "admin-row";
     row.dataset.playerKey = player.key;
+    row.dataset.playerClass = normalizePlayerClassValue(player.playerClass);
     row.dataset.playerDevice = normalizeDeviceValue(player.device);
 
     const avatarUrl = getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
@@ -568,15 +610,22 @@ function renderRows(players) {
       </span>
       <span class="admin-player-cell">
         <img class="admin-avatar" src="${avatarUrl}" alt="${safeText(player.name)} avatar" loading="lazy" referrerpolicy="no-referrer">
-        <span>
-          <strong>${safeText(player.name)}</strong>
-          <small>Device ${safeText(normalizeDeviceValue(player.device))}</small>
-        </span>
+        <strong>${safeText(player.name)}</strong>
       </span>
       <span>
         <input class="admin-faction-input" data-player-key="${safeText(player.key)}" type="text" maxlength="36" value="${safeText(normalizeFactionValue(player.faction))}" placeholder="AH/URF">
       </span>
       <span class="admin-country">${safeText(country)}</span>
+      <span>
+        <select class="admin-class-select" data-player-key="${safeText(player.key)}">
+          ${buildClassOptions(player.playerClass)}
+        </select>
+      </span>
+      <span>
+        <select class="admin-device-select" data-player-key="${safeText(player.key)}">
+          ${buildDeviceOptions(player.device)}
+        </select>
+      </span>
       <span>
         <select class="admin-level-select" data-player-key="${safeText(player.key)}">
           ${buildLevelOptions(player.level)}
@@ -867,6 +916,7 @@ function mergePlayersWithConfig(players, config, extraPlayers = []) {
         faction: normalizeFactionValue(override.faction ?? player.faction),
         level: clampLevel(override.level ?? defaults.level),
         kd: clampKd(override.kd ?? defaults.kd),
+        playerClass: normalizePlayerClassValue(override.class ?? player.playerClass),
         device: normalizeDeviceValue(override.device ?? extra?.device ?? player.device),
         isExtra: Boolean(extra)
       };
@@ -911,6 +961,8 @@ function syncCurrentPlayersFromDom() {
     return {
       ...player,
       faction: next ? next.faction : player.faction,
+      playerClass: next ? normalizePlayerClassValue(next.class) : player.playerClass,
+      device: next ? normalizeDeviceValue(next.device) : player.device,
       level: next ? next.level : player.level,
       kd: next ? next.kd : player.kd
     };
@@ -928,6 +980,8 @@ function syncCurrentPlayersFromInputs() {
     return {
       ...player,
       faction: next.faction,
+      playerClass: normalizePlayerClassValue(next.class),
+      device: normalizeDeviceValue(next.device),
       level: next.level,
       kd: next.kd
     };
@@ -951,15 +1005,18 @@ function collectRowValues() {
     }
 
     const factionNode = row.querySelector(".admin-faction-input");
+    const classNode = row.querySelector(".admin-class-select");
+    const deviceNode = row.querySelector(".admin-device-select");
     const levelNode = row.querySelector(".admin-level-select");
     const kdNode = row.querySelector(".admin-kd-input");
 
     const faction = normalizeFactionValue(factionNode ? factionNode.value : "N/A");
+    const playerClass = normalizePlayerClassValue(classNode ? classNode.value : row.dataset.playerClass);
+    const device = normalizeDeviceValue(deviceNode ? deviceNode.value : row.dataset.playerDevice);
     const level = clampLevel(levelNode ? levelNode.value : 1);
     const kd = clampKd(kdNode ? kdNode.value : 1.0);
-    const device = normalizeDeviceValue(row.dataset.playerDevice);
 
-    result[key] = { faction, level, kd, device };
+    result[key] = { faction, class: playerClass, level, kd, device };
   });
 
   return result;
