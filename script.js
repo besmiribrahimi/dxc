@@ -13,7 +13,7 @@ const fallbackPlayerLines = [
   "12. ILIKEJOCK - Faction: TWL | Country: India - 903427514607742976",
   "13. iownlivy - Faction: AH/URF | Country: America - 1345260976131280966",
   "14. JacksonJGL - Faction: DK | Country: USA -1423843664416735305",
-  "15. Jokerkingksh - Faction: TAE | Country: India -1269308875601871051",
+  "15. Jokerkingksh - Faction: FF | Country: India -1269308875601871051",
   "16. kbfrm242 - Faction: AH | Country: Poland - 1160948303198965860",
   "17. ligth_hand - Faction: N/A | Country: Morocco -692456446637506640",
   "18. mattyDEAS - Faction: AH | Country: Scotland -290505755449098242",
@@ -45,7 +45,10 @@ const fallbackPlayerLines = [
   "44. umairomg777- Faction: AH | Country: india -790594364454862938",
   "45  kkevin789- Faction: AH |Country: USA -770824804676010004",
   "46. AvgEggEnjoyer- Faction: DK | Country: Czech Republic -805144861417144331",
-  "47. besiliekkesi - Faction: AH | Country: Albania -1359614368559534301"
+  "47. besiliekkesi - Faction: AH | Country: Albania -1359614368559534301",
+  "48. Eleventhcommandment - Faction: AH | Country: Canada -1473787201807585450",
+  "49. pvpkinnng - Faction: N/A | Country: UK -69159138956948277",
+  "50. FTF_Dingleberrysolos - Faction: N/A | Country: UK -1461318954134802479"
 ];
 
 const avatarIdMap = new Map([
@@ -77,6 +80,7 @@ const avatarIdMap = new Map([
   ["ninbinsin", 7167592122],
   ["noah464", 15795537],
   ["onlytoast0", 7201544868],
+  ["pvpkinnng", 1449714856],
   ["polloxlikop0911", 1106639346],
   ["prehist0rick", 10331502835],
   ["quackenxnator", 3183519478],
@@ -92,6 +96,7 @@ const avatarIdMap = new Map([
   ["swissabyss1", 339108819],
   ["tamika2006s", 187119271],
   ["thatrandomperson142", 3544844417],
+  ["ftf_dingleberrysolos", 7167301116],
   ["umairomg777", 5350074598],
   ["vcfghcemil", 4056889797],
   ["vespartan_alt", 1],
