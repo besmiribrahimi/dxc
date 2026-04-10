@@ -53,7 +53,16 @@ const fallbackPlayerLines = [
   "52. VORBIT - Faction: TWA | Country: Turkey -1257448531262963787",
   "53. roman_gail2 - Faction: SERMETYA | Country: Germany -731075264154566706",
   "54. PfannKuch_en - Faction: TWA | Country: Germany -1014962921597567076",
-  "55. Alvem09 - Faction: SWL | Country: Brasil -984954494414635009"
+  "55. Alvem09 - Faction: SWL | Country: Brasil -984954494414635009",
+  "56. Maryanette_NSP - Faction: AEF | Country: USA -1069706207008391198",
+  "57. officialwinnerdinner - Faction: TTI | Country: USA -1463979663784153222",
+  "58. squidsarecold4 - Faction: SERMETYA | Country: Vietnam -1271114788633706700",
+  "59. Beckenbaconbauer - Faction: TAE | Country: Philippines -1468610449825333367",
+  "60. The_B0Bstar - Faction: SERMETYA | Country: Australia -1222916492153196625",
+  "61. Loh999akk - Faction: CZSK | Country: Russia -1026076268053147658",
+  "62. Monderthanmenace - Faction: DSA | Country: USA -1474606307951509616",
+  "63. MrsMysterious3 - Faction: TAE | Country: Malaysia -651667387166228495",
+  "64. Npoleon_ziborsnew - Faction: CZSK | Country: Romania -1426165475108327514"
 ];
 
 const avatarIdMap = new Map([
@@ -111,7 +120,16 @@ const avatarIdMap = new Map([
   ["vcfghcemil", 4056889797],
   ["vespartan_alt", 1],
   ["xxninjaxx9065", 971867103],
-  ["avgeggenjoyer", 1040455409]
+  ["avgeggenjoyer", 1040455409],
+  ["maryanette_nsp", 8631375518],
+  ["officialwinnerdinner", 1724853621],
+  ["squidsarecold4", 8815206411],
+  ["beckenbaconbauer", 10028454488],
+  ["the_b0bstar", 4566570178],
+  ["loh999akk", 3213978478],
+  ["monderthanmenace", 1039382252],
+  ["mrsmysterious3", 712856982],
+  ["npoleon_ziborsnew", 4151404182]
 ]);
 
 const fallbackAvatarId = 1;
@@ -234,6 +252,7 @@ const factionFlagMap = new Map([
   ["NDV", "faction_flags/NDV.png"],
   ["NYS", "faction_flags/NYS.png"],
   ["RRF", "faction_flags/RRF.png"],
+  ["SR", "faction_flags/SR.png"],
   ["SEM", "faction_flags/SEM.png"],
   ["TAE", "faction_flags/TAE.png"],
   ["TCL", "faction_flags/TCL.png"],
@@ -243,7 +262,8 @@ const factionFlagMap = new Map([
   ["URF", "faction_flags/URF.png"]
 ]);
 const factionTokenAliasMap = new Map([
-  ["CSZK", "CZSK"]
+  ["CSZK", "CZSK"],
+  ["SERMETYA", "SR"]
 ]);
 const classIconMap = new Map([
   ["ENGINEER", "classes icons/Engineer_Icon.webp"],
@@ -501,7 +521,12 @@ function countryToFlag(country) {
     netherlands: "NL",
     korea: "KR",
     kazakhstan: "KZ",
-    italy: "IT"
+    italy: "IT",
+    australia: "AU",
+    russia: "RU",
+    malaysia: "MY",
+    romania: "RO",
+    philippines: "PH"
   };
 
   const code = map[normalized];
