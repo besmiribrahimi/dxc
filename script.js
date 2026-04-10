@@ -187,7 +187,16 @@ const staticAvatarUrlMap = new Map([
   ["7690083810", "https://t4.rbxcdn.com/30DAY-AvatarHeadshot-57591F2EAB8F2F8D7CB45BDE9F4C766A-Png"],
   ["8942473402", "https://t4.rbxcdn.com/30DAY-AvatarHeadshot-2A2FE8D0E5C503690A38A895CC9D9BEA-Png"],
   ["10029985292", "https://t1.rbxcdn.com/30DAY-AvatarHeadshot-5A8660FF441C7EC49C7D62154E986808-Png"],
-  ["10331502835", "https://t4.rbxcdn.com/30DAY-AvatarHeadshot-298E960617552A34E95943B0D9575E68-Png"]
+  ["10331502835", "https://t4.rbxcdn.com/30DAY-AvatarHeadshot-298E960617552A34E95943B0D9575E68-Png"],
+  ["712856982", "https://t2.rbxcdn.com/30DAY-AvatarHeadshot-8BB3447AF1648B690F2C81C8D9E895C8-Png"],
+  ["1039382252", "https://t5.rbxcdn.com/30DAY-AvatarHeadshot-568D4E2FAC1AA7E7CB8EB7B7D1A01863-Png"],
+  ["1724853621", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-3DF6FBAAF02FEEF9F743691F77E8B6E9-Png"],
+  ["3213978478", "https://t1.rbxcdn.com/30DAY-AvatarHeadshot-A84FC2B63C79D8B22B02EEF997D90A43-Png"],
+  ["4151404182", "https://t2.rbxcdn.com/30DAY-AvatarHeadshot-47BB45A4C1DC1F9BB6634170F7AF564C-Png"],
+  ["4566570178", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-44D44A9D0325F6D57ED0AC8C6940A063-Png"],
+  ["8631375518", "https://t1.rbxcdn.com/30DAY-AvatarHeadshot-227414ECC97362F7E68B8B2B90F78158-Png"],
+  ["8815206411", "https://t3.rbxcdn.com/30DAY-AvatarHeadshot-802413DB06966FE0BEF45EE3EA5432DC-Png"],
+  ["10028454488", "https://t4.rbxcdn.com/30DAY-AvatarHeadshot-D1B6AD7A7686A4BC304019605A75C85A-Png"]
 ]);
 
 const playersGrid = document.getElementById("playersGrid");
