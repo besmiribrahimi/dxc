@@ -41,8 +41,15 @@ const weeklyTopWeekNode = document.getElementById("adminWeeklyTopWeek");
 const weeklyTopBoardNode = document.getElementById("adminWeeklyTopBoard");
 const weeklyTopMessageNode = document.getElementById("adminWeeklyTopMessage");
 const weeklyTopStatusNode = document.getElementById("adminWeeklyTopStatus");
-const addClipButtonNode = document.getElementById("adminAddClipBtn");
 const clipRowsNode = document.getElementById("adminClipRows");
+const postClipButtonNode = document.getElementById("adminPostClipBtn");
+const clipTitleNode = document.getElementById("adminClipTitle");
+const clipPlayerNode = document.getElementById("adminClipPlayer");
+const clipUrlNode = document.getElementById("adminClipUrl");
+const clipFileNode = document.getElementById("adminClipFile");
+const clipDescriptionNode = document.getElementById("adminClipDescription");
+const clipFeaturedNode = document.getElementById("adminClipFeatured");
+const clipTypeTabButtonNodes = Array.from(document.querySelectorAll(".admin-clips-type-tab[data-admin-clip-type-tab]"));
 const adminTabButtonNodes = Array.from(document.querySelectorAll(".admin-tab-button[data-admin-tab-target]"));
 const adminTabPanelNodes = Array.from(document.querySelectorAll(".admin-tab-panel[data-admin-tab-panel]"));
 
@@ -80,6 +87,7 @@ let currentExtraPlayers = [];
 let currentRosterLines = [];
 let currentTransfers = [];
 let currentClips = [];
+let activeClipTypeTab = "clip";
 let draggingPlayerKey = "";
 let draggingInitialized = false;
 const dynamicAvatarUrlMap = new Map();
@@ -758,38 +766,136 @@ function createBlankClip() {
   };
 }
 
-function renderClipRows(clips) {
+function setActiveClipTypeTab(nextType) {
+  const normalized = normalizeClipType(nextType);
+  activeClipTypeTab = normalized;
+
+  clipTypeTabButtonNodes.forEach((buttonNode) => {
+    const buttonType = normalizeClipType(buttonNode.dataset.adminClipTypeTab);
+    buttonNode.classList.toggle("active", buttonType === normalized);
+  });
+
+  renderClipRows();
+}
+
+function resetClipComposer() {
+  if (clipTitleNode) {
+    clipTitleNode.value = "";
+  }
+
+  if (clipPlayerNode) {
+    clipPlayerNode.value = "";
+  }
+
+  if (clipUrlNode) {
+    clipUrlNode.value = "";
+  }
+
+  if (clipFileNode) {
+    clipFileNode.value = "";
+  }
+
+  if (clipDescriptionNode) {
+    clipDescriptionNode.value = "";
+  }
+
+  if (clipFeaturedNode) {
+    clipFeaturedNode.value = "false";
+  }
+}
+
+function setupClipComposerUpload() {
+  if (!clipFileNode || !clipUrlNode) {
+    return;
+  }
+
+  clipFileNode.addEventListener("change", async () => {
+    const file = clipFileNode.files && clipFileNode.files[0] ? clipFileNode.files[0] : null;
+    if (!file) {
+      return;
+    }
+
+    if (Number(file.size || 0) > MAX_CLIP_UPLOAD_BYTES) {
+      setSyncStatus("Upload too large. Use a file under 2MB or paste an external URL.", true);
+      clipFileNode.value = "";
+      return;
+    }
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const normalized = normalizeClipUrl(dataUrl);
+      if (!normalized) {
+        setSyncStatus("Uploaded file format is not supported.", true);
+        clipFileNode.value = "";
+        return;
+      }
+
+      clipUrlNode.value = normalized;
+      setSyncStatus("Upload ready. Click Post to add it.");
+    } catch (error) {
+      setSyncStatus(error instanceof Error ? error.message : "Upload failed.", true);
+    } finally {
+      clipFileNode.value = "";
+    }
+  });
+}
+
+function updateClipFromRow(rowNode) {
+  const clipId = String(rowNode?.dataset?.clipId || "").trim();
+  if (!clipId) {
+    return;
+  }
+
+  const clipIndex = currentClips.findIndex((clip) => clip.id === clipId);
+  if (clipIndex < 0) {
+    return;
+  }
+
+  const title = String(rowNode.querySelector(".admin-clip-title")?.value || "").trim();
+  const url = normalizeClipUrl(rowNode.querySelector(".admin-clip-url")?.value || "");
+  const player = String(rowNode.querySelector(".admin-clip-player")?.value || "").trim();
+  const description = String(rowNode.querySelector(".admin-clip-description")?.value || "").trim();
+  const featured = String(rowNode.querySelector(".admin-clip-featured")?.value || "false") === "true";
+
+  currentClips[clipIndex] = normalizeClipEntry({
+    ...currentClips[clipIndex],
+    title,
+    url,
+    player,
+    description,
+    featured
+  }, clipIndex);
+}
+
+function renderClipRows() {
   if (!clipRowsNode) {
     return;
   }
 
   clipRowsNode.innerHTML = "";
 
-  if (!Array.isArray(clips) || !clips.length) {
+  const filteredClips = currentClips.filter((clip) => normalizeClipType(clip.type) === activeClipTypeTab);
+
+  if (!filteredClips.length) {
     const empty = document.createElement("p");
     empty.className = "admin-transfer-empty";
-    empty.textContent = "No clips yet. Click Add Clip.";
+    empty.textContent = activeClipTypeTab === "edit"
+      ? "No edits yet. Use Post to add one."
+      : "No clips yet. Use Post to add one.";
     clipRowsNode.append(empty);
     return;
   }
 
-  clips.forEach((clip, index) => {
+  filteredClips.forEach((clip, index) => {
     const row = document.createElement("article");
     row.className = "admin-transfer-row";
     row.dataset.clipId = clip.id || `clip-${index}`;
 
     row.innerHTML = `
-      <span>
-        <select class="admin-transfer-select admin-clip-type">
-          <option value="clip"${clip.type === "clip" ? " selected" : ""}>Clip</option>
-          <option value="edit"${clip.type === "edit" ? " selected" : ""}>Edit</option>
-        </select>
-      </span>
       <span><input class="admin-transfer-input admin-clip-title" type="text" maxlength="120" value="${safeText(clip.title)}" placeholder="Best clutch in Verdun"></span>
       <span><input class="admin-transfer-input admin-clip-player" type="text" maxlength="64" value="${safeText(clip.player)}" placeholder="Player name"></span>
       <span>
         <input class="admin-transfer-input admin-clip-url" type="url" value="${safeText(clip.url)}" placeholder="https://...">
-        <input class="admin-transfer-input admin-clip-file" type="file" accept="video/*,image/*">
         ${clip.url ? `<a class="admin-clip-link" href="${safeText(clip.url)}" target="_blank" rel="noreferrer noopener">Open</a>` : ""}
       </span>
       <span><input class="admin-transfer-input admin-clip-description" type="text" maxlength="280" value="${safeText(clip.description)}" placeholder="Short clip summary"></span>
@@ -805,94 +911,42 @@ function renderClipRows(clips) {
     const removeNode = row.querySelector(".admin-clip-delete");
     removeNode?.addEventListener("click", () => {
       currentClips = currentClips.filter((item) => item.id !== row.dataset.clipId);
-      renderClipRows(currentClips);
+      renderClipRows();
       setSyncStatus("Clip removed locally. Click Save Global Sync to publish.");
     });
 
     const urlNode = row.querySelector(".admin-clip-url");
-    const fileNode = row.querySelector(".admin-clip-file");
+    const titleNode = row.querySelector(".admin-clip-title");
+    const playerNode = row.querySelector(".admin-clip-player");
+    const descriptionNode = row.querySelector(".admin-clip-description");
+    const featuredNode = row.querySelector(".admin-clip-featured");
+
+    urlNode?.addEventListener("input", () => updateClipFromRow(row));
     urlNode?.addEventListener("blur", () => {
       const normalized = normalizeClipUrl(urlNode.value);
       if (normalized) {
         urlNode.value = normalized;
       }
-    });
 
-    fileNode?.addEventListener("change", async () => {
-      const file = fileNode.files && fileNode.files[0] ? fileNode.files[0] : null;
-      if (!file || !urlNode) {
-        return;
-      }
+      updateClipFromRow(row);
 
-      if (Number(file.size || 0) > MAX_CLIP_UPLOAD_BYTES) {
-        setSyncStatus("Upload too large. Use a file under 2MB or paste an external URL.", true);
-        fileNode.value = "";
-        return;
-      }
-
-      try {
-        const dataUrl = await readFileAsDataUrl(file);
-        const normalized = normalizeClipUrl(dataUrl);
-        if (!normalized) {
-          setSyncStatus("Uploaded file format is not supported.", true);
-          fileNode.value = "";
-          return;
-        }
-
-        urlNode.value = normalized;
-        let linkNode = row.querySelector(".admin-clip-link");
-        if (!linkNode) {
-          linkNode = document.createElement("a");
-          linkNode.className = "admin-clip-link";
-          linkNode.target = "_blank";
-          linkNode.rel = "noreferrer noopener";
-          linkNode.textContent = "Open";
-          const urlCell = urlNode.parentElement;
-          urlCell?.append(linkNode);
-        }
-
+      const linkNode = row.querySelector(".admin-clip-link");
+      if (linkNode && normalized) {
         linkNode.href = normalized;
-        setSyncStatus("Clip uploaded locally. Click Save Global Sync to publish.");
-      } catch (error) {
-        setSyncStatus(error instanceof Error ? error.message : "Upload failed.", true);
-      } finally {
-        fileNode.value = "";
       }
     });
+
+    titleNode?.addEventListener("input", () => updateClipFromRow(row));
+    playerNode?.addEventListener("input", () => updateClipFromRow(row));
+    descriptionNode?.addEventListener("input", () => updateClipFromRow(row));
+    featuredNode?.addEventListener("change", () => updateClipFromRow(row));
 
     clipRowsNode.append(row);
   });
 }
 
 function collectClipValues() {
-  if (!clipRowsNode) {
-    return [];
-  }
-
-  return Array.from(clipRowsNode.querySelectorAll(".admin-transfer-row[data-clip-id]"))
-    .map((row, index) => {
-      const title = String(row.querySelector(".admin-clip-title")?.value || "").trim();
-      const url = normalizeClipUrl(row.querySelector(".admin-clip-url")?.value || "");
-      const type = normalizeClipType(row.querySelector(".admin-clip-type")?.value || "clip");
-      const player = String(row.querySelector(".admin-clip-player")?.value || "").trim();
-      const description = String(row.querySelector(".admin-clip-description")?.value || "").trim();
-      const featured = String(row.querySelector(".admin-clip-featured")?.value || "false") === "true";
-
-      if (!title || !url) {
-        return null;
-      }
-
-      return normalizeClipEntry({
-        id: String(row.dataset.clipId || `clip-${Date.now()}-${index}`).trim(),
-        type,
-        title,
-        url,
-        player,
-        description,
-        featured
-      }, index);
-    })
-    .filter(Boolean);
+  return normalizeClips(currentClips);
 }
 
 function setLoginStatus(message, isError = false) {
@@ -1807,7 +1861,7 @@ async function loadPanelData() {
     renderRows(currentPlayers);
     renderTransferRows(currentTransfers);
     renderSyncedPlayerRows(currentExtraPlayers);
-    renderClipRows(currentClips);
+    renderClipRows();
     renderAdminNewsFeed(currentPlayers);
     renderBotSettings(config);
     renderWeeklyTopTenPreview();
@@ -1888,7 +1942,7 @@ async function onSaveClick() {
     renderRows(currentPlayers);
     renderTransferRows(currentTransfers);
     renderSyncedPlayerRows(currentExtraPlayers);
-    renderClipRows(currentClips);
+    renderClipRows();
     renderAdminNewsFeed(currentPlayers);
     renderWeeklyTopTenPreview();
 
@@ -2081,10 +2135,51 @@ function onAddTransferClick() {
   setSyncStatus("Transfer added locally. Click Save Global Sync to publish.");
 }
 
-function onAddClipClick() {
-  currentClips = [...currentClips, createBlankClip()];
-  renderClipRows(currentClips);
-  setSyncStatus("Clip added locally. Click Save Global Sync to publish.");
+function onPostClipClick() {
+  const title = String(clipTitleNode?.value || "").trim();
+  const url = normalizeClipUrl(clipUrlNode?.value || "");
+  const player = String(clipPlayerNode?.value || "").trim();
+  const description = String(clipDescriptionNode?.value || "").trim();
+  const featured = String(clipFeaturedNode?.value || "false") === "true";
+
+  if (!title) {
+    setSyncStatus("Enter a title before posting.", true);
+    return;
+  }
+
+  if (!url) {
+    setSyncStatus("Add a valid URL or upload a file before posting.", true);
+    return;
+  }
+
+  const postedClip = normalizeClipEntry({
+    ...createBlankClip(),
+    type: activeClipTypeTab,
+    title,
+    url,
+    player,
+    description,
+    featured
+  });
+
+  currentClips = [...currentClips, postedClip];
+  renderClipRows();
+  resetClipComposer();
+  setSyncStatus(`${activeClipTypeTab === "edit" ? "Edit" : "Clip"} posted locally. Click Save Global Sync to publish.`);
+}
+
+function setupClipTypeTabs() {
+  if (!clipTypeTabButtonNodes.length) {
+    return;
+  }
+
+  clipTypeTabButtonNodes.forEach((buttonNode) => {
+    buttonNode.addEventListener("click", () => {
+      setActiveClipTypeTab(buttonNode.dataset.adminClipTypeTab || "clip");
+    });
+  });
+
+  setActiveClipTypeTab(activeClipTypeTab);
 }
 
 loginFormNode.addEventListener("submit", onLoginSubmit);
@@ -2097,8 +2192,8 @@ if (sendNotifyButtonNode) {
 if (addTransferButtonNode) {
   addTransferButtonNode.addEventListener("click", onAddTransferClick);
 }
-if (addClipButtonNode) {
-  addClipButtonNode.addEventListener("click", onAddClipClick);
+if (postClipButtonNode) {
+  postClipButtonNode.addEventListener("click", onPostClipClick);
 }
 if (addSyncedPlayerButtonNode) {
   addSyncedPlayerButtonNode.addEventListener("click", onAddSyncedPlayerClick);
@@ -2131,6 +2226,8 @@ setAddPlayerDmStatus(addPlayerSendDmNode?.checked
   ? "DM on add is enabled."
   : "DM on add is disabled.");
 setupAdminTabs();
+setupClipTypeTabs();
+setupClipComposerUpload();
 
 if (getStoredToken()) {
   loadPanelData();
