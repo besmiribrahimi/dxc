@@ -220,6 +220,10 @@ function getAdminAvatarUrl(player) {
     return dynamicAvatarUrlMap.get(normalizedUserId) || "";
   }
 
+  if (/^\d{3,}$/.test(normalizedUserId) && normalizedUserId !== String(fallbackAvatarId)) {
+    return `https://www.roblox.com/headshot-thumbnail/image?userId=${encodeURIComponent(normalizedUserId)}&width=420&height=420&format=png`;
+  }
+
   return getFallbackAvatarUrl(player?.name);
 }
 
@@ -1411,6 +1415,8 @@ function normalizeOrderKeys(rawOrder, validKeys) {
 function renderRows(players) {
   rowsNode.innerHTML = "";
 
+  const maxRank = Math.max(1, players.length);
+
   players.forEach((player, index) => {
     const row = document.createElement("article");
     row.className = "admin-row";
@@ -1425,6 +1431,7 @@ function renderRows(players) {
     row.innerHTML = `
       <span class="admin-order-cell">
         <span class="admin-rank-pill">#${index + 1}</span>
+        <input class="admin-rank-input" type="number" min="1" max="${maxRank}" value="${index + 1}" aria-label="Set rank for ${safeText(player.name)}">
         <span class="admin-drag-handle" draggable="true" aria-hidden="true" title="Drag to reorder">::</span>
       </span>
       <span class="admin-player-cell">
@@ -1462,10 +1469,51 @@ function renderRows(players) {
 
     const avatarNode = row.querySelector(".admin-avatar");
     const dragHandleNode = row.querySelector(".admin-drag-handle");
+    const rankInputNode = row.querySelector(".admin-rank-input");
     avatarNode.addEventListener("error", () => {
       avatarNode.src = fallback;
     });
     hydrateAvatarNode(avatarNode, player);
+
+    const applyRankInputOrder = () => {
+      if (!rankInputNode) {
+        return;
+      }
+
+      const requestedRank = Number.parseInt(String(rankInputNode.value || ""), 10);
+      const targetRank = Number.isFinite(requestedRank)
+        ? Math.max(1, Math.min(maxRank, requestedRank))
+        : index + 1;
+
+      rankInputNode.value = String(targetRank);
+
+      syncCurrentPlayersFromDom();
+      const currentIndex = currentPlayers.findIndex((entry) => entry.key === player.key);
+      if (currentIndex < 0) {
+        return;
+      }
+
+      const destinationIndex = targetRank - 1;
+      if (destinationIndex === currentIndex) {
+        return;
+      }
+
+      const [moved] = currentPlayers.splice(currentIndex, 1);
+      currentPlayers.splice(destinationIndex, 0, moved);
+      renderRows(currentPlayers);
+      renderWeeklyTopTenPreview();
+      setSyncStatus("Rank updated locally. Click Save Global Sync to publish.");
+    };
+
+    rankInputNode?.addEventListener("change", applyRankInputOrder);
+    rankInputNode?.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") {
+        return;
+      }
+
+      event.preventDefault();
+      applyRankInputOrder();
+    });
 
     dragHandleNode.addEventListener("dragstart", (event) => {
       draggingPlayerKey = player.key;
