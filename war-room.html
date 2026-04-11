@@ -4,19 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ascend Entrenched | ENTRENCHED War Room</title>
-  <meta name="description" content="ENTRENCHED WW1 faction intelligence, momentum points, and game overview.">
+  <meta name="description" content="Live faction and player analytics from your current roster data.">
   <meta name="theme-color" content="#A63A2B">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ascend Entrenched">
   <meta property="og:title" content="Ascend Entrenched | ENTRENCHED War Room">
-  <meta property="og:description" content="ENTRENCHED WW1 faction intelligence, momentum points, and game overview.">
+  <meta property="og:description" content="Live faction and player analytics from your current roster data.">
   <meta property="og:image" content="/assets/brand/logo-mark-512.png">
   <meta property="og:image:width" content="512">
   <meta property="og:image:height" content="512">
   <meta property="og:image:alt" content="Ascend Entrenched logo">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Ascend Entrenched | ENTRENCHED War Room">
-  <meta name="twitter:description" content="ENTRENCHED WW1 faction intelligence, momentum points, and game overview.">
+  <meta name="twitter:description" content="Live faction and player analytics from your current roster data.">
   <meta name="twitter:image" content="/assets/brand/logo-mark-512.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,6 +28,7 @@
   <link rel="manifest" href="site.webmanifest">
   <link rel="preload" as="image" href="assets/brand/logo-mark-512.png">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="warroom.css">
 </head>
 <body class="war-room-page">
   <div class="page-glow" aria-hidden="true"></div>
@@ -49,7 +50,11 @@
       <img src="assets/brand/logo-mark-512.png" alt="Ascend Entrenched logo" width="56" height="56" decoding="async" fetchpriority="high">
     </a>
     <h1>Ascend Entrenched</h1>
-    <p>ENTRENCHED WW1 War Room</p>
+    <p>Faction Operations Core</p>
+    <div class="warroom-hero-signal" aria-label="Live operation status">
+      <span class="warroom-signal-dot" aria-hidden="true"></span>
+      <span>Live Analytics Core</span>
+    </div>
     <nav class="site-nav" aria-label="Primary navigation">
       <a class="nav-link" href="index.html">Player Showcase</a>
       <a class="nav-link" href="leaderboard.html">Leaderboard</a>
@@ -59,153 +64,104 @@
 
   <main class="warroom-content">
     <section class="warroom-intro" aria-label="War room intro">
-      <div>
-        <h2>Frontline Intelligence</h2>
+      <div class="warroom-intro-copy">
+        <h2>Faction Operations Core</h2>
         <p>
-          Live faction momentum built from your leaderboard. This page tracks which regiment is currently
-          controlling the pressure line in ENTRENCHED WW1.
+          A full rebuild focused on raw data only: faction pressure, operator impact, country spread,
+          and leaderboard momentum from the current player roster.
         </p>
+        <div class="warroom-intel-tags" aria-label="War room capabilities">
+          <span>Faction Pressure</span>
+          <span>Operator Radar</span>
+          <span>Country Spread</span>
+          <span>Live Sync</span>
+        </div>
       </div>
       <div class="warroom-intro-actions">
-        <a class="warroom-link" href="https://www.roblox.com/games/3678761576/ENTRENCHED-WW1" target="_blank" rel="noreferrer noopener">Open ENTRENCHED WW1</a>
-        <a class="warroom-link secondary" href="leaderboard.html">Back To Leaderboard</a>
+        <a class="warroom-link" href="leaderboard.html">Open Leaderboard</a>
+        <button id="warRoomRefresh" class="warroom-link secondary" type="button">Refresh Analytics</button>
       </div>
     </section>
 
-    <section class="warroom-metrics-grid" aria-label="War room metrics">
+    <section class="warroom-metrics-grid" aria-label="War room command metrics">
       <article class="warroom-card">
-        <span>Trench Time UTC</span>
+        <span>Clock UTC</span>
         <strong id="warRoomClock">--:--:--</strong>
       </article>
       <article class="warroom-card">
-        <span>Strongest Regiment</span>
-        <strong id="warRoomChampion">Scanning...</strong>
+        <span>Active Players</span>
+        <strong id="warRoomPlayerCount">0</strong>
+      </article>
+      <article class="warroom-card">
+        <span>Tracked Factions</span>
+        <strong id="warRoomFactionCount">0</strong>
       </article>
       <article class="warroom-card">
         <span>Average K/D</span>
         <strong id="warRoomAvgKd">0.00</strong>
       </article>
       <article class="warroom-card">
-        <span>Active Operators</span>
-        <strong id="warRoomPlayerCount">0</strong>
+        <span>Top Faction</span>
+        <strong id="warRoomChampion">Scanning...</strong>
+      </article>
+      <article class="warroom-card">
+        <span>Frontline Margin</span>
+        <strong id="warRoomContested">0 pts</strong>
       </article>
     </section>
 
-    <section class="warroom-map-section" aria-label="Empires of Entrenched tactical map">
-      <div class="warroom-map-head">
-        <h3>Empires Of Entrenched Theater</h3>
-        <p>EOE map intelligence with live faction pressure overlays from your current points system.</p>
-      </div>
-      <div id="warRoomMapFrame" class="warroom-map-frame">
-        <img
-          id="warRoomMapImage"
-          class="warroom-map-image"
-          src="map eoe.png"
-          alt="Empires of Entrenched 3 strategic territory map"
-          loading="lazy"
-        >
-        <a
-          class="warroom-map-discord"
-          href="https://discord.gg/An5jfrCa"
-          target="_blank"
-          rel="noreferrer noopener"
-        >
-          Join EOE Discord
-        </a>
-        <div class="warroom-map-overlay" aria-hidden="true"></div>
-        <div id="warRoomHotspots" class="warroom-hotspots" aria-label="Faction hotspots"></div>
-      </div>
-      <p id="warRoomMapStatus" class="warroom-map-status">Calibrating frontline overlays...</p>
-      <div id="warRoomMapLeaders" class="warroom-map-badges" aria-label="Top map factions"></div>
-    </section>
-
-    <section class="warroom-layout" aria-label="Faction analytics and game intel">
+    <section class="warroom-layout" aria-label="Faction and player analytics">
       <article class="warroom-panel">
         <div class="warroom-panel-head">
-          <h3>Faction Momentum Index</h3>
+          <h3>Faction Pressure Board</h3>
           <p id="warRoomSync" class="warroom-sync">Loading intel...</p>
         </div>
-        <div id="warRoomPowerRows" class="warroom-power-rows"></div>
+        <div id="warRoomFactionCards" class="warroom-faction-cards"></div>
       </article>
 
       <article class="warroom-panel">
         <div class="warroom-panel-head">
-          <h3>Top Operators</h3>
-          <p>Highest impact based on level and K/D blend.</p>
+          <h3>Operator Radar</h3>
+          <p>Top impact players based on level, K/D, and rank pressure bonus.</p>
         </div>
         <div id="warRoomTopOperators" class="warroom-operators"></div>
       </article>
     </section>
 
-    <section class="warroom-game-info" aria-label="Game info">
-      <h3>About ENTRENCHED WW1</h3>
-      <div class="warroom-info-grid">
-        <article class="warroom-info-card">
-          <h4>Core Gameplay</h4>
-          <p>Loosely based on World War 1, with Entente and Central Powers trench warfare.</p>
-          <p>Features 9 classes and modes like frontline attack/defense, conquest, and domination.</p>
-        </article>
-
-        <article class="warroom-info-card">
-          <h4>Latest Public Update</h4>
-          <p>Version v1.12.1 Class Mastery update includes Neuve Chapelle 1915 and mastery charms.</p>
-          <p>Also lists map vote boost and gamepass gifting features.</p>
-        </article>
-
-        <article class="warroom-info-card">
-          <h4>Technical Snapshot</h4>
-          <p>Genre: Shooter (Deathmatch Shooter). Server size: 40 players.</p>
-          <p>Playable on PC, Mobile, and Console. Created 8/18/2019, updated 3/28/2026.</p>
-        </article>
-      </div>
+    <section class="warroom-grid-two" aria-label="Comparison analytics">
+      <article class="warroom-panel">
+        <div class="warroom-panel-head">
+          <h3>Faction Matchups</h3>
+          <p>Gap from each faction to the next nearest rival.</p>
+        </div>
+        <div id="warRoomFactionTable" class="warroom-faction-table"></div>
+      </article>
+      <article class="warroom-panel">
+        <div class="warroom-panel-head">
+          <h3>Country Presence</h3>
+          <p>Player distribution by declared country.</p>
+        </div>
+        <div id="warRoomCountryRows" class="warroom-country-rows"></div>
+      </article>
     </section>
 
-    <section class="warroom-loadout" aria-label="Classes and device controls">
+    <section class="warroom-loadout" aria-label="Distribution analytics">
       <div class="warroom-loadout-head">
-        <h3>Multi-Device Controls</h3>
-        <p>Play across PC, Mobile, and Controller with class-specific tactics.</p>
+        <h3>Roster Distribution</h3>
+        <p>Quick breakdown of skill and experience spread inside the current roster.</p>
       </div>
-
-      <div class="warroom-controls-grid">
-        <article class="warroom-control-card">
-          <h4>PC</h4>
-          <p>WASD to move, mouse aim, quick class actions with keyboard binds.</p>
+      <div class="warroom-distribution-grid">
+        <article class="warroom-distribution-card">
+          <h4>K/D Bands</h4>
+          <div id="warRoomKdBands" class="warroom-mini-list"></div>
         </article>
-        <article class="warroom-control-card">
-          <h4>Mobile</h4>
-          <p>Dual-stick movement and aim, tap abilities for fast frontline utility.</p>
+        <article class="warroom-distribution-card">
+          <h4>Level Bands</h4>
+          <div id="warRoomLevelBands" class="warroom-mini-list"></div>
         </article>
-        <article class="warroom-control-card">
-          <h4>Controller</h4>
-          <p>Analog movement with trigger fire and shoulder-based class utilities.</p>
-        </article>
-      </div>
-
-      <div class="warroom-class-grid" aria-label="Class roles">
-        <article class="warroom-class-card">
-          <img src="classes%20icons/Engineer_Icon.webp" alt="Engineer class icon" loading="lazy">
-          <h4>Engineer</h4>
-          <p>Builds support and maintains pressure lines.</p>
-        </article>
-        <article class="warroom-class-card">
-          <img src="classes%20icons/Officer-icon.webp" alt="Officer class icon" loading="lazy">
-          <h4>Officer</h4>
-          <p>Coordinates pushes and boosts team control.</p>
-        </article>
-        <article class="warroom-class-card">
-          <img src="classes%20icons/Recon_Icon.webp" alt="Recon class icon" loading="lazy">
-          <h4>Recon</h4>
-          <p>Scouts angles and spots enemy rotations.</p>
-        </article>
-        <article class="warroom-class-card">
-          <img src="classes%20icons/Rifleman-icon.webp" alt="Rifleman class icon" loading="lazy">
-          <h4>Rifleman</h4>
-          <p>Core frontline damage and objective holding.</p>
-        </article>
-        <article class="warroom-class-card">
-          <img src="classes%20icons/Skirmisher-icon.webp" alt="Skirmisher class icon" loading="lazy">
-          <h4>Skirmisher</h4>
-          <p>Fast flank pressure and disruption plays.</p>
+        <article class="warroom-distribution-card">
+          <h4>Faction Share</h4>
+          <div id="warRoomFactionShare" class="warroom-mini-list"></div>
         </article>
       </div>
     </section>
@@ -213,8 +169,8 @@
     <section class="warroom-points-note" aria-label="Points model">
       <h3>Momentum Points Model</h3>
       <p>
-        Faction score is calculated per player as <strong>(Level * 12) + (K/D * 18) + Rank Bonus</strong>,
-        then totaled by faction to show current frontline pressure.
+        Every player's impact is computed as <strong>(Level * 12) + (K/D * 18) + Rank Bonus</strong>.
+        Faction pressure is the total impact of all players mapped to that faction.
       </p>
     </section>
   </main>

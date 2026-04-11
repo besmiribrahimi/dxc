@@ -1,0 +1,672 @@
+body.war-room-page {
+  --wr-bg: #06070b;
+  --wr-bg-soft: #131019;
+  --wr-bg-card: #111521;
+  --wr-bg-card-2: #120f18;
+  --wr-red: #f87171;
+  --wr-red-deep: #b91c1c;
+  --wr-blue: #60a5fa;
+  --wr-amber: #fbbf24;
+  --wr-text: #eef2ff;
+  --wr-text-soft: #c6d1e6;
+  --wr-line: rgba(248, 113, 113, 0.34);
+  --wr-line-soft: rgba(147, 197, 253, 0.24);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(248, 113, 113, 0.16), transparent 34%),
+    radial-gradient(circle at 88% 12%, rgba(96, 165, 250, 0.12), transparent 32%),
+    linear-gradient(155deg, #050509 0%, #0f0b12 48%, #131823 100%);
+}
+
+body.war-room-page::before {
+  background:
+    radial-gradient(circle at 14% 24%, rgba(239, 68, 68, 0.16), transparent 34%),
+    radial-gradient(circle at 77% 14%, rgba(59, 130, 246, 0.14), transparent 30%),
+    radial-gradient(circle at 58% 84%, rgba(251, 113, 133, 0.12), transparent 34%);
+  filter: blur(20px);
+}
+
+body.war-room-page::after {
+  background:
+    linear-gradient(90deg, rgba(248, 113, 113, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(147, 197, 253, 0.03) 1px, transparent 1px);
+  background-size: 42px 42px;
+  opacity: 0.45;
+}
+
+.page-glow {
+  background:
+    radial-gradient(circle at 50% -20%, rgba(248, 113, 113, 0.08), transparent 56%),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 60px,
+      rgba(248, 113, 113, 0.025) 61px,
+      rgba(248, 113, 113, 0.025) 62px
+    );
+}
+
+.hero {
+  min-height: 40vh;
+  padding-top: 5rem;
+}
+
+.hero::before {
+  width: min(760px, 90vw);
+  height: 210px;
+  bottom: 0.2rem;
+  background:
+    radial-gradient(circle, rgba(239, 68, 68, 0.24), rgba(239, 68, 68, 0) 62%),
+    radial-gradient(circle at 68% 32%, rgba(59, 130, 246, 0.17), rgba(59, 130, 246, 0) 54%);
+  filter: blur(22px);
+}
+
+.hero h1 {
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 26px rgba(239, 68, 68, 0.35), 0 0 34px rgba(96, 165, 250, 0.2);
+}
+
+.hero p {
+  color: #fecdd3;
+  letter-spacing: 0.18em;
+}
+
+.warroom-hero-signal {
+  margin-top: 0.86rem;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.48rem;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.46);
+  background: linear-gradient(122deg, rgba(127, 29, 29, 0.44), rgba(13, 20, 37, 0.58));
+  color: #ffe4e6;
+  font-size: 0.72rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  font-weight: 800;
+  padding: 0.2rem 0.72rem;
+  box-shadow: inset 0 1px 0 rgba(255, 241, 242, 0.08), 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.warroom-signal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff1f2 14%, #fb7185 46%, #be123c 100%);
+  box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.2), 0 0 12px rgba(251, 113, 133, 0.65);
+  animation: wr-dot-pulse 1300ms ease-in-out infinite;
+}
+
+.site-nav {
+  border-color: rgba(248, 113, 113, 0.34);
+  background: rgba(8, 10, 16, 0.52);
+}
+
+.nav-link:hover,
+.nav-link:focus-visible {
+  border-color: rgba(248, 113, 113, 0.62);
+  background: rgba(185, 28, 28, 0.24);
+}
+
+.nav-link.active {
+  border-color: rgba(254, 202, 202, 0.6);
+  background: linear-gradient(122deg, rgba(185, 28, 28, 0.42), rgba(30, 64, 175, 0.26));
+  color: #fff1f2;
+}
+
+.warroom-content {
+  width: min(1460px, 100% - 2rem);
+  margin: 0 auto 4.2rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.warroom-intro,
+.warroom-panel,
+.warroom-loadout,
+.warroom-points-note {
+  position: relative;
+  overflow: hidden;
+}
+
+.warroom-intro::before,
+.warroom-panel::before,
+.warroom-loadout::before,
+.warroom-points-note::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, rgba(248, 113, 113, 0.05), transparent 30%, rgba(96, 165, 250, 0.05) 100%);
+  pointer-events: none;
+}
+
+.warroom-intro {
+  border: 1px solid rgba(248, 113, 113, 0.38);
+  border-radius: 20px;
+  background:
+    linear-gradient(125deg, rgba(25, 11, 16, 0.96), rgba(10, 15, 29, 0.95)),
+    radial-gradient(circle at 82% 20%, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0));
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.48), 0 0 22px rgba(248, 113, 113, 0.16);
+  padding: 1.05rem 1.15rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
+}
+
+.warroom-intro h2 {
+  margin: 0;
+  font-family: "Rajdhani", sans-serif;
+  font-size: clamp(1.64rem, 2.8vw, 2.4rem);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.warroom-intro p {
+  margin: 0.38rem 0 0;
+  color: #f9d7dc;
+  max-width: 76ch;
+}
+
+.warroom-intel-tags {
+  margin-top: 0.62rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.44rem;
+}
+
+.warroom-intel-tags span {
+  min-height: 25px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(254, 202, 202, 0.4);
+  background: rgba(127, 29, 29, 0.32);
+  color: #ffe6e9;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.62rem;
+}
+
+.warroom-intro-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.warroom-link {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.56);
+  background: linear-gradient(122deg, rgba(190, 24, 93, 0.35), rgba(185, 28, 28, 0.43), rgba(30, 64, 175, 0.26));
+  color: #fff1f2;
+  text-decoration: none;
+  font-family: "Exo 2", sans-serif;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.84rem;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.warroom-link.secondary {
+  border-color: rgba(147, 197, 253, 0.48);
+  background: linear-gradient(122deg, rgba(30, 64, 175, 0.3), rgba(8, 15, 30, 0.62));
+  color: #dbeafe;
+}
+
+.warroom-link:hover,
+.warroom-link:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(254, 202, 202, 0.84);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.45), 0 0 16px rgba(248, 113, 113, 0.22);
+  outline: none;
+}
+
+.warroom-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.72rem;
+}
+
+.warroom-card {
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  border-radius: 14px;
+  background:
+    linear-gradient(160deg, rgba(23, 10, 15, 0.84), rgba(8, 14, 27, 0.74)),
+    radial-gradient(circle at 78% 18%, rgba(248, 113, 113, 0.14), rgba(248, 113, 113, 0));
+  padding: 0.74rem 0.84rem;
+  box-shadow: inset 0 1px 0 rgba(255, 228, 230, 0.06);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.warroom-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(248, 113, 113, 0.5);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4), 0 0 16px rgba(248, 113, 113, 0.18);
+}
+
+.warroom-card span {
+  display: block;
+  color: #fbc9cf;
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.warroom-card strong {
+  display: block;
+  margin-top: 0.16rem;
+  color: #fff1f2;
+  font-family: "Rajdhani", sans-serif;
+  font-size: clamp(1.32rem, 2.2vw, 1.9rem);
+  line-height: 1;
+}
+
+.warroom-layout,
+.warroom-grid-two {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 0.86rem;
+}
+
+.warroom-panel,
+.warroom-loadout,
+.warroom-points-note {
+  border: 1px solid rgba(147, 197, 253, 0.22);
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(11, 18, 35, 0.92), rgba(8, 13, 25, 0.96));
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  padding: 0.95rem;
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.warroom-panel:hover,
+.warroom-loadout:hover,
+.warroom-points-note:hover {
+  transform: translateY(-3px);
+  border-color: rgba(248, 113, 113, 0.36);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.54), 0 0 18px rgba(248, 113, 113, 0.16);
+}
+
+.warroom-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.warroom-panel-head h3,
+.warroom-loadout-head h3,
+.warroom-points-note h3 {
+  margin: 0;
+  font-family: "Rajdhani", sans-serif;
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.warroom-panel-head p,
+.warroom-loadout-head p,
+.warroom-sync,
+.warroom-points-note p {
+  margin: 0;
+  color: #cad8ec;
+}
+
+.warroom-faction-cards,
+.warroom-operators,
+.warroom-faction-table,
+.warroom-country-rows,
+.warroom-mini-list {
+  margin-top: 0.72rem;
+  display: grid;
+  gap: 0.52rem;
+}
+
+.warroom-faction-card {
+  border: 1px solid rgba(248, 113, 113, 0.22);
+  border-radius: 11px;
+  background: rgba(20, 11, 18, 0.6);
+  padding: 0.58rem 0.68rem;
+}
+
+.warroom-faction-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.warroom-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  min-height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(127, 29, 29, 0.3);
+  color: #ffe4e6;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.14rem 0.6rem;
+}
+
+.warroom-token .faction-flag-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.warroom-score {
+  color: #fecaca;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.warroom-track {
+  margin-top: 0.42rem;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(127, 29, 29, 0.36);
+  overflow: hidden;
+}
+
+.warroom-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(248, 113, 113, 0.9), rgba(251, 191, 36, 0.82));
+}
+
+.warroom-meta {
+  margin: 0.4rem 0 0;
+  color: #f8d4d9;
+  font-size: 0.8rem;
+}
+
+.warroom-operator-row {
+  border: 1px solid rgba(147, 197, 253, 0.2);
+  border-radius: 11px;
+  background: rgba(8, 15, 30, 0.66);
+  padding: 0.48rem 0.56rem;
+  display: grid;
+  grid-template-columns: 44px 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.48rem;
+}
+
+.warroom-operator-rank {
+  min-height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  background: rgba(127, 29, 29, 0.32);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fecaca;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.warroom-operator-row img {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(147, 197, 253, 0.24);
+  background: #091024;
+}
+
+.warroom-operator-row strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.96rem;
+}
+
+.warroom-operator-row p {
+  margin: 0.1rem 0 0;
+  color: #bfd2eb;
+  font-size: 0.76rem;
+}
+
+.warroom-operator-score {
+  color: #dbeafe;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.warroom-table-row,
+.warroom-country-row,
+.warroom-mini-row {
+  border: 1px solid rgba(147, 197, 253, 0.2);
+  border-radius: 10px;
+  background: rgba(9, 15, 29, 0.62);
+  padding: 0.5rem 0.56rem;
+}
+
+.warroom-table-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.warroom-table-rank {
+  color: #fda4af;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.warroom-table-main strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.warroom-table-main p {
+  margin: 0.08rem 0 0;
+  color: #bed2ea;
+  font-size: 0.74rem;
+}
+
+.warroom-gap-chip,
+.warroom-points-chip {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.58rem;
+}
+
+.warroom-gap-chip {
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  background: rgba(127, 29, 29, 0.32);
+  color: #fecaca;
+}
+
+.warroom-points-chip {
+  border: 1px solid rgba(147, 197, 253, 0.4);
+  background: rgba(30, 64, 175, 0.26);
+  color: #dbeafe;
+}
+
+.warroom-country-row,
+.warroom-mini-row {
+  display: grid;
+  gap: 0.36rem;
+}
+
+.warroom-country-head,
+.warroom-mini-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.warroom-country-head strong,
+.warroom-mini-head strong {
+  font-size: 0.86rem;
+}
+
+.warroom-country-head span,
+.warroom-mini-head span {
+  color: #c6d5ec;
+  font-size: 0.76rem;
+}
+
+.warroom-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.55);
+  overflow: hidden;
+}
+
+.warroom-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(96, 165, 250, 0.92), rgba(248, 113, 113, 0.8));
+}
+
+.warroom-loadout-head p {
+  margin-top: 0.25rem;
+}
+
+.warroom-distribution-grid {
+  margin-top: 0.72rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.62rem;
+}
+
+.warroom-distribution-card {
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  border-radius: 12px;
+  background: linear-gradient(130deg, rgba(127, 29, 29, 0.18), rgba(8, 15, 30, 0.72));
+  padding: 0.62rem;
+}
+
+.warroom-distribution-card h4 {
+  margin: 0;
+  color: #fecaca;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-size: 0.84rem;
+}
+
+.warroom-points-note p {
+  margin-top: 0.42rem;
+}
+
+.warroom-empty {
+  margin: 0;
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  border-radius: 10px;
+  background: rgba(20, 11, 18, 0.58);
+  padding: 0.72rem;
+  color: #f9d1d7;
+}
+
+@keyframes wr-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 1080px) {
+  .warroom-metrics-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .warroom-layout,
+  .warroom-grid-two {
+    grid-template-columns: 1fr;
+  }
+
+  .warroom-distribution-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .warroom-intro {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .warroom-intro-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  .hero {
+    min-height: 30vh;
+    padding-top: 3.8rem;
+  }
+
+  .warroom-content {
+    width: min(1460px, 100% - 1rem);
+  }
+
+  .warroom-metrics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .warroom-panel-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .warroom-operator-row {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+  }
+
+  .warroom-operator-row img {
+    display: none;
+  }
+
+  .warroom-table-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .warroom-gap-chip,
+  .warroom-points-chip {
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .warroom-signal-dot,
+  .warroom-card,
+  .warroom-link,
+  .warroom-panel,
+  .warroom-loadout,
+  .warroom-points-note {
+    animation: none !important;
+    transition: none !important;
+  }
+}

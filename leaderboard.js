@@ -5,6 +5,9 @@ const modalRankNode = document.getElementById("modalRank");
 const modalRankBadgeNode = document.getElementById("modalRankBadge");
 const modalClassNode = document.getElementById("modalClass");
 const leaderboardModalPanelNode = document.querySelector("#playerModal .leaderboard-modal-panel");
+const rankStructureToggleNode = document.getElementById("rankStructureToggle");
+const rankStructurePanelNode = document.getElementById("rankStructurePanel");
+const rankStructureCloseNode = document.getElementById("rankStructureClose");
 
 let previousPlayersState = [];
 const LEADERBOARD_TOP_PLAYER = "20SovietSO21";
@@ -720,8 +723,47 @@ function setupSearch() {
   });
 }
 
+function setupRankStructurePopup() {
+  if (!rankStructureToggleNode || !rankStructurePanelNode || !rankStructureCloseNode) {
+    return;
+  }
+
+  const setOpen = (open) => {
+    rankStructurePanelNode.classList.toggle("open", open);
+    rankStructurePanelNode.setAttribute("aria-hidden", String(!open));
+    rankStructureToggleNode.setAttribute("aria-expanded", String(open));
+  };
+
+  rankStructureToggleNode.addEventListener("click", () => {
+    const isOpen = rankStructurePanelNode.classList.contains("open");
+    setOpen(!isOpen);
+  });
+
+  rankStructureCloseNode.addEventListener("click", () => {
+    setOpen(false);
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      setOpen(false);
+    }
+  });
+
+  try {
+    const seenKey = "leaderboard-structure-seen";
+    const seen = window.sessionStorage.getItem(seenKey) === "1";
+    if (!seen) {
+      setOpen(true);
+      window.sessionStorage.setItem(seenKey, "1");
+    }
+  } catch {
+    setOpen(true);
+  }
+}
+
 function initLeaderboardPage() {
   setupSearch();
+  setupRankStructurePopup();
   loadAndRenderLeaderboard();
 }
 

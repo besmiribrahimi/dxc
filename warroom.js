@@ -2,33 +2,24 @@ const warRoomClockNode = document.getElementById("warRoomClock");
 const warRoomChampionNode = document.getElementById("warRoomChampion");
 const warRoomAvgKdNode = document.getElementById("warRoomAvgKd");
 const warRoomPlayerCountNode = document.getElementById("warRoomPlayerCount");
-const warRoomPowerRowsNode = document.getElementById("warRoomPowerRows");
-const warRoomTopOperatorsNode = document.getElementById("warRoomTopOperators");
+const warRoomFactionCountNode = document.getElementById("warRoomFactionCount");
+const warRoomContestedNode = document.getElementById("warRoomContested");
 const warRoomSyncNode = document.getElementById("warRoomSync");
-const warRoomMapFrameNode = document.getElementById("warRoomMapFrame");
-const warRoomMapImageNode = document.getElementById("warRoomMapImage");
-const warRoomMapStatusNode = document.getElementById("warRoomMapStatus");
-const warRoomMapLeadersNode = document.getElementById("warRoomMapLeaders");
-const warRoomHotspotsNode = document.getElementById("warRoomHotspots");
-const warRoomHotspotInfoNode = document.getElementById("warRoomHotspotInfo");
+const warRoomFactionCardsNode = document.getElementById("warRoomFactionCards");
+const warRoomTopOperatorsNode = document.getElementById("warRoomTopOperators");
+const warRoomFactionTableNode = document.getElementById("warRoomFactionTable");
+const warRoomCountryRowsNode = document.getElementById("warRoomCountryRows");
+const warRoomKdBandsNode = document.getElementById("warRoomKdBands");
+const warRoomLevelBandsNode = document.getElementById("warRoomLevelBands");
+const warRoomFactionShareNode = document.getElementById("warRoomFactionShare");
+const warRoomRefreshNode = document.getElementById("warRoomRefresh");
 
 const LEADERBOARD_TOP_PLAYER = "20SovietSO21";
 const LEADERBOARD_CONFIG_ENDPOINT = "/api/leaderboard-config";
 
-const MAP_HOTSPOT_LAYOUT = [
-  { token: "AH", label: "Austria-Hungary", x: 21.5, y: 47.5 },
-  { token: "URF", label: "URF", x: 48.5, y: 32.5 },
-  { token: "DK", label: "DK", x: 39.5, y: 56.5 },
-  { token: "CZSK", label: "Czechoslovakia", x: 13.5, y: 74.5 },
-  { token: "NDV", label: "NDV", x: 81.5, y: 34 },
-  { token: "RKA", label: "RKA", x: 57, y: 22.5 },
-  { token: "TWA", label: "TWA", x: 59, y: 45.5 },
-  { token: "TCL", label: "TCL", x: 73.5, y: 51 },
-  { token: "TAE", label: "TAE", x: 88.5, y: 57 },
-  { token: "AEF", label: "AEF", x: 62.5, y: 55 }
-];
-
 let warRoomClockIntervalId = null;
+let warRoomLoadPending = false;
+
 function clampLevel(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
@@ -41,7 +32,7 @@ function clampLevel(value) {
 function clampKd(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
-    return 1.0;
+    return 1;
   }
 
   return Math.max(0, Math.min(9.9, numeric));
@@ -124,94 +115,8 @@ async function fetchRemoteConfig() {
   }
 }
 
-function getFactionMomentum(players) {
-  const momentumMap = new Map();
-
-  players.forEach((player, index) => {
-    const tokens = [...new Set(
-      splitFactionTokens(player.faction).filter((token) => String(token || "").toUpperCase() !== "N/A")
-    )];
-
-    if (!tokens.length) {
-      return;
-    }
-
-    const level = clampLevel(player.level);
-    const kd = clampKd(player.kd);
-    const impact = getPlayerImpact(level, kd, index);
-
-    tokens.forEach((token) => {
-      const current = momentumMap.get(token) || {
-        token,
-        members: 0,
-        totalLevel: 0,
-        totalKd: 0,
-        score: 0
-      };
-
-      current.members += 1;
-      current.totalLevel += level;
-      current.totalKd += kd;
-      current.score += impact;
-
-      momentumMap.set(token, current);
-    });
-  });
-
-  return [...momentumMap.values()].sort((a, b) => b.score - a.score);
-}
-
 function getPlayerImpact(level, kd, rankIndex) {
   return (level * 12) + (kd * 18) + Math.max(0, 14 - rankIndex);
-}
-
-function getFactionIntelMap(players, factions) {
-  const intelMap = new Map(
-    factions.map((faction) => [faction.token, {
-      ...faction,
-      topOperator: null,
-      topImpact: -1
-    }])
-  );
-
-  players.forEach((player, index) => {
-    const tokens = [...new Set(
-      splitFactionTokens(player.faction).filter((token) => String(token || "").toUpperCase() !== "N/A")
-    )];
-    if (!tokens.length) {
-      return;
-    }
-
-    const level = clampLevel(player.level);
-    const kd = clampKd(player.kd);
-    const impact = getPlayerImpact(level, kd, index);
-
-    tokens.forEach((token) => {
-      if (!intelMap.has(token)) {
-        intelMap.set(token, {
-          token,
-          members: 0,
-          totalLevel: 0,
-          totalKd: 0,
-          score: 0,
-          topOperator: null,
-          topImpact: -1
-        });
-      }
-
-      const current = intelMap.get(token);
-      if (impact > current.topImpact) {
-        current.topImpact = impact;
-        current.topOperator = {
-          name: player.name,
-          kd,
-          level
-        };
-      }
-    });
-  });
-
-  return intelMap;
 }
 
 function getEscaper() {
@@ -223,7 +128,7 @@ function getEscaper() {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
 
@@ -239,10 +144,6 @@ function updateWarRoomClock() {
 }
 
 function startWarRoomClock() {
-  if (!warRoomClockNode) {
-    return;
-  }
-
   updateWarRoomClock();
 
   if (warRoomClockIntervalId) {
@@ -252,44 +153,134 @@ function startWarRoomClock() {
   warRoomClockIntervalId = window.setInterval(updateWarRoomClock, 1000);
 }
 
-function renderFactionMomentum(factions) {
-  if (!warRoomPowerRowsNode) {
+function buildFactionStats(players) {
+  const factions = new Map();
+
+  players.forEach((player, rankIndex) => {
+    const tokens = [...new Set(
+      splitFactionTokens(player.faction).filter((token) => String(token || "").toUpperCase() !== "N/A")
+    )];
+
+    if (!tokens.length) {
+      return;
+    }
+
+    const level = clampLevel(player.level);
+    const kd = clampKd(player.kd);
+    const impact = getPlayerImpact(level, kd, rankIndex);
+
+    tokens.forEach((token) => {
+      if (!factions.has(token)) {
+        factions.set(token, {
+          token,
+          members: 0,
+          score: 0,
+          totalLevel: 0,
+          totalKd: 0,
+          topOperator: null,
+          topImpact: -1,
+          countries: new Set()
+        });
+      }
+
+      const row = factions.get(token);
+      row.members += 1;
+      row.score += impact;
+      row.totalLevel += level;
+      row.totalKd += kd;
+      row.countries.add(String(player.country || "N/A"));
+
+      if (impact > row.topImpact) {
+        row.topImpact = impact;
+        row.topOperator = {
+          name: player.name,
+          level,
+          kd
+        };
+      }
+    });
+  });
+
+  return [...factions.values()].sort((a, b) => b.score - a.score);
+}
+
+function renderMetrics(players, factions) {
+  if (warRoomPlayerCountNode) {
+    warRoomPlayerCountNode.textContent = String(players.length);
+  }
+
+  if (warRoomFactionCountNode) {
+    warRoomFactionCountNode.textContent = String(factions.length);
+  }
+
+  const avgKd = players.length
+    ? players.reduce((sum, player) => sum + clampKd(player.kd), 0) / players.length
+    : 0;
+
+  if (warRoomAvgKdNode) {
+    warRoomAvgKdNode.textContent = avgKd.toFixed(2);
+  }
+
+  if (warRoomChampionNode) {
+    if (factions.length) {
+      warRoomChampionNode.textContent = `${factions[0].token} ${Math.round(factions[0].score)} pts`;
+    } else {
+      warRoomChampionNode.textContent = "No data";
+    }
+  }
+
+  if (warRoomContestedNode) {
+    if (factions.length < 2) {
+      warRoomContestedNode.textContent = "No rivalry";
+    } else {
+      const gap = Math.max(0, Math.round(factions[0].score - factions[1].score));
+      warRoomContestedNode.textContent = `${gap} pts`;
+    }
+  }
+}
+
+function renderFactionCards(factions) {
+  if (!warRoomFactionCardsNode) {
     return;
   }
 
   if (!factions.length) {
-    warRoomPowerRowsNode.innerHTML = '<p class="warroom-empty">No faction momentum data is available yet.</p>';
+    warRoomFactionCardsNode.innerHTML = '<p class="warroom-empty">No faction pressure data available.</p>';
     return;
   }
 
   const safe = getEscaper();
   const maxScore = Math.max(1, ...factions.map((faction) => faction.score));
 
-  warRoomPowerRowsNode.innerHTML = factions.slice(0, 6).map((faction, index) => {
+  warRoomFactionCardsNode.innerHTML = factions.slice(0, 8).map((faction, index) => {
     const safeToken = safe(faction.token);
+    const score = Math.round(faction.score);
+    const avgLevel = faction.totalLevel / Math.max(1, faction.members);
+    const avgKd = faction.totalKd / Math.max(1, faction.members);
     const progress = Math.max(8, Math.round((faction.score / maxScore) * 100));
-    const avgLevel = faction.totalLevel / faction.members;
-    const avgKd = faction.totalKd / faction.members;
-    const label = index === 0
-      ? "Holding the frontline"
+    const pressure = index === 0
+      ? "Frontline leader"
       : index === 1
-        ? "Launching counter-push"
-        : "Reinforcing sectors";
+        ? "Primary challenger"
+        : "Holding sectors";
     const flagPath = typeof getFactionFlagPath === "function" ? getFactionFlagPath(faction.token) : "";
     const flagMarkup = flagPath
       ? `<img class="faction-flag-icon" src="${flagPath}" alt="${safeToken} flag" loading="lazy">`
       : "";
+    const topOperator = faction.topOperator
+      ? `${safe(faction.topOperator.name)} (K/D ${faction.topOperator.kd.toFixed(1)})`
+      : "Unknown";
 
     return `
-      <article class="warroom-row">
-        <div class="warroom-row-head">
-          <span class="warroom-row-faction">${flagMarkup}${safeToken}</span>
-          <strong>${Math.round(faction.score)} pts</strong>
+      <article class="warroom-faction-card">
+        <div class="warroom-faction-head">
+          <span class="warroom-token">${flagMarkup}${safeToken}</span>
+          <strong class="warroom-score">${score} pts</strong>
         </div>
-        <div class="warroom-row-track" role="presentation">
+        <div class="warroom-track" role="presentation">
           <span style="width:${progress}%"></span>
         </div>
-        <p>${label} • ${faction.members} players • Avg Lvl ${avgLevel.toFixed(1)} • Avg K/D ${avgKd.toFixed(2)}</p>
+        <p class="warroom-meta">${pressure} • ${faction.members} players • Avg Lvl ${avgLevel.toFixed(1)} • Avg K/D ${avgKd.toFixed(2)} • Lead operator: ${topOperator}</p>
       </article>
     `;
   }).join("");
@@ -300,9 +291,17 @@ function renderTopOperators(players, avatarMap) {
     return;
   }
 
+  if (!players.length) {
+    warRoomTopOperatorsNode.innerHTML = '<p class="warroom-empty">No player data available.</p>';
+    return;
+  }
+
   const safe = getEscaper();
 
-  warRoomTopOperatorsNode.innerHTML = players.slice(0, 8).map((player, index) => {
+  warRoomTopOperatorsNode.innerHTML = players.slice(0, 10).map((player, index) => {
+    const level = clampLevel(player.level);
+    const kd = clampKd(player.kd);
+    const impact = Math.round(getPlayerImpact(level, kd, index));
     const avatar = avatarMap.get(Number(player.userId)) || getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
     const faction = splitFactionTokens(player.faction).join("/");
 
@@ -312,137 +311,176 @@ function renderTopOperators(players, avatarMap) {
         <img src="${avatar}" alt="${safe(player.name)} avatar" loading="lazy" referrerpolicy="no-referrer">
         <div>
           <strong>${safe(player.name)}</strong>
-          <p>${safe(faction)} • ${countryToFlag(player.country)} ${safe(player.country)}</p>
+          <p>${safe(faction)} • ${countryToFlag(player.country)} ${safe(player.country)} • Lvl ${level} • K/D ${kd.toFixed(1)}</p>
         </div>
-        <span class="warroom-operator-kd">K/D ${Number(player.kd).toFixed(1)}</span>
+        <span class="warroom-operator-score">${impact} pts</span>
       </article>
     `;
   }).join("");
 }
 
-function bindMapHoverEffect() {
-  if (!warRoomMapFrameNode) {
-    return;
-  }
-
-  warRoomMapFrameNode.addEventListener("mousemove", (event) => {
-    const rect = warRoomMapFrameNode.getBoundingClientRect();
-    if (!rect.width || !rect.height) {
-      return;
-    }
-
-    const xPercent = ((event.clientX - rect.left) / rect.width) * 100;
-    const yPercent = ((event.clientY - rect.top) / rect.height) * 100;
-    warRoomMapFrameNode.style.setProperty("--mx", `${xPercent.toFixed(2)}%`);
-    warRoomMapFrameNode.style.setProperty("--my", `${yPercent.toFixed(2)}%`);
-  });
-
-  warRoomMapFrameNode.addEventListener("mouseleave", () => {
-    warRoomMapFrameNode.style.removeProperty("--mx");
-    warRoomMapFrameNode.style.removeProperty("--my");
-  });
-}
-
-function renderMapLeaders(factions) {
-  if (!warRoomMapLeadersNode || !warRoomMapStatusNode) {
+function renderFactionTable(factions) {
+  if (!warRoomFactionTableNode) {
     return;
   }
 
   if (!factions.length) {
-    warRoomMapStatusNode.textContent = "No active faction overlays available.";
-    warRoomMapLeadersNode.innerHTML = "";
+    warRoomFactionTableNode.innerHTML = '<p class="warroom-empty">No faction matchup data available.</p>';
     return;
   }
 
   const safe = getEscaper();
-  const maxScore = Math.max(1, ...factions.map((faction) => faction.score));
 
-  warRoomMapStatusNode.textContent = "Faction overlays synced from current leaderboard momentum.";
-  warRoomMapLeadersNode.innerHTML = factions.slice(0, 5).map((faction, index) => {
-    const intensity = Math.max(12, Math.round((faction.score / maxScore) * 100));
-    const safeToken = safe(faction.token);
+  warRoomFactionTableNode.innerHTML = factions.slice(0, 8).map((faction, index) => {
+    const nextFaction = factions[index + 1];
+    const gap = nextFaction ? Math.max(0, Math.round(faction.score - nextFaction.score)) : 0;
+    const avgKd = faction.totalKd / Math.max(1, faction.members);
     const flagPath = typeof getFactionFlagPath === "function" ? getFactionFlagPath(faction.token) : "";
+    const safeToken = safe(faction.token);
     const flagMarkup = flagPath
       ? `<img class="faction-flag-icon" src="${flagPath}" alt="${safeToken} flag" loading="lazy">`
       : "";
-    const stateLabel = index === 0
-      ? "Dominating"
-      : index === 1
-        ? "Contest"
-        : "Holding";
 
     return `
-      <article class="warroom-map-badge" style="--intensity:${intensity}%">
-        <strong>${flagMarkup}${safeToken}</strong>
-        <span>${Math.round(faction.score)} pts • ${stateLabel}</span>
+      <article class="warroom-table-row">
+        <span class="warroom-table-rank">#${index + 1}</span>
+        <div class="warroom-table-main">
+          <strong>${flagMarkup} ${safeToken}</strong>
+          <p>${faction.members} players • Avg K/D ${avgKd.toFixed(2)}</p>
+        </div>
+        <span class="warroom-gap-chip">Gap ${gap} pts</span>
+        <span class="warroom-points-chip">${Math.round(faction.score)} pts</span>
       </article>
     `;
   }).join("");
 }
 
-function setHotspotInfo(token, intelMap, mode = "Hover") {
-  if (!warRoomHotspotInfoNode) {
+function renderCountryRows(players) {
+  if (!warRoomCountryRowsNode) {
     return;
   }
 
+  if (!players.length) {
+    warRoomCountryRowsNode.innerHTML = '<p class="warroom-empty">No country presence data available.</p>';
+    return;
+  }
+
+  const counts = new Map();
+  players.forEach((player) => {
+    const key = String(player.country || "N/A").trim() || "N/A";
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  const maxCount = Math.max(1, ...sorted.map((entry) => entry[1]));
   const safe = getEscaper();
-  const info = MAP_HOTSPOT_LAYOUT.find((spot) => spot.token === token);
-  const label = info?.label || token;
-  const details = intelMap.get(token);
-  const flagPath = typeof getFactionFlagPath === "function" ? getFactionFlagPath(token) : "";
-  const flagMarkup = flagPath
-    ? `<img class="faction-flag-icon" src="${flagPath}" alt="${safe(token)} flag" loading="lazy">`
-    : "";
 
-  if (!details) {
-    warRoomHotspotInfoNode.innerHTML = `
-      <strong>${flagMarkup}${safe(label)} • No active operators</strong>
-      <p>This region has no tracked players in the current leaderboard snapshot.</p>
+  warRoomCountryRowsNode.innerHTML = sorted.slice(0, 10).map(([country, count]) => {
+    const ratio = Math.round((count / maxCount) * 100);
+    const percent = Math.round((count / Math.max(1, players.length)) * 100);
+
+    return `
+      <article class="warroom-country-row">
+        <div class="warroom-country-head">
+          <strong>${countryToFlag(country)} ${safe(country)}</strong>
+          <span>${count} players (${percent}%)</span>
+        </div>
+        <div class="warroom-bar" role="presentation">
+          <span style="width:${Math.max(10, ratio)}%"></span>
+        </div>
+      </article>
     `;
-    return;
-  }
-
-  const topOperator = details.topOperator
-    ? `${safe(details.topOperator.name)} (K/D ${Number(details.topOperator.kd).toFixed(1)}, Lvl ${details.topOperator.level})`
-    : "Unknown";
-
-  warRoomHotspotInfoNode.innerHTML = `
-    <strong>${flagMarkup}${safe(label)} • ${safe(mode)} Intel</strong>
-    <p>${Math.round(details.score)} points • ${details.members} operators • Top operator: ${topOperator}</p>
-  `;
+  }).join("");
 }
 
-function resetHotspotInfo() {
-  if (!warRoomHotspotInfoNode) {
+function renderMiniRows(node, rows) {
+  if (!node) {
     return;
   }
 
-  warRoomHotspotInfoNode.innerHTML = "<strong>Hover a map hotspot</strong><p>Move over a faction region to inspect live points and top operator.</p>";
+  const maxValue = Math.max(1, ...rows.map((row) => row.value));
+  const safe = getEscaper();
+
+  node.innerHTML = rows.map((row) => {
+    const ratio = Math.round((row.value / maxValue) * 100);
+
+    return `
+      <article class="warroom-mini-row">
+        <div class="warroom-mini-head">
+          <strong>${safe(row.label)}</strong>
+          <span>${row.value}</span>
+        </div>
+        <div class="warroom-bar" role="presentation">
+          <span style="width:${Math.max(10, ratio)}%"></span>
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
-function renderMapHotspots(factions, intelMap) {
-  if (!warRoomHotspotsNode) {
-    return;
-  }
+function renderDistribution(players, factions) {
+  const kdBands = [
+    { label: "0.0-0.9", value: 0 },
+    { label: "1.0-1.9", value: 0 },
+    { label: "2.0-2.9", value: 0 },
+    { label: "3.0+", value: 0 }
+  ];
 
-  warRoomHotspotsNode.innerHTML = "";
+  const levelBands = [
+    { label: "Lvl 1-3", value: 0 },
+    { label: "Lvl 4-6", value: 0 },
+    { label: "Lvl 7-8", value: 0 },
+    { label: "Lvl 9-10", value: 0 }
+  ];
+
+  players.forEach((player) => {
+    const kd = clampKd(player.kd);
+    const level = clampLevel(player.level);
+
+    if (kd < 1) {
+      kdBands[0].value += 1;
+    } else if (kd < 2) {
+      kdBands[1].value += 1;
+    } else if (kd < 3) {
+      kdBands[2].value += 1;
+    } else {
+      kdBands[3].value += 1;
+    }
+
+    if (level <= 3) {
+      levelBands[0].value += 1;
+    } else if (level <= 6) {
+      levelBands[1].value += 1;
+    } else if (level <= 8) {
+      levelBands[2].value += 1;
+    } else {
+      levelBands[3].value += 1;
+    }
+  });
+
+  const factionShare = factions.slice(0, 6).map((faction) => ({
+    label: faction.token,
+    value: faction.members
+  }));
+
+  renderMiniRows(warRoomKdBandsNode, kdBands);
+  renderMiniRows(warRoomLevelBandsNode, levelBands);
+  renderMiniRows(warRoomFactionShareNode, factionShare.length ? factionShare : [{ label: "No faction data", value: 0 }]);
 }
 
-async function initWarRoomPage() {
-  if (!warRoomPowerRowsNode || !warRoomTopOperatorsNode) {
-    return;
-  }
+async function gatherPlayers() {
+  const [lines, remoteConfig] = await Promise.all([
+    loadPlayerLines(),
+    fetchRemoteConfig()
+  ]);
 
-  const lines = await loadPlayerLines();
-  const remoteConfig = await fetchRemoteConfig();
   const syncedPlayers = normalizeConfigPlayers(remoteConfig);
-
   const players = lines
     .map(parsePlayerLine)
     .filter(Boolean)
     .map((player, sourceIndex) => {
       const stats = getLeaderboardStats(player.name);
-      const key = player.name.toLowerCase();
+      const key = String(player.name || "").toLowerCase();
       const override = syncedPlayers[key];
       player.key = key;
       player.sourceIndex = sourceIndex;
@@ -473,47 +511,59 @@ async function initWarRoomPage() {
     return a.sourceIndex - b.sourceIndex;
   });
 
-  const avatarMap = await fetchAvatarUrls(players);
-  const factions = getFactionMomentum(players);
-  const factionIntelMap = getFactionIntelMap(players, factions);
+  return { players, remoteConfig };
+}
 
-  if (warRoomPlayerCountNode) {
-    warRoomPlayerCountNode.textContent = String(players.length);
+async function loadAndRenderWarRoom() {
+  if (warRoomLoadPending) {
+    return;
   }
 
-  const avgKd = players.length
-    ? players.reduce((sum, player) => sum + clampKd(player.kd), 0) / players.length
-    : 0;
-  if (warRoomAvgKdNode) {
-    warRoomAvgKdNode.textContent = avgKd.toFixed(2);
+  warRoomLoadPending = true;
+  if (warRoomRefreshNode) {
+    warRoomRefreshNode.disabled = true;
+    warRoomRefreshNode.textContent = "Refreshing...";
   }
 
-  if (warRoomChampionNode) {
-    if (factions.length) {
-      warRoomChampionNode.textContent = `${factions[0].token} (${factions[0].members} players)`;
-    } else {
-      warRoomChampionNode.textContent = "No faction intel";
+  try {
+    const { players, remoteConfig } = await gatherPlayers();
+    const avatarMap = await fetchAvatarUrls(players);
+    const factions = buildFactionStats(players);
+
+    renderMetrics(players, factions);
+    renderFactionCards(factions);
+    renderTopOperators(players, avatarMap);
+    renderFactionTable(factions);
+    renderCountryRows(players);
+    renderDistribution(players, factions);
+
+    if (warRoomSyncNode) {
+      warRoomSyncNode.textContent = remoteConfig?.updatedAt
+        ? `Synced: ${new Date(remoteConfig.updatedAt).toLocaleString()}`
+        : "Synced from local roster snapshot";
+    }
+  } finally {
+    warRoomLoadPending = false;
+    if (warRoomRefreshNode) {
+      warRoomRefreshNode.disabled = false;
+      warRoomRefreshNode.textContent = "Refresh Analytics";
     }
   }
+}
 
-  if (warRoomSyncNode) {
-    warRoomSyncNode.textContent = remoteConfig?.updatedAt
-      ? `Synced with global config: ${new Date(remoteConfig.updatedAt).toLocaleString()}`
-      : "Using current local leaderboard snapshot.";
+function initWarRoomPage() {
+  if (!warRoomFactionCardsNode || !warRoomTopOperatorsNode) {
+    return;
   }
 
-  if (warRoomMapImageNode && warRoomMapStatusNode) {
-    warRoomMapImageNode.addEventListener("error", () => {
-      warRoomMapStatusNode.textContent = "Map image not found. Expected file: map eoe.png";
-    }, { once: true });
-  }
-
-  renderFactionMomentum(factions);
-  renderTopOperators(players, avatarMap);
-  renderMapLeaders(factions);
-  renderMapHotspots(factions, factionIntelMap);
   startWarRoomClock();
-  bindMapHoverEffect();
+  loadAndRenderWarRoom();
+
+  if (warRoomRefreshNode) {
+    warRoomRefreshNode.addEventListener("click", () => {
+      loadAndRenderWarRoom();
+    });
+  }
 }
 
 initWarRoomPage();
