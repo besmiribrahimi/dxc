@@ -466,6 +466,16 @@ function getStaticAvatarUrl(userId) {
   return staticAvatarUrlMap.get(String(userId || fallbackAvatarId)) || "";
 }
 
+function getRobloxHeadshotUrl(userId, size = 420) {
+  const normalized = String(userId || "").trim();
+  if (!/^\d{3,}$/.test(normalized) || normalized === String(fallbackAvatarId)) {
+    return "";
+  }
+
+  const safeSize = Number.isFinite(Number(size)) ? Math.max(48, Math.min(720, Number(size))) : 420;
+  return `https://www.roblox.com/headshot-thumbnail/image?userId=${encodeURIComponent(normalized)}&width=${safeSize}&height=${safeSize}&format=png`;
+}
+
 function getThumbnailApiUrl(userIds) {
   const params = new URLSearchParams({
     userIds: userIds.join(","),
@@ -1683,6 +1693,7 @@ function buildPlayerCard(player, index, avatarMap) {
   const primaryAvatar =
     avatarMap.get(Number(player.userId)) ||
     getStaticAvatarUrl(player.userId) ||
+    getRobloxHeadshotUrl(player.userId, 720) ||
     getFallbackAvatarUrl(player.name);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   player.avatarUrl = primaryAvatar;

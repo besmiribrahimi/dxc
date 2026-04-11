@@ -430,6 +430,7 @@ function getResolvedAvatar(player, avatarMap) {
   return (
     avatarMap.get(Number(player.userId)) ||
     getStaticAvatarUrl(player.userId) ||
+    getRobloxHeadshotUrl(player.userId, 420) ||
     getFallbackAvatarUrl(player.name)
   );
 }

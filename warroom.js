@@ -302,7 +302,10 @@ function renderTopOperators(players, avatarMap) {
     const level = clampLevel(player.level);
     const kd = clampKd(player.kd);
     const impact = Math.round(getPlayerImpact(level, kd, index));
-    const avatar = avatarMap.get(Number(player.userId)) || getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
+    const avatar = avatarMap.get(Number(player.userId))
+      || getStaticAvatarUrl(player.userId)
+      || getRobloxHeadshotUrl(player.userId, 420)
+      || getFallbackAvatarUrl(player.name);
     const faction = splitFactionTokens(player.faction).join("/");
 
     return `
