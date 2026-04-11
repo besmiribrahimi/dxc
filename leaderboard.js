@@ -1,7 +1,12 @@
 const leaderboardRowsNode = document.getElementById("leaderboardRows");
 const topThreeNode = document.getElementById("leaderTopThree");
 const leaderboardStatusNode = document.getElementById("leaderboardStatus");
+const modalRankNode = document.getElementById("modalRank");
+const modalRankBadgeNode = document.getElementById("modalRankBadge");
+const modalClassNode = document.getElementById("modalClass");
+const leaderboardModalPanelNode = document.querySelector("#playerModal .leaderboard-modal-panel");
 
+let previousPlayersState = [];
 const LEADERBOARD_TOP_PLAYER = "20SovietSO21";
 const LEADERBOARD_CONFIG_ENDPOINT = "/api/leaderboard-config";
 
@@ -81,16 +86,32 @@ function normalizeDeviceValue(value) {
 
 function normalizePlayerClassValue(value) {
   const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "engi") {
+    return "Engineer";
+  }
+
   if (normalized === "engineer") {
     return "Engineer";
+  }
+
+  if (normalized === "commander") {
+    return "Officer";
   }
 
   if (normalized === "officer") {
     return "Officer";
   }
 
+  if (normalized === "scout") {
+    return "Recon";
+  }
+
   if (normalized === "recon") {
     return "Recon";
+  }
+
+  if (normalized === "rifle") {
+    return "Rifleman";
   }
 
   if (normalized === "rifleman") {
@@ -123,6 +144,116 @@ function normalizePlayerClassList(value) {
   });
 
   return normalized.slice(0, 3);
+}
+
+function getSeedFromName(name) {
+  return [...String(name || "")].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+}
+
+function getFallbackClassList(name) {
+  const pool = ["Rifleman", "Engineer", "Recon", "Officer", "Skirmisher"];
+  const seed = getSeedFromName(name);
+  const primary = pool[seed % pool.length];
+  const secondary = pool[(seed + 2) % pool.length];
+  return primary === secondary ? [primary] : [primary, secondary];
+}
+
+function resolveClassList(value, name) {
+  const normalized = normalizePlayerClassList(value);
+  if (normalized.length) {
+    return normalized;
+  }
+
+  return getFallbackClassList(name);
+}
+
+function resolveDeviceValue(value, name) {
+  const normalized = normalizeDeviceValue(value);
+  if (normalized !== "Unknown") {
+    return normalized;
+  }
+
+  const pool = ["PC", "Controller", "Mobile"];
+  const seed = getSeedFromName(name);
+  return pool[seed % pool.length];
+}
+
+function getClassChipToneClass(playerClass) {
+  const normalized = normalizePlayerClassValue(playerClass).toLowerCase();
+  if (normalized === "rifleman") {
+    return "chip-class-rifleman";
+  }
+
+  if (normalized === "skirmisher") {
+    return "chip-class-skirmisher";
+  }
+
+  if (normalized === "engineer") {
+    return "chip-class-engineer";
+  }
+
+  if (normalized === "officer") {
+    return "chip-class-officer";
+  }
+
+  if (normalized === "recon") {
+    return "chip-class-recon";
+  }
+
+  return "chip-class-default";
+}
+
+function getRankTierClass(rank) {
+  const numericRank = Number(rank) || 0;
+  if (numericRank === 1) {
+    return "rank-tier-1";
+  }
+
+  if (numericRank === 2) {
+    return "rank-tier-2";
+  }
+
+  if (numericRank === 3) {
+    return "rank-tier-3";
+  }
+
+  return "rank-tier-default";
+}
+
+function buildModalClassMarkup(player) {
+  const classList = resolveClassList(player?.playerClasses ?? player?.playerClass, player?.name).slice(0, 3);
+  return classList
+    .map((classLabel) => {
+      const toneClass = getClassChipToneClass(classLabel);
+      const iconMarkup = getClassIconMarkup(classLabel, "modal-class-icon");
+      return `<span class="leader-modal-class-chip ${toneClass}">${iconMarkup}<span>${classLabel}</span></span>`;
+    })
+    .join("");
+}
+
+function openLeaderboardModal(player) {
+  if (typeof openModal === "function") {
+    openModal(player);
+  }
+
+  const rank = Number(player?.rank) || 0;
+
+  if (modalRankNode) {
+    modalRankNode.textContent = `#${rank}`;
+  }
+
+  if (modalRankBadgeNode) {
+    modalRankBadgeNode.textContent = `#${rank}`;
+  }
+
+  if (modalClassNode) {
+    modalClassNode.innerHTML = buildModalClassMarkup(player);
+  }
+
+  if (leaderboardModalPanelNode) {
+    leaderboardModalPanelNode.classList.remove("rank-tier-1", "rank-tier-2", "rank-tier-3", "rank-tier-default");
+    leaderboardModalPanelNode.classList.add(getRankTierClass(rank));
+  }
 }
 
 function getClassIconMarkup(playerClass, iconClass = "leader-class-icon") {
@@ -288,12 +419,13 @@ function buildTopThreeCard(player, rank, avatarMap) {
   const avatarUrl = getResolvedAvatar(player, avatarMap);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   const levelBadgeUrl = getLevelBadgePath(player.level);
-  const classList = normalizePlayerClassList(player.playerClasses ?? player.playerClass);
-  const deviceLabel = normalizeDeviceValue(player.device);
+  const classList = resolveClassList(player.playerClasses ?? player.playerClass, player.name);
+  const deviceLabel = resolveDeviceValue(player.device, player.name);
   const classChipsMarkup = (classList.length ? classList : ["Unknown"])
     .map((classLabel) => {
       const classIconMarkup = getClassIconMarkup(classLabel, "podium-class-icon");
-      return `<span class="podium-stat podium-detail-chip">${classIconMarkup}<span>${classLabel}</span></span>`;
+      const toneClass = getClassChipToneClass(classLabel);
+      return `<span class="podium-stat podium-detail-chip ${toneClass}">${classIconMarkup}<span>${classLabel}</span></span>`;
     })
     .join("");
   const deviceIconMarkup = getDeviceIconMarkup(deviceLabel, "podium-device-icon");
@@ -305,6 +437,7 @@ function buildTopThreeCard(player, rank, avatarMap) {
   });
 
   card.innerHTML = `
+    <div class="holographic-shine"></div>
     <span class="podium-rank">#${rank}</span>
     <img class="podium-avatar" src="${avatarUrl}" alt="${player.name} Roblox avatar" loading="lazy" referrerpolicy="no-referrer">
     <div class="podium-body">
@@ -329,11 +462,11 @@ function buildTopThreeCard(player, rank, avatarMap) {
     levelNode.style.display = "none";
   });
 
-  card.addEventListener("click", () => openModal(player));
+  card.addEventListener("click", () => openLeaderboardModal(player));
   card.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      openModal(player);
+      openLeaderboardModal(player);
     }
   });
 
@@ -343,6 +476,7 @@ function buildTopThreeCard(player, rank, avatarMap) {
 function buildLeaderboardRow(player, rank, avatarMap) {
   const row = document.createElement("article");
   row.className = "leaderboard-row";
+  row.style.setProperty('--row-index', rank -1);
   row.tabIndex = 0;
   row.setAttribute("role", "button");
   row.setAttribute("aria-label", `Open Player ${player.name}`);
@@ -350,12 +484,13 @@ function buildLeaderboardRow(player, rank, avatarMap) {
   const avatarUrl = getResolvedAvatar(player, avatarMap);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   const levelBadgeUrl = getLevelBadgePath(player.level);
-  const classList = normalizePlayerClassList(player.playerClasses ?? player.playerClass);
-  const deviceLabel = normalizeDeviceValue(player.device);
+  const classList = resolveClassList(player.playerClasses ?? player.playerClass, player.name);
+  const deviceLabel = resolveDeviceValue(player.device, player.name);
   const classChipsMarkup = (classList.length ? classList : ["Unknown"])
     .map((classLabel) => {
       const classIconMarkup = getClassIconMarkup(classLabel, "leader-class-icon");
-      return `<span class="leader-detail-chip">${classIconMarkup}<span>${classLabel}</span></span>`;
+      const toneClass = getClassChipToneClass(classLabel);
+      return `<span class="leader-detail-chip ${toneClass}">${classIconMarkup}<span>${classLabel}</span></span>`;
     })
     .join("");
   const deviceIconMarkup = getDeviceIconMarkup(deviceLabel, "leader-device-icon");
@@ -380,10 +515,6 @@ function buildLeaderboardRow(player, rank, avatarMap) {
       <div class="leader-row-meta">
         ${classChipsMarkup}
         <span class="leader-detail-chip">${deviceIconMarkup}<span>${deviceLabel}</span></span>
-        <span class="leader-detail-chip leader-mobile-only">${countryToFlag(player.country)} ${player.country}</span>
-        <span class="leader-detail-chip leader-mobile-only">Faction ${splitFactionTokens(player.faction).join("/")}</span>
-        <span class="leader-detail-chip leader-mobile-only">K/D ${Number(player.kd).toFixed(1)}</span>
-        <span class="leader-detail-chip leader-mobile-only">Level ${player.level}</span>
       </div>
     </div>
     <span class="leader-faction">${factionMarkup}</span>
@@ -401,11 +532,11 @@ function buildLeaderboardRow(player, rank, avatarMap) {
     levelNode.style.display = "none";
   });
 
-  row.addEventListener("click", () => openModal(player));
+  row.addEventListener("click", () => openLeaderboardModal(player));
   row.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      openModal(player);
+      openLeaderboardModal(player);
     }
   });
 
@@ -418,26 +549,80 @@ function renderLeaderboard(players, avatarMap, options = {}) {
     hasManualOrder = false
   } = options;
 
-  topThreeNode.innerHTML = "";
-  leaderboardRowsNode.innerHTML = "";
+  // Podium section intentionally removed for this page version.
+  if (topThreeNode) {
+    topThreeNode.innerHTML = "";
+  }
 
-  const topThree = players.slice(0, 3);
-  topThree.forEach((player, index) => {
-    topThreeNode.append(buildTopThreeCard(player, index + 1, avatarMap));
+  // Create a map of current player elements by their key
+  const existingRowNodes = new Map();
+  leaderboardRowsNode.querySelectorAll('.leaderboard-row').forEach(node => {
+    const key = node.dataset.playerKey;
+    if (key) {
+      existingRowNodes.set(key, node);
+    }
   });
 
+  const newPlayerKeys = new Set(players.map(p => p.key));
+  const previousPlayerRankMap = new Map(previousPlayersState.map((p, i) => [p.key, i]));
+
+  // Remove players who are no longer on the leaderboard
+  existingRowNodes.forEach((node, key) => {
+    if (!newPlayerKeys.has(key)) {
+      node.style.opacity = '0';
+      node.style.transform = 'translateX(-30px)';
+      setTimeout(() => node.remove(), 300);
+    }
+  });
+
+  // Add or update players
   players.forEach((player, index) => {
-    leaderboardRowsNode.append(buildLeaderboardRow(player, index + 1, avatarMap));
+    const rank = index + 1;
+    player.rank = rank;
+    const oldRank = previousPlayerRankMap.get(player.key);
+    let rowNode = existingRowNodes.get(player.key);
+
+    if (rowNode) {
+      // Player exists, update it
+      // Update rank display
+      const rankNode = rowNode.querySelector('.leader-rank');
+      if (rankNode) {
+        rankNode.textContent = `#${rank}`;
+        rankNode.className = `leader-rank rank-${rank <= 3 ? rank : 0}`;
+      }
+
+      // Check for rank change and apply animation
+      if (oldRank !== undefined && oldRank !== index) {
+        const animationClass = oldRank > index ? 'rank-up' : 'rank-down';
+        rowNode.classList.remove('rank-up', 'rank-down');
+        // Use a timeout to re-apply the class, forcing a reflow and re-triggering the animation
+        setTimeout(() => {
+            rowNode.classList.add(animationClass);
+            // Clean up the class after animation ends
+            rowNode.addEventListener('animationend', () => rowNode.classList.remove(animationClass), { once: true });
+        }, 10);
+      }
+
+    } else {
+      // New player, create and insert new row
+      rowNode = buildLeaderboardRow(player, rank, avatarMap);
+      rowNode.dataset.playerKey = player.key;
+    }
+
+    rowNode.style.setProperty('--row-index', index);
+    leaderboardRowsNode.appendChild(rowNode);
   });
 
   const modeLabel = hasManualOrder
     ? "Players ranked by Admin custom order."
     : "Players ranked by Level only (K/D does not affect placement).";
   leaderboardStatusNode.textContent = `${players.length} ${modeLabel}${syncLabel}`;
+
+  previousPlayersState = [...players];
 }
 
-async function initLeaderboardPage() {
-  if (!leaderboardRowsNode || !topThreeNode || !leaderboardStatusNode) {
+async function loadAndRenderLeaderboard() {
+  if (!leaderboardRowsNode || !leaderboardStatusNode) {
     return;
   }
 
@@ -485,10 +670,10 @@ async function initLeaderboardPage() {
       player.level = override?.level ?? stats.level;
       player.wins = player.level;
       player.kd = override?.kd ?? stats.kd;
-      const classList = normalizePlayerClassList(override?.classes ?? override?.class ?? player.playerClasses ?? player.playerClass);
+      const classList = resolveClassList(override?.classes ?? override?.class ?? player.playerClasses ?? player.playerClass, player.name);
       player.playerClasses = classList;
-      player.playerClass = classList[0] || normalizePlayerClassValue(player.playerClass);
-      player.device = normalizeDeviceValue(override?.device ?? player.device);
+      player.playerClass = classList[0] || "Unknown";
+      player.device = resolveDeviceValue(override?.device ?? player.device, player.name);
       if (override?.faction) {
         player.faction = override.faction;
       }
@@ -499,47 +684,45 @@ async function initLeaderboardPage() {
   const orderMap = new Map(configuredOrder.map((key, index) => [key, index]));
   const hasManualOrder = configuredOrder.length > 0;
 
-  players
-    .sort((a, b) => {
-      const aOrder = orderMap.has(a.key) ? orderMap.get(a.key) : Number.MAX_SAFE_INTEGER;
-      const bOrder = orderMap.has(b.key) ? orderMap.get(b.key) : Number.MAX_SAFE_INTEGER;
-
-      if (aOrder !== bOrder) {
-        return aOrder - bOrder;
+  if (hasManualOrder) {
+    players.sort((a, b) => {
+      const rankA = orderMap.has(a.key) ? orderMap.get(a.key) : Infinity;
+      const rankB = orderMap.has(b.key) ? orderMap.get(b.key) : Infinity;
+      if (rankA !== rankB) {
+        return rankA - rankB;
       }
-
-      if (b.level !== a.level) {
-        return b.level - a.level;
-      }
-
-      return a.sourceIndex - b.sourceIndex;
+      return b.level - a.level || b.kd - a.kd || a.sourceIndex - b.sourceIndex;
     });
-
-  const avatarMap = await fetchAvatarUrls(players);
-
-  players.forEach((player) => {
-    player.avatarUrl = getResolvedAvatar(player, avatarMap);
-    player.bodyAvatarUrl = player.avatarUrl;
-    player.wins = player.level;
-    delete player.sourceIndex;
-  });
-
-  const syncSuffix = remoteConfig?.updatedAt
-    ? ` Global sync updated ${new Date(remoteConfig.updatedAt).toLocaleString()}.`
-    : "";
-
-  renderLeaderboard(players, avatarMap, {
-    syncLabel: syncSuffix,
-    hasManualOrder
-  });
-
-  if (typeof window.renderFactionNewsFeed === "function") {
-    window.renderFactionNewsFeed(players);
+  } else {
+    players.sort((a, b) => b.level - a.level || b.kd - a.kd || a.sourceIndex - b.sourceIndex);
   }
 
-  if (typeof window.renderFactionPulse === "function") {
-    window.renderFactionPulse(players);
+  const userIds = players.map((player) => player.userId).filter((id) => id > 0);
+  const avatarMap = await fetchAvatarUrls(userIds);
+  const syncLabel = remoteConfig?.lastSyncTime ? ` (Synced: ${new Date(remoteConfig.lastSyncTime).toLocaleString()})` : "";
+
+  renderLeaderboard(players, avatarMap, { syncLabel, hasManualOrder });
+}
+
+function setupSearch() {
+  const searchInput = document.getElementById("leaderboardSearch");
+  if (!searchInput) {
+    return;
   }
+
+  searchInput.addEventListener("input", (event) => {
+    const term = String(event.target?.value || "").trim().toLowerCase();
+    leaderboardRowsNode.querySelectorAll(".leaderboard-row").forEach((row) => {
+      const key = String(row.dataset.playerKey || "").toLowerCase();
+      const shouldShow = !term || key.includes(term);
+      row.classList.toggle("hidden", !shouldShow);
+    });
+  });
+}
+
+function initLeaderboardPage() {
+  setupSearch();
+  loadAndRenderLeaderboard();
 }
 
 initLeaderboardPage();
