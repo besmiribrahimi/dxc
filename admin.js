@@ -22,6 +22,10 @@ const newPlayerCountryNode = document.getElementById("adminNewPlayerCountry");
 const newPlayerDiscordIdNode = document.getElementById("adminNewPlayerDiscordId");
 const newPlayerUserIdNode = document.getElementById("adminNewPlayerUserId");
 const newPlayerDeviceNode = document.getElementById("adminNewPlayerDevice");
+const newPlayerClassPrimaryNode = document.getElementById("adminNewPlayerClassPrimary");
+const newPlayerClassSecondaryNode = document.getElementById("adminNewPlayerClassSecondary");
+const newPlayerClassTertiaryNode = document.getElementById("adminNewPlayerClassTertiary");
+const clearSyncedPlayerInputsButtonNode = document.getElementById("adminClearSyncedPlayerInputsBtn");
 const syncedPlayerRowsNode = document.getElementById("adminSyncedPlayerRows");
 const notifyIdsNode = document.getElementById("adminNotifyIds");
 const notifyMessageNode = document.getElementById("adminNotifyMessage");
@@ -34,6 +38,8 @@ const weeklyTopWeekNode = document.getElementById("adminWeeklyTopWeek");
 const weeklyTopBoardNode = document.getElementById("adminWeeklyTopBoard");
 const weeklyTopMessageNode = document.getElementById("adminWeeklyTopMessage");
 const weeklyTopStatusNode = document.getElementById("adminWeeklyTopStatus");
+const adminTabButtonNodes = Array.from(document.querySelectorAll(".admin-tab-button[data-admin-tab-target]"));
+const adminTabPanelNodes = Array.from(document.querySelectorAll(".admin-tab-panel[data-admin-tab-panel]"));
 
 let currentConfig = {
   version: 1,
@@ -313,6 +319,58 @@ function resetSyncedPlayerInputs() {
   if (newPlayerDeviceNode) {
     newPlayerDeviceNode.value = "Unknown";
   }
+
+  if (newPlayerClassPrimaryNode) {
+    newPlayerClassPrimaryNode.value = "Unknown";
+  }
+
+  if (newPlayerClassSecondaryNode) {
+    newPlayerClassSecondaryNode.value = "Unknown";
+  }
+
+  if (newPlayerClassTertiaryNode) {
+    newPlayerClassTertiaryNode.value = "Unknown";
+  }
+}
+
+function removeSyncedPlayerFromState(predicate, statusMessage = "Synced player removed locally. Click Save Global Sync to publish.") {
+  const rowValues = collectRowValues();
+  const rowOrder = collectRowOrder();
+  currentConfig = {
+    ...currentConfig,
+    players: {
+      ...(currentConfig?.players && typeof currentConfig.players === "object" ? currentConfig.players : {}),
+      ...rowValues
+    },
+    order: rowOrder.length ? rowOrder : (Array.isArray(currentConfig?.order) ? currentConfig.order : [])
+  };
+
+  const beforeCount = currentExtraPlayers.length;
+  currentExtraPlayers = currentExtraPlayers.filter((item) => !predicate(item));
+
+  if (currentExtraPlayers.length === beforeCount) {
+    return;
+  }
+
+  const mergedRosterPlayers = buildMergedRosterPlayers(currentRosterLines, currentExtraPlayers);
+  currentPlayers = mergePlayersWithConfig(mergedRosterPlayers, currentConfig, currentExtraPlayers);
+  renderRows(currentPlayers);
+  renderSyncedPlayerRows(currentExtraPlayers);
+  renderTransferRows(currentTransfers);
+  renderAdminNewsFeed(currentPlayers);
+  renderWeeklyTopTenPreview();
+  setSyncStatus(statusMessage);
+}
+
+function buildSyncedClassChips(entry) {
+  const classes = normalizePlayerClassList(entry?.classes ?? entry?.class);
+  if (!classes.length) {
+    return "<span>Unknown</span>";
+  }
+
+  return classes
+    .map((role) => `<span>${safeText(role)}</span>`)
+    .join("");
 }
 
 function renderSyncedPlayerRows(players) {
@@ -338,6 +396,7 @@ function renderSyncedPlayerRows(players) {
     row.innerHTML = `
       <span>${safeText(entry.name)}</span>
       <span>${safeText(entry.faction)}</span>
+      <span class="admin-synced-classes">${buildSyncedClassChips(entry)}</span>
       <span>${safeText(entry.country)}</span>
       <span>${safeText(entry.discordId || "-")}</span>
       <span>${safeText(entry.userId || "Auto")}</span>
@@ -348,26 +407,7 @@ function renderSyncedPlayerRows(players) {
 
     const removeNode = row.querySelector(".admin-synced-player-delete");
     removeNode?.addEventListener("click", () => {
-      const rowValues = collectRowValues();
-      const rowOrder = collectRowOrder();
-      currentConfig = {
-        ...currentConfig,
-        players: {
-          ...(currentConfig?.players && typeof currentConfig.players === "object" ? currentConfig.players : {}),
-          ...rowValues
-        },
-        order: rowOrder.length ? rowOrder : (Array.isArray(currentConfig?.order) ? currentConfig.order : [])
-      };
-
-      currentExtraPlayers = currentExtraPlayers.filter((item) => item.id !== row.dataset.syncedPlayerId);
-      const mergedRosterPlayers = buildMergedRosterPlayers(currentRosterLines, currentExtraPlayers);
-      currentPlayers = mergePlayersWithConfig(mergedRosterPlayers, currentConfig, currentExtraPlayers);
-      renderRows(currentPlayers);
-      renderSyncedPlayerRows(currentExtraPlayers);
-      renderTransferRows(currentTransfers);
-      renderAdminNewsFeed(currentPlayers);
-      renderWeeklyTopTenPreview();
-      setSyncStatus("Synced player removed locally. Click Save Global Sync to publish.");
+      removeSyncedPlayerFromState((item) => item.id === row.dataset.syncedPlayerId);
     });
 
     syncedPlayerRowsNode.append(row);
@@ -677,6 +717,34 @@ function setPanelVisible(isVisible) {
   panelNode.classList.toggle("hidden", !isVisible);
 }
 
+function activateAdminTab(tabName) {
+  const activeTab = String(tabName || "leaderboard").trim().toLowerCase();
+
+  adminTabButtonNodes.forEach((buttonNode) => {
+    const target = String(buttonNode.dataset.adminTabTarget || "").trim().toLowerCase();
+    buttonNode.classList.toggle("active", target === activeTab);
+  });
+
+  adminTabPanelNodes.forEach((panelTabNode) => {
+    const panelName = String(panelTabNode.dataset.adminTabPanel || "").trim().toLowerCase();
+    panelTabNode.classList.toggle("hidden", panelName !== activeTab);
+  });
+}
+
+function setupAdminTabs() {
+  if (!adminTabButtonNodes.length || !adminTabPanelNodes.length) {
+    return;
+  }
+
+  adminTabButtonNodes.forEach((buttonNode) => {
+    buttonNode.addEventListener("click", () => {
+      activateAdminTab(buttonNode.dataset.adminTabTarget || "leaderboard");
+    });
+  });
+
+  activateAdminTab("leaderboard");
+}
+
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
     cache: "no-store",
@@ -867,6 +935,11 @@ function renderRows(players) {
       <span>
         <input class="admin-kd-input" data-player-key="${safeText(player.key)}" type="number" step="0.1" min="0" max="9.9" value="${Number(player.kd).toFixed(1)}">
       </span>
+      <span class="admin-row-action">
+        ${player.isExtra
+          ? '<button type="button" class="admin-button danger admin-row-remove-btn">Remove</button>'
+          : '<span class="admin-status">Core</span>'}
+      </span>
     `;
 
     const avatarNode = row.querySelector(".admin-avatar");
@@ -895,6 +968,12 @@ function renderRows(players) {
       renderRows(currentPlayers);
       renderWeeklyTopTenPreview();
       setSyncStatus("Order updated locally. Click Save Global Sync to publish.");
+    });
+
+    const removeButtonNode = row.querySelector(".admin-row-remove-btn");
+    removeButtonNode?.addEventListener("click", () => {
+      const removeKey = String(player.key || "").trim().toLowerCase();
+      removeSyncedPlayerFromState((item) => String(item?.name || "").trim().toLowerCase() === removeKey);
     });
 
     rowsNode.append(row);
@@ -1454,6 +1533,12 @@ function onLogoutClick() {
 }
 
 function onAddSyncedPlayerClick() {
+  const chosenClasses = normalizePlayerClassList([
+    newPlayerClassPrimaryNode?.value,
+    newPlayerClassSecondaryNode?.value,
+    newPlayerClassTertiaryNode?.value
+  ]);
+
   const nextEntry = normalizeExtraPlayerEntry({
     id: `extra-player-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
     name: newPlayerNameNode?.value,
@@ -1461,7 +1546,9 @@ function onAddSyncedPlayerClick() {
     country: newPlayerCountryNode?.value,
     discordId: newPlayerDiscordIdNode?.value,
     userId: newPlayerUserIdNode?.value,
-    device: newPlayerDeviceNode?.value
+    device: newPlayerDeviceNode?.value,
+    classes: chosenClasses,
+    class: chosenClasses[0] || "Unknown"
   });
 
   if (!nextEntry.name) {
@@ -1503,6 +1590,11 @@ function onAddSyncedPlayerClick() {
   setSyncStatus("Synced player added locally. Click Save Global Sync to publish.");
 }
 
+function onClearSyncedPlayerInputsClick() {
+  resetSyncedPlayerInputs();
+  setSyncStatus("Add Player fields were cleared.");
+}
+
 function onAddTransferClick() {
   currentTransfers = [...currentTransfers, createBlankTransfer()];
   renderTransferRows(currentTransfers);
@@ -1522,6 +1614,9 @@ if (addTransferButtonNode) {
 if (addSyncedPlayerButtonNode) {
   addSyncedPlayerButtonNode.addEventListener("click", onAddSyncedPlayerClick);
 }
+if (clearSyncedPlayerInputsButtonNode) {
+  clearSyncedPlayerInputsButtonNode.addEventListener("click", onClearSyncedPlayerInputsClick);
+}
 if (weeklyTopGenerateButtonNode) {
   weeklyTopGenerateButtonNode.addEventListener("click", onWeeklyTopGenerateClick);
 }
@@ -1534,6 +1629,8 @@ if (weeklyTopTitleNode) {
 if (weeklyTopWeekNode) {
   weeklyTopWeekNode.addEventListener("input", () => renderWeeklyTopTenPreview());
 }
+
+setupAdminTabs();
 
 if (getStoredToken()) {
   loadPanelData();

@@ -28,6 +28,7 @@
   <link rel="manifest" href="site.webmanifest">
   <link rel="preload" as="image" href="assets/brand/logo-mark-512.png">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin.css">
 </head>
 <body>
   <div class="page-glow" aria-hidden="true"></div>
@@ -80,133 +81,185 @@
         </div>
       </div>
 
-      <p id="adminSyncInfo" class="admin-status">Loading data...</p>
+      <p id="adminSyncInfo" class="admin-status admin-sync-banner">Loading data...</p>
 
-      <section class="admin-card" aria-label="Bot notification sender">
-        <h2>Bot DM Sender</h2>
-        <p>Send a direct message to specific Discord user IDs.</p>
-        <div class="admin-bot-grid">
-          <label for="adminNotifyIds">Notify Discord User IDs (comma or newline)</label>
-          <textarea id="adminNotifyIds" class="admin-bot-textarea" rows="3" placeholder="123... , 456..."></textarea>
+      <div class="admin-tabs-shell">
+        <div class="admin-tabs-content">
+          <section class="admin-card admin-tab-panel" data-admin-tab-panel="leaderboard" aria-label="Leaderboard editor">
+            <div class="admin-panel-header">
+              <h2>Leaderboard</h2>
+            </div>
+            <p>Edit factions, classes, devices, level, K/D and drag order for synced ranking.</p>
+            <div class="admin-table-wrap">
+              <div class="admin-row admin-row-head" role="row">
+                <span>Order</span>
+                <span>Player</span>
+                <span>Faction</span>
+                <span>Country</span>
+                <span>Classes (max 3)</span>
+                <span>Device</span>
+                <span>Level</span>
+                <span>K/D</span>
+                <span>Action</span>
+              </div>
+              <div id="adminRows" class="admin-rows"></div>
+            </div>
+          </section>
 
-          <label for="adminNotifyMessage">Broadcast Message</label>
-          <textarea id="adminNotifyMessage" class="admin-bot-textarea" rows="3" placeholder="Message to send to listed Discord IDs"></textarea>
+          <section class="admin-card admin-tab-panel hidden" data-admin-tab-panel="dm-sender" aria-label="Bot notification sender">
+            <h2>DM Sender</h2>
+            <p>Send a direct message to specific Discord user IDs.</p>
+            <div class="admin-bot-grid">
+              <label for="adminNotifyIds">Notify Discord User IDs (comma or newline)</label>
+              <textarea id="adminNotifyIds" class="admin-bot-textarea" rows="3" placeholder="123... , 456..."></textarea>
+
+              <label for="adminNotifyMessage">Broadcast Message</label>
+              <textarea id="adminNotifyMessage" class="admin-bot-textarea" rows="3" placeholder="Message to send to listed Discord IDs"></textarea>
+            </div>
+            <div class="admin-actions">
+              <button id="adminSendNotifyBtn" type="button" class="admin-button">Send Message To IDs</button>
+            </div>
+            <p id="adminBotOpsStatus" class="admin-status">Bot settings are not loaded yet.</p>
+          </section>
+
+          <section class="admin-card admin-tab-panel hidden" data-admin-tab-panel="add-player" aria-label="Synced player editor">
+            <div class="admin-panel-header">
+              <h2>Add Player</h2>
+              <div class="admin-actions">
+                <button id="adminAddSyncedPlayerBtn" type="button" class="admin-button secondary">Add Synced Player</button>
+                <button id="adminClearSyncedPlayerInputsBtn" type="button" class="admin-button secondary">Clear Fields</button>
+              </div>
+            </div>
+            <p>Add players directly from Admin so they appear in synced leaderboard data. Remove players from the list below any time.</p>
+            <div class="admin-bot-grid admin-add-player-grid">
+              <label for="adminNewPlayerName">Roblox Username</label>
+              <input id="adminNewPlayerName" class="admin-bot-input" type="text" maxlength="40" placeholder="Player username">
+
+              <label for="adminNewPlayerFaction">Faction</label>
+              <input id="adminNewPlayerFaction" class="admin-bot-input" type="text" maxlength="36" placeholder="AH / URF / N/A" value="N/A">
+
+              <label for="adminNewPlayerCountry">Country</label>
+              <input id="adminNewPlayerCountry" class="admin-bot-input" type="text" maxlength="40" placeholder="UK / USA / India">
+
+              <label for="adminNewPlayerDiscordId">Discord ID</label>
+              <input id="adminNewPlayerDiscordId" class="admin-bot-input" type="text" maxlength="24" placeholder="123456789...">
+
+              <label for="adminNewPlayerUserId">Roblox User ID (optional)</label>
+              <input id="adminNewPlayerUserId" class="admin-bot-input" type="text" maxlength="24" placeholder="1449714856">
+
+              <label for="adminNewPlayerDevice">Playing Device</label>
+              <select id="adminNewPlayerDevice" class="admin-bot-input">
+                <option value="Unknown">Unknown</option>
+                <option value="PC">PC</option>
+                <option value="Mobile">Mobile</option>
+                <option value="Controller">Controller</option>
+              </select>
+
+              <label for="adminNewPlayerClassPrimary">Primary Class</label>
+              <select id="adminNewPlayerClassPrimary" class="admin-bot-input">
+                <option value="Unknown">Unknown</option>
+                <option value="Rifleman">Rifleman</option>
+                <option value="Skirmisher">Skirmisher</option>
+                <option value="Recon">Recon</option>
+                <option value="Officer">Officer</option>
+                <option value="Engineer">Engineer</option>
+              </select>
+
+              <label for="adminNewPlayerClassSecondary">Secondary Class</label>
+              <select id="adminNewPlayerClassSecondary" class="admin-bot-input">
+                <option value="Unknown">Unknown</option>
+                <option value="Rifleman">Rifleman</option>
+                <option value="Skirmisher">Skirmisher</option>
+                <option value="Recon">Recon</option>
+                <option value="Officer">Officer</option>
+                <option value="Engineer">Engineer</option>
+              </select>
+
+              <label for="adminNewPlayerClassTertiary">Tertiary Class</label>
+              <select id="adminNewPlayerClassTertiary" class="admin-bot-input">
+                <option value="Unknown">Unknown</option>
+                <option value="Rifleman">Rifleman</option>
+                <option value="Skirmisher">Skirmisher</option>
+                <option value="Recon">Recon</option>
+                <option value="Officer">Officer</option>
+                <option value="Engineer">Engineer</option>
+              </select>
+            </div>
+
+            <div class="admin-transfer-wrap admin-synced-wrap" style="margin-top:0.7rem;">
+              <div class="admin-transfer-row admin-transfer-row-head admin-synced-row-head" role="row">
+                <span>Player</span>
+                <span>Faction</span>
+                <span>Classes</span>
+                <span>Country</span>
+                <span>Discord ID</span>
+                <span>User ID</span>
+                <span>Device</span>
+                <span>Source</span>
+                <span>Action</span>
+              </div>
+              <div id="adminSyncedPlayerRows" class="admin-transfer-rows"></div>
+            </div>
+          </section>
+
+          <section class="admin-card admin-tab-panel hidden admin-weekly-generator" data-admin-tab-panel="top-ten" aria-label="Weekly top 10 generator">
+            <div class="admin-panel-header">
+              <h2>Top Ten</h2>
+              <div class="admin-actions">
+                <button id="adminWeeklyTopGenerateBtn" type="button" class="admin-button">Generate Weekly Top 10</button>
+                <button id="adminWeeklyTopCopyBtn" type="button" class="admin-button secondary">Copy Message</button>
+              </div>
+            </div>
+
+            <p>Create a post-ready Weekly Top 10 board from the current admin ranking and share it instantly.</p>
+
+            <div class="admin-weekly-controls">
+              <label for="adminWeeklyTopTitle">Headline</label>
+              <input id="adminWeeklyTopTitle" class="admin-bot-input" type="text" maxlength="90" value="Weekly Top 10 in Ascend Entrenched">
+
+              <label for="adminWeeklyTopWeek">Week Label</label>
+              <input id="adminWeeklyTopWeek" class="admin-bot-input" type="text" maxlength="48" placeholder="Week of Apr 09, 2026">
+            </div>
+
+            <section id="adminWeeklyTopBoard" class="admin-weekly-board" aria-label="Weekly top 10 preview board"></section>
+
+            <label for="adminWeeklyTopMessage" class="admin-weekly-message-label">Generated Message</label>
+            <textarea id="adminWeeklyTopMessage" class="admin-bot-textarea" rows="8" spellcheck="false" placeholder="Generated Weekly Top 10 message appears here..."></textarea>
+            <p id="adminWeeklyTopStatus" class="admin-status">Waiting for weekly Top 10 generation.</p>
+          </section>
+
+          <section class="admin-card admin-tab-panel hidden" data-admin-tab-panel="other" aria-label="Other admin tools">
+            <div class="admin-panel-header">
+              <h2>Other</h2>
+              <div class="admin-actions">
+                <button id="adminAddTransferBtn" type="button" class="admin-button secondary">Add Transfer</button>
+              </div>
+            </div>
+            <p>Manage transfer feed entries and utility data that supports the public pages.</p>
+            <div class="admin-transfer-wrap">
+              <div class="admin-transfer-row admin-transfer-row-head" role="row">
+                <span>Player</span>
+                <span>From</span>
+                <span>To</span>
+                <span>Fee</span>
+                <span>Date</span>
+                <span>Status</span>
+                <span>Note</span>
+                <span>Action</span>
+              </div>
+              <div id="adminTransferRows" class="admin-transfer-rows"></div>
+            </div>
+          </section>
         </div>
-        <div class="admin-actions">
-          <button id="adminSendNotifyBtn" type="button" class="admin-button">Send Message To IDs</button>
-        </div>
-        <p id="adminBotOpsStatus" class="admin-status">Bot settings are not loaded yet.</p>
-      </section>
 
-      <section class="admin-card" aria-label="Transfer editor">
-        <div class="admin-panel-header">
-          <h2>Transfer Center</h2>
-          <div class="admin-actions">
-            <button id="adminAddTransferBtn" type="button" class="admin-button secondary">Add Transfer</button>
-          </div>
-        </div>
-        <p>Create and edit player transfers. These are shown on the Transfers page.</p>
-        <div class="admin-transfer-wrap">
-          <div class="admin-transfer-row admin-transfer-row-head" role="row">
-            <span>Player</span>
-            <span>From</span>
-            <span>To</span>
-            <span>Fee</span>
-            <span>Date</span>
-            <span>Status</span>
-            <span>Note</span>
-            <span>Action</span>
-          </div>
-          <div id="adminTransferRows" class="admin-transfer-rows"></div>
-        </div>
-      </section>
-
-      <section class="admin-card" aria-label="Synced player editor">
-        <div class="admin-panel-header">
-          <h2>Synced Players</h2>
-          <div class="admin-actions">
-            <button id="adminAddSyncedPlayerBtn" type="button" class="admin-button secondary">Add Synced Player</button>
-          </div>
-        </div>
-        <p>Add players directly from Admin so they appear in synced leaderboard data.</p>
-        <div class="admin-bot-grid">
-          <label for="adminNewPlayerName">Roblox Username</label>
-          <input id="adminNewPlayerName" class="admin-bot-input" type="text" maxlength="40" placeholder="Player username">
-
-          <label for="adminNewPlayerFaction">Faction</label>
-          <input id="adminNewPlayerFaction" class="admin-bot-input" type="text" maxlength="36" placeholder="AH / URF / N/A" value="N/A">
-
-          <label for="adminNewPlayerCountry">Country</label>
-          <input id="adminNewPlayerCountry" class="admin-bot-input" type="text" maxlength="40" placeholder="UK / USA / India">
-
-          <label for="adminNewPlayerDiscordId">Discord ID</label>
-          <input id="adminNewPlayerDiscordId" class="admin-bot-input" type="text" maxlength="24" placeholder="123456789...">
-
-          <label for="adminNewPlayerUserId">Roblox User ID (optional)</label>
-          <input id="adminNewPlayerUserId" class="admin-bot-input" type="text" maxlength="24" placeholder="1449714856">
-
-          <label for="adminNewPlayerDevice">Playing Device</label>
-          <select id="adminNewPlayerDevice" class="admin-bot-input">
-            <option value="Unknown">Unknown</option>
-            <option value="PC">PC</option>
-            <option value="Mobile">Mobile</option>
-            <option value="Controller">Controller</option>
-          </select>
-        </div>
-
-        <div class="admin-transfer-wrap" style="margin-top:0.7rem;">
-          <div class="admin-transfer-row admin-transfer-row-head" role="row">
-            <span>Player</span>
-            <span>Faction</span>
-            <span>Country</span>
-            <span>Discord ID</span>
-            <span>User ID</span>
-            <span>Device</span>
-            <span>Source</span>
-            <span>Action</span>
-          </div>
-          <div id="adminSyncedPlayerRows" class="admin-transfer-rows"></div>
-        </div>
-      </section>
-
-      <section class="admin-card admin-weekly-generator" aria-label="Weekly top 10 generator">
-        <div class="admin-panel-header">
-          <h2>Weekly Top 10 Generator</h2>
-          <div class="admin-actions">
-            <button id="adminWeeklyTopGenerateBtn" type="button" class="admin-button">Generate Weekly Top 10</button>
-            <button id="adminWeeklyTopCopyBtn" type="button" class="admin-button secondary">Copy Message</button>
-          </div>
-        </div>
-
-        <p>Create a post-ready Weekly Top 10 board from the current admin ranking and share it instantly.</p>
-
-        <div class="admin-weekly-controls">
-          <label for="adminWeeklyTopTitle">Headline</label>
-          <input id="adminWeeklyTopTitle" class="admin-bot-input" type="text" maxlength="90" value="Weekly Top 10 in Ascend Entrenched">
-
-          <label for="adminWeeklyTopWeek">Week Label</label>
-          <input id="adminWeeklyTopWeek" class="admin-bot-input" type="text" maxlength="48" placeholder="Week of Apr 09, 2026">
-        </div>
-
-        <section id="adminWeeklyTopBoard" class="admin-weekly-board" aria-label="Weekly top 10 preview board"></section>
-
-        <label for="adminWeeklyTopMessage" class="admin-weekly-message-label">Generated Message</label>
-        <textarea id="adminWeeklyTopMessage" class="admin-bot-textarea" rows="8" spellcheck="false" placeholder="Generated Weekly Top 10 message appears here..."></textarea>
-        <p id="adminWeeklyTopStatus" class="admin-status">Waiting for weekly Top 10 generation.</p>
-      </section>
-
-      <div class="admin-table-wrap">
-        <div class="admin-row admin-row-head" role="row">
-          <span>Order</span>
-          <span>Player</span>
-          <span>Faction</span>
-          <span>Country</span>
-          <span>Classes (max 3)</span>
-          <span>Device</span>
-          <span>Level</span>
-          <span>K/D</span>
-        </div>
-        <div id="adminRows" class="admin-rows"></div>
+        <aside class="admin-tab-rail" aria-label="Admin sections">
+          <h3>Control Tabs</h3>
+          <button type="button" class="admin-tab-button active" data-admin-tab-target="leaderboard">Leaderboard</button>
+          <button type="button" class="admin-tab-button" data-admin-tab-target="dm-sender">DM Sender</button>
+          <button type="button" class="admin-tab-button" data-admin-tab-target="add-player">Add Player</button>
+          <button type="button" class="admin-tab-button" data-admin-tab-target="top-ten">Top Ten</button>
+          <button type="button" class="admin-tab-button" data-admin-tab-target="other">Other</button>
+        </aside>
       </div>
     </section>
   </main>
