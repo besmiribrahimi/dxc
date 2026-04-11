@@ -25,6 +25,9 @@ const newPlayerDeviceNode = document.getElementById("adminNewPlayerDevice");
 const newPlayerClassPrimaryNode = document.getElementById("adminNewPlayerClassPrimary");
 const newPlayerClassSecondaryNode = document.getElementById("adminNewPlayerClassSecondary");
 const newPlayerClassTertiaryNode = document.getElementById("adminNewPlayerClassTertiary");
+const addPlayerSendDmNode = document.getElementById("adminAddPlayerSendDm");
+const addPlayerDmTemplateNode = document.getElementById("adminAddPlayerDmTemplate");
+const addPlayerDmStatusNode = document.getElementById("adminAddPlayerDmStatus");
 const clearSyncedPlayerInputsButtonNode = document.getElementById("adminClearSyncedPlayerInputsBtn");
 const syncedPlayerRowsNode = document.getElementById("adminSyncedPlayerRows");
 const notifyIdsNode = document.getElementById("adminNotifyIds");
@@ -40,6 +43,22 @@ const weeklyTopMessageNode = document.getElementById("adminWeeklyTopMessage");
 const weeklyTopStatusNode = document.getElementById("adminWeeklyTopStatus");
 const adminTabButtonNodes = Array.from(document.querySelectorAll(".admin-tab-button[data-admin-tab-target]"));
 const adminTabPanelNodes = Array.from(document.querySelectorAll(".admin-tab-panel[data-admin-tab-panel]"));
+
+const DEFAULT_ADD_PLAYER_DM_TEMPLATE = [
+  "📩 **ASCEND ENTRENCHED — SYSTEM NOTICE**",
+  "",
+  "You have been **successfully added to the system**.",
+  "Your profile is now live on the leaderboard:",
+  "🔗 https://dxc-chi.vercel.app",
+  "",
+  "━━━ 📊 **RANKING STATUS** ━━━",
+  "You are **not ranked yet** — your placement will be processed shortly.",
+  "Please allow some time for your ranking to appear.",
+  "",
+  "━━━ 🤖 **AUTOMATED MESSAGE** ━━━",
+  "This message was sent automatically by the system.",
+  "**Do not reply.**"
+].join("\n");
 
 let currentConfig = {
   version: 1,
@@ -58,6 +77,198 @@ let currentRosterLines = [];
 let currentTransfers = [];
 let draggingPlayerKey = "";
 let draggingInitialized = false;
+const dynamicAvatarUrlMap = new Map();
+const pendingAvatarUserIds = new Set();
+
+function setAddPlayerDmStatus(message, isError = false) {
+  if (!addPlayerDmStatusNode) {
+    return;
+  }
+
+  addPlayerDmStatusNode.textContent = message;
+  addPlayerDmStatusNode.classList.toggle("error", isError);
+}
+
+function initializeAddPlayerDmTemplate() {
+  if (!addPlayerDmTemplateNode) {
+    return;
+  }
+
+  if (!String(addPlayerDmTemplateNode.value || "").trim()) {
+    addPlayerDmTemplateNode.value = DEFAULT_ADD_PLAYER_DM_TEMPLATE;
+  }
+}
+
+function getAddPlayerDmMessage(playerName) {
+  const rawTemplate = String(addPlayerDmTemplateNode?.value || DEFAULT_ADD_PLAYER_DM_TEMPLATE);
+  const safePlayerName = String(playerName || "Player").trim() || "Player";
+  return rawTemplate.replace(/\{\{\s*player\s*\}\}/gi, safePlayerName).trim();
+}
+
+async function resolveRobloxUserIdByUsername(username) {
+  const normalizedName = String(username || "").trim();
+  if (!normalizedName) {
+    return "";
+  }
+
+  const mappedId = avatarIdMap?.get?.(normalizedName.toLowerCase());
+  if (mappedId) {
+    return String(mappedId);
+  }
+
+  try {
+    const response = await fetch("https://users.roblox.com/v1/usernames/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        usernames: [normalizedName],
+        excludeBannedUsers: false
+      })
+    });
+
+    if (!response.ok) {
+      return "";
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    const first = Array.isArray(payload?.data) ? payload.data[0] : null;
+    const userId = Number(first?.id);
+
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return "";
+    }
+
+    avatarIdMap?.set?.(normalizedName.toLowerCase(), userId);
+    return String(userId);
+  } catch {
+    return "";
+  }
+}
+
+async function fetchDynamicAvatarUrlForUserId(userId) {
+  const normalizedId = String(userId || "").trim();
+  if (!/^\d{3,}$/.test(normalizedId)) {
+    return "";
+  }
+
+  if (dynamicAvatarUrlMap.has(normalizedId)) {
+    return dynamicAvatarUrlMap.get(normalizedId) || "";
+  }
+
+  const endpoint = typeof getThumbnailApiUrl === "function"
+    ? getThumbnailApiUrl([normalizedId])
+    : `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${encodeURIComponent(normalizedId)}&size=720x720&format=Png&isCircular=false`;
+
+  try {
+    const response = await fetch(endpoint, { cache: "no-store" });
+    if (!response.ok) {
+      return "";
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    const imageUrl = String(payload?.data?.[0]?.imageUrl || "").trim();
+    if (!imageUrl) {
+      return "";
+    }
+
+    dynamicAvatarUrlMap.set(normalizedId, imageUrl);
+    return imageUrl;
+  } catch {
+    return "";
+  }
+}
+
+function getAdminAvatarUrl(player) {
+  const staticAvatar = getStaticAvatarUrl(player?.userId);
+  if (staticAvatar) {
+    return staticAvatar;
+  }
+
+  const normalizedUserId = String(player?.userId || "").trim();
+  if (dynamicAvatarUrlMap.has(normalizedUserId)) {
+    return dynamicAvatarUrlMap.get(normalizedUserId) || "";
+  }
+
+  return getFallbackAvatarUrl(player?.name);
+}
+
+async function hydrateAvatarNode(node, player) {
+  if (!node || !player) {
+    return;
+  }
+
+  const staticAvatar = getStaticAvatarUrl(player.userId);
+  if (staticAvatar) {
+    return;
+  }
+
+  const normalizedUserId = String(player.userId || "").trim();
+  if (!/^\d{3,}$/.test(normalizedUserId) || normalizedUserId === String(fallbackAvatarId)) {
+    return;
+  }
+
+  if (pendingAvatarUserIds.has(normalizedUserId)) {
+    return;
+  }
+
+  pendingAvatarUserIds.add(normalizedUserId);
+  node.dataset.avatarUserId = normalizedUserId;
+
+  try {
+    const dynamicUrl = await fetchDynamicAvatarUrlForUserId(normalizedUserId);
+    if (!dynamicUrl) {
+      return;
+    }
+
+    if (node.dataset.avatarUserId === normalizedUserId) {
+      node.src = dynamicUrl;
+    }
+  } finally {
+    pendingAvatarUserIds.delete(normalizedUserId);
+  }
+}
+
+async function sendPlayerAddedDm(discordId, playerName) {
+  const token = getStoredToken();
+  const normalizedDiscordId = normalizeDiscordId(discordId);
+  const message = getAddPlayerDmMessage(playerName);
+
+  if (!token) {
+    throw new Error("Not signed in.");
+  }
+
+  if (!normalizedDiscordId) {
+    throw new Error("No valid Discord ID for DM.");
+  }
+
+  if (!message) {
+    throw new Error("DM template is empty.");
+  }
+
+  const result = await requestJson(BOT_EVENT_ENDPOINT, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      eventType: "notify",
+      title: "ASCEND ENTRENCHED - SYSTEM NOTICE",
+      message,
+      recipientIds: [normalizedDiscordId]
+    })
+  });
+
+  if (!result.ok) {
+    const details = Array.isArray(result.data?.details) && result.data.details.length
+      ? ` (${result.data.details.join("; ")})`
+      : "";
+    throw new Error(`${String(result.data?.error || "Failed to dispatch DM")}${details}`);
+  }
+
+  return true;
+}
 
 function renderAdminNewsFeed(players) {
   if (typeof window.renderFactionNewsFeed !== "function") {
@@ -900,7 +1111,7 @@ function renderRows(players) {
     row.dataset.playerClasses = normalizePlayerClassList(player.playerClasses ?? player.playerClass).join("|");
     row.dataset.playerDevice = normalizeDeviceValue(player.device);
 
-    const avatarUrl = getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
+    const avatarUrl = getAdminAvatarUrl(player);
     const fallback = getFallbackAvatarUrl(player.name);
     const country = `${countryToFlag(player.country)} ${player.country}`;
 
@@ -947,6 +1158,7 @@ function renderRows(players) {
     avatarNode.addEventListener("error", () => {
       avatarNode.src = fallback;
     });
+    hydrateAvatarNode(avatarNode, player);
 
     dragHandleNode.addEventListener("dragstart", (event) => {
       draggingPlayerKey = player.key;
@@ -1532,38 +1744,51 @@ function onLogoutClick() {
   setLoginStatus("Logged out.");
 }
 
-function onAddSyncedPlayerClick() {
+async function onAddSyncedPlayerClick() {
+  setAddPlayerDmStatus(addPlayerSendDmNode?.checked
+    ? "DM on add is enabled."
+    : "DM on add is disabled.");
+
+  const playerName = String(newPlayerNameNode?.value || "").trim();
+  if (!playerName) {
+    setSyncStatus("Enter a player username before adding.", true);
+    return;
+  }
+
+  const existingKey = playerName.toLowerCase();
+  if (currentPlayers.some((player) => String(player?.name || "").trim().toLowerCase() === existingKey)) {
+    setSyncStatus("That player already exists in the roster sync list.", true);
+    return;
+  }
+
   const chosenClasses = normalizePlayerClassList([
     newPlayerClassPrimaryNode?.value,
     newPlayerClassSecondaryNode?.value,
     newPlayerClassTertiaryNode?.value
   ]);
 
+  let resolvedUserId = normalizeOptionalUserId(newPlayerUserIdNode?.value);
+  if (!resolvedUserId) {
+    resolvedUserId = await resolveRobloxUserIdByUsername(playerName);
+    if (resolvedUserId && newPlayerUserIdNode) {
+      newPlayerUserIdNode.value = resolvedUserId;
+    }
+  }
+
   const nextEntry = normalizeExtraPlayerEntry({
     id: `extra-player-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-    name: newPlayerNameNode?.value,
+    name: playerName,
     faction: newPlayerFactionNode?.value,
     country: newPlayerCountryNode?.value,
     discordId: newPlayerDiscordIdNode?.value,
-    userId: newPlayerUserIdNode?.value,
+    userId: resolvedUserId,
     device: newPlayerDeviceNode?.value,
     classes: chosenClasses,
     class: chosenClasses[0] || "Unknown"
   });
 
-  if (!nextEntry.name) {
-    setSyncStatus("Enter a player username before adding.", true);
-    return;
-  }
-
   if (nextEntry.country === "N/A") {
     setSyncStatus("Enter a country for the synced player.", true);
-    return;
-  }
-
-  const key = nextEntry.name.toLowerCase();
-  if (currentPlayers.some((player) => String(player?.name || "").trim().toLowerCase() === key)) {
-    setSyncStatus("That player already exists in the roster sync list.", true);
     return;
   }
 
@@ -1586,8 +1811,33 @@ function onAddSyncedPlayerClick() {
   renderTransferRows(currentTransfers);
   renderAdminNewsFeed(currentPlayers);
   renderWeeklyTopTenPreview();
+
+  if (resolvedUserId) {
+    fetchDynamicAvatarUrlForUserId(resolvedUserId).catch(() => {});
+  }
+
+  let dmStatusSuffix = "";
+  if (addPlayerSendDmNode?.checked) {
+    if (!nextEntry.discordId) {
+      dmStatusSuffix = " DM skipped (missing valid Discord ID).";
+      setAddPlayerDmStatus("DM skipped: player has no valid Discord ID.", true);
+    } else {
+      try {
+        await sendPlayerAddedDm(nextEntry.discordId, nextEntry.name);
+        dmStatusSuffix = " DM sent.";
+        setAddPlayerDmStatus(`DM sent to ${nextEntry.name}.`);
+      } catch (error) {
+        const dmError = error instanceof Error ? error.message : "Failed to send DM.";
+        dmStatusSuffix = " DM failed.";
+        setAddPlayerDmStatus(dmError, true);
+      }
+    }
+  } else {
+    setAddPlayerDmStatus("DM on add is disabled.");
+  }
+
   resetSyncedPlayerInputs();
-  setSyncStatus("Synced player added locally. Click Save Global Sync to publish.");
+  setSyncStatus(`Synced player added locally. Click Save Global Sync to publish.${dmStatusSuffix}`);
 }
 
 function onClearSyncedPlayerInputsClick() {
@@ -1629,7 +1879,18 @@ if (weeklyTopTitleNode) {
 if (weeklyTopWeekNode) {
   weeklyTopWeekNode.addEventListener("input", () => renderWeeklyTopTenPreview());
 }
+if (addPlayerSendDmNode) {
+  addPlayerSendDmNode.addEventListener("change", () => {
+    setAddPlayerDmStatus(addPlayerSendDmNode.checked
+      ? "DM on add is enabled."
+      : "DM on add is disabled.");
+  });
+}
 
+initializeAddPlayerDmTemplate();
+setAddPlayerDmStatus(addPlayerSendDmNode?.checked
+  ? "DM on add is enabled."
+  : "DM on add is disabled.");
 setupAdminTabs();
 
 if (getStoredToken()) {

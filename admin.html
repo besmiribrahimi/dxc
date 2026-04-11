@@ -85,7 +85,7 @@
 
       <div class="admin-tabs-shell">
         <div class="admin-tabs-content">
-          <section class="admin-card admin-tab-panel" data-admin-tab-panel="leaderboard" aria-label="Leaderboard editor">
+          <section class="admin-tab-panel" data-admin-tab-panel="leaderboard" aria-label="Leaderboard editor">
             <div class="admin-panel-header">
               <h2>Leaderboard</h2>
             </div>
@@ -106,7 +106,7 @@
             </div>
           </section>
 
-          <section class="admin-card admin-tab-panel hidden" data-admin-tab-panel="dm-sender" aria-label="Bot notification sender">
+          <section class="admin-tab-panel hidden" data-admin-tab-panel="dm-sender" aria-label="Bot notification sender">
             <h2>DM Sender</h2>
             <p>Send a direct message to specific Discord user IDs.</p>
             <div class="admin-bot-grid">
@@ -122,7 +122,7 @@
             <p id="adminBotOpsStatus" class="admin-status">Bot settings are not loaded yet.</p>
           </section>
 
-          <section class="admin-card admin-tab-panel hidden" data-admin-tab-panel="add-player" aria-label="Synced player editor">
+          <section class="admin-tab-panel hidden" data-admin-tab-panel="add-player" aria-label="Synced player editor">
             <div class="admin-panel-header">
               <h2>Add Player</h2>
               <div class="admin-actions">
@@ -186,6 +186,16 @@
               </select>
             </div>
 
+            <div class="admin-add-player-dm-box">
+              <label class="admin-add-player-toggle" for="adminAddPlayerSendDm">
+                <input id="adminAddPlayerSendDm" type="checkbox" checked>
+                Send DM automatically after adding player (requires Discord ID)
+              </label>
+              <label for="adminAddPlayerDmTemplate">DM Template (supports {{player}})</label>
+              <textarea id="adminAddPlayerDmTemplate" class="admin-bot-textarea" rows="12" spellcheck="false" placeholder="Message template for player DM after add"></textarea>
+              <p id="adminAddPlayerDmStatus" class="admin-status">DM on add is enabled.</p>
+            </div>
+
             <div class="admin-transfer-wrap admin-synced-wrap" style="margin-top:0.7rem;">
               <div class="admin-transfer-row admin-transfer-row-head admin-synced-row-head" role="row">
                 <span>Player</span>
@@ -202,7 +212,7 @@
             </div>
           </section>
 
-          <section class="admin-card admin-tab-panel hidden admin-weekly-generator" data-admin-tab-panel="top-ten" aria-label="Weekly top 10 generator">
+          <section class="admin-tab-panel hidden admin-weekly-generator" data-admin-tab-panel="top-ten" aria-label="Weekly top 10 generator">
             <div class="admin-panel-header">
               <h2>Top Ten</h2>
               <div class="admin-actions">
@@ -228,7 +238,7 @@
             <p id="adminWeeklyTopStatus" class="admin-status">Waiting for weekly Top 10 generation.</p>
           </section>
 
-          <section class="admin-card admin-tab-panel hidden" data-admin-tab-panel="other" aria-label="Other admin tools">
+          <section class="admin-tab-panel hidden" data-admin-tab-panel="other" aria-label="Other admin tools">
             <div class="admin-panel-header">
               <h2>Other</h2>
               <div class="admin-actions">
