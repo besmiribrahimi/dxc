@@ -1,4 +1,24 @@
 const CLIPS_CONFIG_ENDPOINT = "/api/leaderboard-config";
+const LOCAL_EDITS = [
+  {
+    id: "local-edit-for-the-kill",
+    type: "edit",
+    title: "FOR_THE_KILL",
+    player: "noah464",
+    description: "",
+    urlPath: "edits/FOR%20THE%20KILL.mp4",
+    featured: false
+  },
+  {
+    id: "local-edit-so-per-fect",
+    type: "edit",
+    title: "so-per-fect",
+    player: "kbfrm242",
+    description: "",
+    urlPath: "edits/so-per-fect_(1).mp4",
+    featured: false
+  }
+];
 
 const clipsStatusNode = document.getElementById("clipsStatus");
 const editsGridNode = document.getElementById("editsGrid");
@@ -145,6 +165,38 @@ function normalizeClips(rawClips) {
     .filter((entry) => Boolean(entry.title) && Boolean(entry.url));
 }
 
+function buildLocalEditEntries() {
+  return LOCAL_EDITS
+    .map((entry) => {
+      const absoluteUrl = new URL(String(entry.urlPath || ""), window.location.href).toString();
+      return normalizeClipEntry({
+        ...entry,
+        url: absoluteUrl
+      });
+    })
+    .filter((entry) => Boolean(entry.title) && Boolean(entry.url));
+}
+
+function mergeClipSources(remoteClips) {
+  const merged = [];
+  const seen = new Set();
+
+  const pushUnique = (clip) => {
+    const key = `${String(clip.id || "").trim().toLowerCase()}|${String(clip.url || "").trim().toLowerCase()}`;
+    if (!key || seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    merged.push(clip);
+  };
+
+  buildLocalEditEntries().forEach(pushUnique);
+  (Array.isArray(remoteClips) ? remoteClips : []).forEach(pushUnique);
+
+  return merged;
+}
+
 function getClipProvider(urlValue) {
   if (/^data:(video|image)\//i.test(String(urlValue || "").trim())) {
     return "UPLOAD";
@@ -216,7 +268,7 @@ async function loadClips() {
   try {
     const response = await fetch(CLIPS_CONFIG_ENDPOINT, { cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
-    const clips = normalizeClips(payload?.config?.clips);
+    const clips = mergeClipSources(normalizeClips(payload?.config?.clips));
     renderClipBoards(clips);
   } catch {
     if (clipsStatusNode) {
