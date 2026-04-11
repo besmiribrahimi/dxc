@@ -64,6 +64,11 @@
   object-fit: cover;
 }
 
+.clip-media-embed {
+  min-height: 280px;
+  border: 0;
+}
+
 .clip-meta {
   display: inline-flex;
   flex-wrap: wrap;

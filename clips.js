@@ -23,7 +23,20 @@ function normalizeClipUrl(value) {
     return raw.length <= 3_000_000 ? raw : "";
   }
 
-  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  const extractedMatch = raw.match(/https?:\/\/[^\s<>()]+/i);
+  const extractedRaw = extractedMatch
+    ? extractedMatch[0]
+    : raw
+      .replace(/[<>]/g, "")
+      .split(/\s+/)
+      .filter(Boolean)[0] || "";
+
+  const cleaned = extractedRaw.replace(/[),.;!]+$/g, "").trim();
+  if (!cleaned) {
+    return "";
+  }
+
+  const withProtocol = /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`;
 
   try {
     const parsed = new URL(withProtocol);
@@ -35,6 +48,31 @@ function normalizeClipUrl(value) {
   } catch {
     return "";
   }
+}
+
+function toMedalEmbedUrl(urlValue) {
+  const source = String(urlValue || "").trim();
+  if (!/medal\.tv/i.test(source)) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(source);
+    const path = String(parsed.pathname || "");
+    const clipMatch = path.match(/\/games\/([^/]+)\/clips\/([^/?#]+)/i);
+    if (clipMatch) {
+      return `https://medal.tv/games/${clipMatch[1]}/clips/${clipMatch[2]}?embed=1`;
+    }
+
+    const fallbackMatch = source.match(/medal\.tv\/clips\/([^/?#]+)/i);
+    if (fallbackMatch) {
+      return `https://medal.tv/clips/${fallbackMatch[1]}?embed=1`;
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
 }
 
 function isVideoUrl(urlValue) {
@@ -64,6 +102,11 @@ function isImageUrl(urlValue) {
 }
 
 function buildClipMediaMarkup(clip) {
+  const medalEmbedUrl = toMedalEmbedUrl(clip.url);
+  if (medalEmbedUrl) {
+    return `<iframe class="clip-media clip-media-embed" src="${safeText(medalEmbedUrl)}" title="${safeText(clip.title)}" loading="lazy" allowfullscreen></iframe>`;
+  }
+
   if (isVideoUrl(clip.url)) {
     return `<video class="clip-media" controls preload="metadata" src="${safeText(clip.url)}"></video>`;
   }

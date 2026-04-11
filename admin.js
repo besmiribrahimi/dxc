@@ -695,7 +695,20 @@ function normalizeClipUrl(value) {
     return raw.length <= 3_000_000 ? raw : "";
   }
 
-  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  const extractedMatch = raw.match(/https?:\/\/[^\s<>()]+/i);
+  const extractedRaw = extractedMatch
+    ? extractedMatch[0]
+    : raw
+      .replace(/[<>]/g, "")
+      .split(/\s+/)
+      .filter(Boolean)[0] || "";
+
+  const cleaned = extractedRaw.replace(/[),.;!]+$/g, "").trim();
+  if (!cleaned) {
+    return "";
+  }
+
+  const withProtocol = /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`;
 
   try {
     const parsed = new URL(withProtocol);
