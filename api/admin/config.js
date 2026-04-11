@@ -226,6 +226,54 @@ function normalizeTransfers(rawTransfers) {
     .filter(Boolean);
 }
 
+function normalizeClipUrl(rawUrl) {
+  const value = String(rawUrl || "").trim();
+  if (!value) {
+    return "";
+  }
+
+  const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+
+  try {
+    const url = new URL(withProtocol);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return "";
+    }
+
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function normalizeClips(rawClips) {
+  if (!Array.isArray(rawClips)) {
+    return [];
+  }
+
+  return rawClips
+    .slice(0, 200)
+    .map((entry, index) => {
+      const item = entry && typeof entry === "object" ? entry : {};
+      const title = String(item.title || "").trim().slice(0, 120);
+      const url = normalizeClipUrl(item.url);
+
+      if (!title || !url) {
+        return null;
+      }
+
+      return {
+        id: String(item.id || `clip-${Date.now()}-${index}`).trim(),
+        title,
+        url,
+        player: String(item.player || "").trim().slice(0, 64),
+        description: String(item.description || "").trim().slice(0, 280),
+        featured: Boolean(item.featured)
+      };
+    })
+    .filter(Boolean);
+}
+
 function normalizeOrder(rawOrder, playerKeys) {
   const keys = Array.isArray(playerKeys) ? playerKeys : [];
   const valid = new Set(keys);
@@ -518,6 +566,7 @@ module.exports = async function handler(req, res) {
       order: [],
       extraPlayers: [],
       transfers: [],
+      clips: [],
       botSettings: {
         applicationsPanelChannelId: "",
         applicationsChannelId: "",
@@ -532,6 +581,8 @@ module.exports = async function handler(req, res) {
     const extraPlayers = normalizeExtraPlayers(hasExtraPlayersInBody ? body?.extraPlayers : previousConfig?.extraPlayers);
     const hasTransfersInBody = Array.isArray(body?.transfers);
     const transfers = normalizeTransfers(hasTransfersInBody ? body?.transfers : previousConfig?.transfers);
+    const hasClipsInBody = Array.isArray(body?.clips);
+    const clips = normalizeClips(hasClipsInBody ? body?.clips : previousConfig?.clips);
     const existingBotSettings = previousConfig?.botSettings && typeof previousConfig.botSettings === "object"
       ? previousConfig.botSettings
       : {
@@ -546,6 +597,7 @@ module.exports = async function handler(req, res) {
       order,
       extraPlayers,
       transfers,
+      clips,
       botSettings: existingBotSettings
     };
 

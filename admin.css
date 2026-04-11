@@ -117,6 +117,22 @@
   grid-template-columns: minmax(160px, 1.1fr) minmax(100px, 0.7fr) minmax(180px, 1fr) minmax(100px, 0.7fr) minmax(120px, 0.75fr) minmax(100px, 0.65fr) minmax(100px, 0.65fr) minmax(84px, 0.6fr) 108px;
 }
 
+.admin-clips-wrap .admin-transfer-row {
+  grid-template-columns: minmax(180px, 1.1fr) minmax(120px, 0.7fr) minmax(220px, 1.2fr) minmax(220px, 1.25fr) minmax(120px, 0.6fr) 108px;
+}
+
+.admin-clip-link {
+  color: #bfdbfe;
+  text-decoration: none;
+  font-size: 0.76rem;
+}
+
+.admin-clip-link:hover,
+.admin-clip-link:focus-visible {
+  color: #eff6ff;
+  text-decoration: underline;
+}
+
 .admin-synced-classes {
   display: inline-flex;
   flex-wrap: wrap;
@@ -178,6 +194,10 @@
   }
 
   .admin-synced-wrap .admin-transfer-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-clips-wrap .admin-transfer-row {
     grid-template-columns: 1fr;
   }
 

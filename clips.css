@@ -1,0 +1,106 @@
+.clips-content {
+  width: min(1480px, 100% - 2rem);
+  margin: 0 auto 4rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.clips-featured-wrap,
+.clips-list-wrap {
+  border: 1px solid rgba(147, 197, 253, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(165deg, rgba(12, 20, 38, 0.9), rgba(6, 12, 24, 0.92));
+  padding: 0.9rem;
+}
+
+.clips-featured-wrap h2,
+.clips-list-wrap h2 {
+  margin: 0;
+  font-family: "Rajdhani", sans-serif;
+  letter-spacing: 0.03em;
+  font-size: clamp(1.45rem, 2.3vw, 1.9rem);
+}
+
+.clips-status {
+  margin: 0.25rem 0 0.7rem;
+  color: #bfd7f5;
+}
+
+.clips-featured {
+  min-height: 180px;
+}
+
+.clip-card {
+  border: 1px solid rgba(147, 197, 253, 0.22);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.45);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.46rem;
+}
+
+.clip-card.featured {
+  border-color: rgba(248, 113, 113, 0.38);
+  background: linear-gradient(140deg, rgba(76, 18, 24, 0.45), rgba(9, 16, 31, 0.7));
+}
+
+.clip-card h3 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.clip-card p {
+  margin: 0;
+  color: #d2e4f9;
+  line-height: 1.45;
+}
+
+.clip-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.clip-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.32);
+  background: rgba(20, 44, 85, 0.48);
+  color: #dbeafe;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 0.5rem;
+}
+
+.clip-link {
+  width: fit-content;
+  text-decoration: none;
+}
+
+.clips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.62rem;
+  margin-top: 0.65rem;
+}
+
+.clip-empty {
+  margin: 0;
+  border: 1px dashed rgba(147, 197, 253, 0.34);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.4);
+  color: #bfd7f5;
+  padding: 0.9rem;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .clips-content {
+    width: min(1480px, 100% - 1rem);
+  }
+}
