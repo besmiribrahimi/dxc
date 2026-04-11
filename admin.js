@@ -93,6 +93,22 @@ let draggingInitialized = false;
 const dynamicAvatarUrlMap = new Map();
 const pendingAvatarUserIds = new Set();
 
+function warnDirectAdminAccess() {
+  const pathname = String(window.location.pathname || "").toLowerCase();
+  const isAdminPath = pathname.endsWith("/admin.html") || pathname.endsWith("admin.html") || pathname.endsWith("/admin");
+  if (!isAdminPath) {
+    return;
+  }
+
+  const warningKey = "draxar-admin-route-warning-v1";
+  if (window.sessionStorage.getItem(warningKey) === "1") {
+    return;
+  }
+
+  window.sessionStorage.setItem(warningKey, "1");
+  window.alert("Warning: /admin.html is restricted to authorized admins only. Clips are temporarily hidden.");
+}
+
 function setAddPlayerDmStatus(message, isError = false) {
   if (!addPlayerDmStatusNode) {
     return;
@@ -2241,6 +2257,7 @@ setAddPlayerDmStatus(addPlayerSendDmNode?.checked
 setupAdminTabs();
 setupClipTypeTabs();
 setupClipComposerUpload();
+warnDirectAdminAccess();
 
 if (getStoredToken()) {
   loadPanelData();
