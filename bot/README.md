@@ -61,8 +61,10 @@ npm run dev
 2. User clicks `Apply Now`
 3. Modal asks:
 - Roblox Username
-- Country
 - Faction
+- Country
+- Device You Play On
+- Classes You Play On
 4. Bot posts application embed to configured applications channel
 5. Reviewer clicks `Accept` or `Reject`
 6. Accepted applicants can receive configured accepted role
@@ -87,11 +89,11 @@ npm run dev
 - `/applysetup panel_channel? applications_channel? reviewer_role? accepted_role?` - configure apply panel and review flow
 - `/ticketpanelsetup panel_channel? applications_channel? reviewer_role? accepted_role?` - alias for apply setup
 - `/ticketupdate note status?` - follow-up + optional status change
-- `/userinfo user` - Roblox/faction/country/matches/leaderboard status
+- `/userinfo user` - Roblox/faction/country/device/classes/matches/leaderboard status
 - `/leaderboard limit? page_size? post?` - synced paginated leaderboard
 - `/setup ...` - server admin setup (tickets, access, leaderboard, style)
 - `/webhooktest ...` - queue a test leaderboard embed
-- `/mute`, `/kick`, `/ban` - moderation commands
+- `/warn` (alias: `/waarn`), `/mute`, `/kick`, `/ban` - moderation commands
 
 ## Setup Command Guide
 

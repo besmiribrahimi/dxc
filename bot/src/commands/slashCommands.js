@@ -1048,13 +1048,6 @@ async function handleApplyCreateButton(interaction) {
     .setRequired(true)
     .setMaxLength(32);
 
-  const countryInput = new TextInputBuilder()
-    .setCustomId("apply_country")
-    .setLabel("Country")
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true)
-    .setMaxLength(48);
-
   const factionInput = new TextInputBuilder()
     .setCustomId("apply_faction")
     .setLabel("Faction")
@@ -1062,10 +1055,33 @@ async function handleApplyCreateButton(interaction) {
     .setRequired(true)
     .setMaxLength(48);
 
+  const countryInput = new TextInputBuilder()
+    .setCustomId("apply_country")
+    .setLabel("Country")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(48);
+
+  const deviceInput = new TextInputBuilder()
+    .setCustomId("apply_device")
+    .setLabel("Device You Play On")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(64);
+
+  const classesInput = new TextInputBuilder()
+    .setCustomId("apply_classes")
+    .setLabel("Classes You Play On")
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(true)
+    .setMaxLength(200);
+
   modal.addComponents(
     new ActionRowBuilder().addComponents(robloxInput),
+    new ActionRowBuilder().addComponents(factionInput),
     new ActionRowBuilder().addComponents(countryInput),
-    new ActionRowBuilder().addComponents(factionInput)
+    new ActionRowBuilder().addComponents(deviceInput),
+    new ActionRowBuilder().addComponents(classesInput)
   );
 
   await interaction.showModal(modal);
@@ -1085,8 +1101,18 @@ async function handleApplyCreateModal(interaction, context) {
   const settings = getGuildSettings(interaction.guild.id, context.config);
   const appConfig = applicationConfig(context);
   const roblox = interaction.fields.getTextInputValue("apply_roblox").trim();
-  const country = interaction.fields.getTextInputValue("apply_country").trim();
   const faction = interaction.fields.getTextInputValue("apply_faction").trim();
+  const country = interaction.fields.getTextInputValue("apply_country").trim();
+  const device = interaction.fields.getTextInputValue("apply_device").trim();
+  const classesPlayed = interaction.fields.getTextInputValue("apply_classes").trim();
+
+  if (!roblox || !faction || !country || !device || !classesPlayed) {
+    await interaction.reply({
+      content: "All application fields are required.",
+      ephemeral: true
+    });
+    return true;
+  }
 
   if (!appConfig.channelId) {
     await interaction.reply({
@@ -1113,8 +1139,10 @@ async function handleApplyCreateModal(interaction, context) {
     .addFields(
       { name: "User", value: `<@${interaction.user.id}>`, inline: true },
       { name: "Roblox Username", value: roblox, inline: true },
-      { name: "Country", value: country, inline: true },
       { name: "Faction", value: faction, inline: true },
+      { name: "Country", value: country, inline: true },
+      { name: "Device", value: device, inline: true },
+      { name: "Classes", value: classesPlayed, inline: false },
       { name: "Decision", value: "Pending review", inline: false }
     )
     .setFooter({ text: footerText(settings) })
@@ -1130,8 +1158,10 @@ async function handleApplyCreateModal(interaction, context) {
 
   upsertUserProfileFromTicket(interaction.guild.id, interaction.user.id, {
     robloxUsername: roblox,
+    faction,
     country,
-    faction
+    device,
+    classesPlayed
   });
 
   await interaction.reply({
@@ -1724,6 +1754,16 @@ async function handleUserInfoCommand(interaction, context) {
         name: "Country",
         value: profile?.country || "Unknown",
         inline: true
+      },
+      {
+        name: "Device",
+        value: profile?.device || "Unknown",
+        inline: true
+      },
+      {
+        name: "Classes",
+        value: profile?.classesPlayed || "Unknown",
+        inline: false
       },
       {
         name: "Total Matches",
@@ -2322,6 +2362,40 @@ const slashCommandBuilders = [
       option
         .setName("reason")
         .setDescription("Reason for timeout")
+        .setRequired(false)
+    ),
+  new SlashCommandBuilder()
+    .setName("warn")
+    .setDescription("Warn a member and send them a direct message")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false)
+    .addUserOption((option) =>
+      option
+        .setName("user")
+        .setDescription("Member to warn")
+        .setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("reason")
+        .setDescription("Reason for warning")
+        .setRequired(false)
+    ),
+  new SlashCommandBuilder()
+    .setName("waarn")
+    .setDescription("Warn a member and send them a direct message")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false)
+    .addUserOption((option) =>
+      option
+        .setName("user")
+        .setDescription("Member to warn")
+        .setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("reason")
+        .setDescription("Reason for warning")
         .setRequired(false)
     ),
   new SlashCommandBuilder()
@@ -3317,7 +3391,7 @@ async function handleSlashCommand(interaction, context) {
       .setColor(statusColor(settings, "active"))
       .setDescription("Press **Apply Now** to submit your player application. Staff will accept or reject it in the applications channel.")
       .addFields(
-        { name: "Required", value: "Roblox Username, Country, Faction" },
+        { name: "Required", value: "Roblox Username, Faction, Country, Device You Play On, Classes You Play On" },
         { name: "Panel Channel", value: appConfig.panelChannelId ? `<#${appConfig.panelChannelId}>` : "Current channel" },
         { name: "Review Channel", value: appConfig.channelId ? `<#${appConfig.channelId}>` : "Not configured (use /setupapply)" }
       )
@@ -3520,6 +3594,38 @@ async function handleSlashCommand(interaction, context) {
     await member.timeout(durationMs, reason);
     await interaction.reply({
       content: `Muted ${user.tag} for ${minutes} minute(s). Reason: ${reason}`,
+      ephemeral: true
+    });
+    return;
+  }
+
+  if (interaction.commandName === "warn" || interaction.commandName === "waarn") {
+    if (!interaction.inGuild()) {
+      await interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+      return;
+    }
+
+    const user = interaction.options.getUser("user", true);
+    const reason = interaction.options.getString("reason") || `Warned by ${interaction.user.tag}`;
+    const guildName = String(interaction.guild?.name || "this server").trim();
+
+    let dmDelivered = true;
+    try {
+      await user.send({
+        content: [
+          `You have received an admin warning in **${guildName}**.`,
+          `Reason: ${reason}`,
+          `Moderator: ${interaction.user.tag}`
+        ].join("\n")
+      });
+    } catch {
+      dmDelivered = false;
+    }
+
+    await interaction.reply({
+      content: dmDelivered
+        ? `Warned ${user.tag}. A DM with the reason was sent.`
+        : `Warned ${user.tag}, but I could not send them a DM (their DMs may be closed).`,
       ephemeral: true
     });
     return;

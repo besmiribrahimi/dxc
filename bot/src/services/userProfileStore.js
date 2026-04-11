@@ -57,6 +57,8 @@ function upsertUserProfileFromTicket(guildId, userId, payload) {
     robloxUsername: String(payload?.robloxUsername || current.robloxUsername || "").trim(),
     country: String(payload?.country || current.country || "").trim(),
     faction: String(payload?.faction || current.faction || "").trim(),
+    device: String(payload?.device || current.device || "").trim(),
+    classesPlayed: String(payload?.classesPlayed || current.classesPlayed || "").trim(),
     totalSubmissions: Number.isFinite(Number(current.totalSubmissions)) ? Number(current.totalSubmissions) + 1 : 1,
     updatedAt: new Date().toISOString()
   };
