@@ -759,12 +759,17 @@
 
 .leader-modal-class-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.38rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  padding-bottom: 0.08rem;
 }
 
 .leader-modal-class-chip {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 0.32rem;
   min-height: 30px;
