@@ -170,6 +170,26 @@ function resolveClassList(value, name) {
   return getFallbackClassList(name);
 }
 
+function sortClassListForDisplay(classList) {
+  const priority = new Map([
+    ["Rifleman", 0],
+    ["Skirmisher", 1],
+    ["Recon", 2],
+    ["Officer", 3],
+    ["Engineer", 4],
+    ["Unknown", 99]
+  ]);
+
+  return [...(Array.isArray(classList) ? classList : [])]
+    .map((label, index) => ({
+      label,
+      index,
+      rank: priority.has(label) ? priority.get(label) : 98
+    }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((entry) => entry.label);
+}
+
 function resolveDeviceValue(value, name) {
   const normalized = normalizeDeviceValue(value);
   if (normalized !== "Unknown") {
@@ -224,7 +244,9 @@ function getRankTierClass(rank) {
 }
 
 function buildModalClassMarkup(player) {
-  const classList = resolveClassList(player?.playerClasses ?? player?.playerClass, player?.name).slice(0, 3);
+  const classList = sortClassListForDisplay(
+    resolveClassList(player?.playerClasses ?? player?.playerClass, player?.name)
+  ).slice(0, 3);
   return classList
     .map((classLabel) => {
       const toneClass = getClassChipToneClass(classLabel);
@@ -422,7 +444,9 @@ function buildTopThreeCard(player, rank, avatarMap) {
   const avatarUrl = getResolvedAvatar(player, avatarMap);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   const levelBadgeUrl = getLevelBadgePath(player.level);
-  const classList = resolveClassList(player.playerClasses ?? player.playerClass, player.name);
+  const classList = sortClassListForDisplay(
+    resolveClassList(player.playerClasses ?? player.playerClass, player.name)
+  );
   const deviceLabel = resolveDeviceValue(player.device, player.name);
   const classChipsMarkup = (classList.length ? classList : ["Unknown"])
     .map((classLabel) => {
@@ -487,7 +511,9 @@ function buildLeaderboardRow(player, rank, avatarMap) {
   const avatarUrl = getResolvedAvatar(player, avatarMap);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   const levelBadgeUrl = getLevelBadgePath(player.level);
-  const classList = resolveClassList(player.playerClasses ?? player.playerClass, player.name);
+  const classList = sortClassListForDisplay(
+    resolveClassList(player.playerClasses ?? player.playerClass, player.name)
+  );
   const deviceLabel = resolveDeviceValue(player.device, player.name);
   const classChipsMarkup = (classList.length ? classList : ["Unknown"])
     .map((classLabel) => {
@@ -700,8 +726,7 @@ async function loadAndRenderLeaderboard() {
     players.sort((a, b) => b.level - a.level || b.kd - a.kd || a.sourceIndex - b.sourceIndex);
   }
 
-  const userIds = players.map((player) => player.userId).filter((id) => id > 0);
-  const avatarMap = await fetchAvatarUrls(userIds);
+  const avatarMap = await fetchAvatarUrls(players);
   const syncLabel = remoteConfig?.lastSyncTime ? ` (Synced: ${new Date(remoteConfig.lastSyncTime).toLocaleString()})` : "";
 
   renderLeaderboard(players, avatarMap, { syncLabel, hasManualOrder });
