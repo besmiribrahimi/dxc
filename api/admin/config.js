@@ -232,6 +232,10 @@ function normalizeClipUrl(rawUrl) {
     return "";
   }
 
+  if (/^data:(video|image)\/[a-z0-9.+-]+;base64,/i.test(value)) {
+    return value.length <= 3_000_000 ? value : "";
+  }
+
   const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
 
   try {
@@ -244,6 +248,15 @@ function normalizeClipUrl(rawUrl) {
   } catch {
     return "";
   }
+}
+
+function normalizeClipType(rawType) {
+  const type = String(rawType || "clip").trim().toLowerCase();
+  if (type === "edit") {
+    return "edit";
+  }
+
+  return "clip";
 }
 
 function normalizeClips(rawClips) {
@@ -264,6 +277,7 @@ function normalizeClips(rawClips) {
 
       return {
         id: String(item.id || `clip-${Date.now()}-${index}`).trim(),
+        type: normalizeClipType(item.type),
         title,
         url,
         player: String(item.player || "").trim().slice(0, 64),

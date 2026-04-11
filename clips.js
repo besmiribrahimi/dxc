@@ -1,7 +1,7 @@
 const CLIPS_CONFIG_ENDPOINT = "/api/leaderboard-config";
 
 const clipsStatusNode = document.getElementById("clipsStatus");
-const clipsFeaturedNode = document.getElementById("clipsFeatured");
+const editsGridNode = document.getElementById("editsGrid");
 const clipsGridNode = document.getElementById("clipsGrid");
 
 function safeText(value) {
@@ -19,6 +19,10 @@ function normalizeClipUrl(value) {
     return "";
   }
 
+  if (/^data:(video|image)\/[a-z0-9.+-]+;base64,/i.test(raw)) {
+    return raw.length <= 3_000_000 ? raw : "";
+  }
+
   const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 
   try {
@@ -33,13 +37,53 @@ function normalizeClipUrl(value) {
   }
 }
 
+function isVideoUrl(urlValue) {
+  const value = String(urlValue || "").trim();
+  if (!value) {
+    return false;
+  }
+
+  if (/^data:video\//i.test(value)) {
+    return true;
+  }
+
+  return /\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(value);
+}
+
+function isImageUrl(urlValue) {
+  const value = String(urlValue || "").trim();
+  if (!value) {
+    return false;
+  }
+
+  if (/^data:image\//i.test(value)) {
+    return true;
+  }
+
+  return /\.(jpg|jpeg|png|gif|webp|avif)(\?|#|$)/i.test(value);
+}
+
+function buildClipMediaMarkup(clip) {
+  if (isVideoUrl(clip.url)) {
+    return `<video class="clip-media" controls preload="metadata" src="${safeText(clip.url)}"></video>`;
+  }
+
+  if (isImageUrl(clip.url)) {
+    return `<img class="clip-media" src="${safeText(clip.url)}" alt="${safeText(clip.title)} media" loading="lazy">`;
+  }
+
+  return "";
+}
+
 function normalizeClipEntry(raw, index = 0) {
   const entry = raw && typeof raw === "object" ? raw : {};
   const title = String(entry.title || "").trim().slice(0, 120);
   const url = normalizeClipUrl(entry.url);
+  const type = String(entry.type || "clip").trim().toLowerCase() === "edit" ? "edit" : "clip";
 
   return {
     id: String(entry.id || `clip-${index}`).trim(),
+    type,
     title,
     url,
     player: String(entry.player || "").trim().slice(0, 64),
@@ -59,6 +103,10 @@ function normalizeClips(rawClips) {
 }
 
 function getClipProvider(urlValue) {
+  if (/^data:(video|image)\//i.test(String(urlValue || "").trim())) {
+    return "UPLOAD";
+  }
+
   try {
     const host = new URL(urlValue).hostname.replace(/^www\./i, "");
     const label = host.split(".")[0] || host;
@@ -71,45 +119,49 @@ function getClipProvider(urlValue) {
 function buildClipCard(clip, featured = false) {
   const playerLabel = clip.player ? `Player: ${clip.player}` : "Community Clip";
   const provider = getClipProvider(clip.url);
+  const typeLabel = clip.type === "edit" ? "EDIT" : "CLIP";
 
   return `
     <article class="clip-card${featured ? " featured" : ""}">
       <h3>${safeText(clip.title)}</h3>
       <div class="clip-meta">
+        <span class="clip-chip">${typeLabel}</span>
         <span class="clip-chip">${safeText(playerLabel)}</span>
         <span class="clip-chip">${safeText(provider)}</span>
       </div>
+      ${buildClipMediaMarkup(clip)}
       <p>${safeText(clip.description || "No description provided.")}</p>
-      <a class="admin-button clip-link" href="${safeText(clip.url)}" target="_blank" rel="noreferrer noopener">Watch Clip</a>
+      <a class="admin-button clip-link" href="${safeText(clip.url)}" target="_blank" rel="noreferrer noopener">${clip.type === "edit" ? "Open Edit" : "Watch Clip"}</a>
     </article>
   `;
 }
 
 function renderClipBoards(clips) {
-  if (!clipsFeaturedNode || !clipsGridNode || !clipsStatusNode) {
+  if (!editsGridNode || !clipsGridNode || !clipsStatusNode) {
     return;
   }
 
-  if (!Array.isArray(clips) || !clips.length) {
-    clipsStatusNode.textContent = "No clips published yet.";
-    clipsFeaturedNode.innerHTML = "<p class=\"clip-empty\">No featured clip yet.</p>";
-    clipsGridNode.innerHTML = "<p class=\"clip-empty\">Admins can add clips from the Admin panel.</p>";
+  const safeClips = Array.isArray(clips) ? clips : [];
+  const edits = safeClips.filter((clip) => clip.type === "edit");
+  const regularClips = safeClips.filter((clip) => clip.type !== "edit");
+
+  clipsStatusNode.textContent = `${regularClips.length} clip${regularClips.length === 1 ? "" : "s"} and ${edits.length} edit${edits.length === 1 ? "" : "s"} loaded.`;
+
+  if (!edits.length) {
+    editsGridNode.innerHTML = "<p class=\"clip-empty\">No edits published yet.</p>";
+  } else {
+    editsGridNode.innerHTML = edits
+      .map((clip) => buildClipCard(clip, clip.featured))
+      .join("");
+  }
+
+  if (!regularClips.length) {
+    clipsGridNode.innerHTML = "<p class=\"clip-empty\">No clips published yet. Admins can add clips from the Admin panel.</p>";
     return;
   }
 
-  const featuredClip = clips.find((clip) => clip.featured) || clips[0];
-  const listClips = clips.filter((clip) => clip.id !== featuredClip.id);
-
-  clipsStatusNode.textContent = `${clips.length} clip${clips.length === 1 ? "" : "s"} loaded.`;
-  clipsFeaturedNode.innerHTML = buildClipCard(featuredClip, true);
-
-  if (!listClips.length) {
-    clipsGridNode.innerHTML = "<p class=\"clip-empty\">Add more clips to build out this section.</p>";
-    return;
-  }
-
-  clipsGridNode.innerHTML = listClips
-    .map((clip) => buildClipCard(clip, false))
+  clipsGridNode.innerHTML = regularClips
+    .map((clip) => buildClipCard(clip, clip.featured))
     .join("");
 }
 
@@ -128,8 +180,8 @@ async function loadClips() {
       clipsStatusNode.textContent = "Could not load clips right now.";
     }
 
-    if (clipsFeaturedNode) {
-      clipsFeaturedNode.innerHTML = "<p class=\"clip-empty\">Could not load featured clip.</p>";
+    if (editsGridNode) {
+      editsGridNode.innerHTML = "<p class=\"clip-empty\">Could not load edits.</p>";
     }
 
     if (clipsGridNode) {

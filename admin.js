@@ -61,6 +61,7 @@ const DEFAULT_ADD_PLAYER_DM_TEMPLATE = [
   "This message was sent automatically by the system.",
   "**Do not reply.**"
 ].join("\n");
+const MAX_CLIP_UPLOAD_BYTES = 2 * 1024 * 1024;
 
 let currentConfig = {
   version: 1,
@@ -682,6 +683,10 @@ function normalizeClipUrl(value) {
     return "";
   }
 
+  if (/^data:(video|image)\/[a-z0-9.+-]+;base64,/i.test(raw)) {
+    return raw.length <= 3_000_000 ? raw : "";
+  }
+
   const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 
   try {
@@ -696,6 +701,24 @@ function normalizeClipUrl(value) {
   }
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Could not read uploaded file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function normalizeClipType(value) {
+  const type = String(value || "clip").trim().toLowerCase();
+  if (type === "edit") {
+    return "edit";
+  }
+
+  return "clip";
+}
+
 function normalizeClipEntry(raw, index = 0) {
   const entry = raw && typeof raw === "object" ? raw : {};
   const title = String(entry.title || "").trim().slice(0, 120);
@@ -703,6 +726,7 @@ function normalizeClipEntry(raw, index = 0) {
 
   return {
     id: String(entry.id || `clip-${Date.now()}-${index}`).trim(),
+    type: normalizeClipType(entry.type),
     title,
     url,
     player: String(entry.player || "").trim().slice(0, 64),
@@ -725,6 +749,7 @@ function normalizeClips(rawClips) {
 function createBlankClip() {
   return {
     id: `clip-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    type: "clip",
     title: "",
     url: "",
     player: "",
@@ -754,10 +779,17 @@ function renderClipRows(clips) {
     row.dataset.clipId = clip.id || `clip-${index}`;
 
     row.innerHTML = `
+      <span>
+        <select class="admin-transfer-select admin-clip-type">
+          <option value="clip"${clip.type === "clip" ? " selected" : ""}>Clip</option>
+          <option value="edit"${clip.type === "edit" ? " selected" : ""}>Edit</option>
+        </select>
+      </span>
       <span><input class="admin-transfer-input admin-clip-title" type="text" maxlength="120" value="${safeText(clip.title)}" placeholder="Best clutch in Verdun"></span>
       <span><input class="admin-transfer-input admin-clip-player" type="text" maxlength="64" value="${safeText(clip.player)}" placeholder="Player name"></span>
       <span>
         <input class="admin-transfer-input admin-clip-url" type="url" value="${safeText(clip.url)}" placeholder="https://...">
+        <input class="admin-transfer-input admin-clip-file" type="file" accept="video/*,image/*">
         ${clip.url ? `<a class="admin-clip-link" href="${safeText(clip.url)}" target="_blank" rel="noreferrer noopener">Open</a>` : ""}
       </span>
       <span><input class="admin-transfer-input admin-clip-description" type="text" maxlength="280" value="${safeText(clip.description)}" placeholder="Short clip summary"></span>
@@ -778,10 +810,53 @@ function renderClipRows(clips) {
     });
 
     const urlNode = row.querySelector(".admin-clip-url");
+    const fileNode = row.querySelector(".admin-clip-file");
     urlNode?.addEventListener("blur", () => {
       const normalized = normalizeClipUrl(urlNode.value);
       if (normalized) {
         urlNode.value = normalized;
+      }
+    });
+
+    fileNode?.addEventListener("change", async () => {
+      const file = fileNode.files && fileNode.files[0] ? fileNode.files[0] : null;
+      if (!file || !urlNode) {
+        return;
+      }
+
+      if (Number(file.size || 0) > MAX_CLIP_UPLOAD_BYTES) {
+        setSyncStatus("Upload too large. Use a file under 2MB or paste an external URL.", true);
+        fileNode.value = "";
+        return;
+      }
+
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const normalized = normalizeClipUrl(dataUrl);
+        if (!normalized) {
+          setSyncStatus("Uploaded file format is not supported.", true);
+          fileNode.value = "";
+          return;
+        }
+
+        urlNode.value = normalized;
+        let linkNode = row.querySelector(".admin-clip-link");
+        if (!linkNode) {
+          linkNode = document.createElement("a");
+          linkNode.className = "admin-clip-link";
+          linkNode.target = "_blank";
+          linkNode.rel = "noreferrer noopener";
+          linkNode.textContent = "Open";
+          const urlCell = urlNode.parentElement;
+          urlCell?.append(linkNode);
+        }
+
+        linkNode.href = normalized;
+        setSyncStatus("Clip uploaded locally. Click Save Global Sync to publish.");
+      } catch (error) {
+        setSyncStatus(error instanceof Error ? error.message : "Upload failed.", true);
+      } finally {
+        fileNode.value = "";
       }
     });
 
@@ -798,6 +873,7 @@ function collectClipValues() {
     .map((row, index) => {
       const title = String(row.querySelector(".admin-clip-title")?.value || "").trim();
       const url = normalizeClipUrl(row.querySelector(".admin-clip-url")?.value || "");
+      const type = normalizeClipType(row.querySelector(".admin-clip-type")?.value || "clip");
       const player = String(row.querySelector(".admin-clip-player")?.value || "").trim();
       const description = String(row.querySelector(".admin-clip-description")?.value || "").trim();
       const featured = String(row.querySelector(".admin-clip-featured")?.value || "false") === "true";
@@ -808,6 +884,7 @@ function collectClipValues() {
 
       return normalizeClipEntry({
         id: String(row.dataset.clipId || `clip-${Date.now()}-${index}`).trim(),
+        type,
         title,
         url,
         player,
