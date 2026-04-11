@@ -318,7 +318,7 @@ function normalizeOptionalUserId(value) {
     return "";
   }
 
-  return /^\d{3,}$/.test(normalized) ? normalized : "";
+  return /^\d{3,14}$/.test(normalized) ? normalized : "";
 }
 
 function normalizeConfigPlayers(config) {
@@ -363,6 +363,9 @@ function normalizeExtraPlayers(config) {
         return null;
       }
 
+      const mappedUserId = Number(avatarIdMap?.get?.(name.toLowerCase()) || 0);
+      const normalizedUserId = normalizeOptionalUserId(item.userId);
+
       return {
         id: String(item.id || `extra-player-${index}`).trim(),
         name,
@@ -371,7 +374,7 @@ function normalizeExtraPlayers(config) {
         classes: normalizePlayerClassList(item.classes ?? item.class),
         country: String(item.country || "N/A").trim() || "N/A",
         discordId: normalizeDiscordId(item.discordId),
-        userId: normalizeOptionalUserId(item.userId),
+        userId: normalizedUserId || (Number.isFinite(mappedUserId) && mappedUserId > 0 ? String(mappedUserId) : ""),
         device: normalizeDeviceValue(item.device)
       };
     })

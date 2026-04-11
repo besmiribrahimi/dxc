@@ -468,7 +468,7 @@ function getStaticAvatarUrl(userId) {
 
 function getRobloxHeadshotUrl(userId, size = 420) {
   const normalized = String(userId || "").trim();
-  if (!/^\d{3,}$/.test(normalized) || normalized === String(fallbackAvatarId)) {
+  if (!/^\d{3,14}$/.test(normalized) || normalized === String(fallbackAvatarId)) {
     return "";
   }
 
@@ -1518,7 +1518,55 @@ function normalizeSyncedUserId(value) {
     return "";
   }
 
-  return /^\d{3,}$/.test(normalized) ? normalized : "";
+  return /^\d{3,14}$/.test(normalized) ? normalized : "";
+}
+
+async function resolveRobloxUserIdsByUsernames(usernames) {
+  const requestUsernames = [...new Set(
+    (Array.isArray(usernames) ? usernames : [])
+      .map((value) => normalizeText(value))
+      .filter(Boolean)
+  )];
+
+  if (!requestUsernames.length) {
+    return new Map();
+  }
+
+  try {
+    const response = await fetch("https://users.roblox.com/v1/usernames/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        usernames: requestUsernames,
+        excludeBannedUsers: false
+      })
+    });
+
+    if (!response.ok) {
+      return new Map();
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    const rows = Array.isArray(payload?.data) ? payload.data : [];
+    const resolved = new Map();
+
+    rows.forEach((row) => {
+      const name = normalizeText(row?.requestedUsername || row?.name).toLowerCase();
+      const userId = Number(row?.id);
+      if (!name || !Number.isFinite(userId) || userId <= 0) {
+        return;
+      }
+
+      resolved.set(name, userId);
+      avatarIdMap.set(name, userId);
+    });
+
+    return resolved;
+  } catch {
+    return new Map();
+  }
 }
 
 async function fetchWebSyncConfig() {
@@ -1633,20 +1681,68 @@ async function fetchTopBodyAvatar(userId) {
 
 async function fetchAvatarUrls(players) {
   const avatarMap = new Map();
-  const ids = [...new Set(
-    players
-      .map((player) => Number(player.userId))
-      .filter((id) => Number.isFinite(id) && id > 0)
-  )];
+  const safePlayers = Array.isArray(players) ? players : [];
+  const ids = [];
+  const unresolvedNames = [];
+  const playersByName = new Map();
 
-  if (!ids.length) {
+  safePlayers.forEach((player) => {
+    const nameKey = normalizeText(player?.name).toLowerCase();
+    if (nameKey) {
+      if (!playersByName.has(nameKey)) {
+        playersByName.set(nameKey, []);
+      }
+
+      playersByName.get(nameKey).push(player);
+    }
+
+    const normalizedUserId = normalizeSyncedUserId(player?.userId);
+    if (normalizedUserId) {
+      const userId = Number(normalizedUserId);
+      if (Number.isFinite(userId) && userId > 0) {
+        ids.push(userId);
+      }
+      return;
+    }
+
+    const mappedUserId = Number(nameKey ? avatarIdMap.get(nameKey) : 0);
+    if (Number.isFinite(mappedUserId) && mappedUserId > 0) {
+      player.userId = mappedUserId;
+      ids.push(mappedUserId);
+      return;
+    }
+
+    if (nameKey) {
+      unresolvedNames.push(nameKey);
+    }
+  });
+
+  if (unresolvedNames.length) {
+    const CHUNK_SIZE = 50;
+    for (let index = 0; index < unresolvedNames.length; index += CHUNK_SIZE) {
+      const chunkNames = unresolvedNames.slice(index, index + CHUNK_SIZE);
+      const resolvedMap = await resolveRobloxUserIdsByUsernames(chunkNames);
+      resolvedMap.forEach((resolvedUserId, nameKey) => {
+        if (Number.isFinite(Number(resolvedUserId)) && Number(resolvedUserId) > 0) {
+          ids.push(Number(resolvedUserId));
+          const linkedPlayers = playersByName.get(nameKey) || [];
+          linkedPlayers.forEach((player) => {
+            player.userId = Number(resolvedUserId);
+          });
+        }
+      });
+    }
+  }
+
+  const uniqueIds = [...new Set(ids.filter((id) => Number.isFinite(id) && id > 0))];
+  if (!uniqueIds.length) {
     return avatarMap;
   }
 
   const CHUNK_SIZE = 50;
   const chunks = [];
-  for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-    chunks.push(ids.slice(i, i + CHUNK_SIZE));
+  for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
+    chunks.push(uniqueIds.slice(i, i + CHUNK_SIZE));
   }
 
   for (const chunk of chunks) {

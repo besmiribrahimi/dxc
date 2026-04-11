@@ -454,7 +454,7 @@ function normalizeOptionalUserId(value) {
     return "";
   }
 
-  return /^\d{3,}$/.test(normalized) ? normalized : "";
+  return /^\d{3,14}$/.test(normalized) ? normalized : "";
 }
 
 function normalizeExtraPlayerEntry(raw, index = 0) {
@@ -489,7 +489,8 @@ function createPlayerFromSyncedEntry(entry) {
   const name = String(entry?.name || "").trim();
   const lower = name.toLowerCase();
   const mappedUserId = typeof avatarIdMap?.get === "function" ? avatarIdMap.get(lower) : null;
-  const resolvedUserId = Number(entry?.userId || mappedUserId || fallbackAvatarId);
+  const normalizedUserId = normalizeOptionalUserId(entry?.userId);
+  const resolvedUserId = Number(normalizedUserId || mappedUserId || fallbackAvatarId);
   const classList = normalizePlayerClassList(entry?.classes ?? entry?.class);
 
   return {

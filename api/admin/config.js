@@ -102,7 +102,7 @@ function normalizeOptionalUserId(value) {
     return "";
   }
 
-  return /^\d{3,}$/.test(normalized) ? normalized : "";
+  return /^\d{3,14}$/.test(normalized) ? normalized : "";
 }
 
 function normalizeFaction(value) {
