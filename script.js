@@ -145,7 +145,8 @@ const avatarIdMap = new Map([
   ["iwiejsidid", 4033702732],
   ["owenrob", 1543155],
   ["solicituddetrabajo10", 8759790392],
-  ["3eir0x", 2372980252]
+  ["3eir0x", 2372980252],
+  ["101theonlyone101", 10481262425]
 ]);
 
 const fallbackAvatarId = 1;
@@ -212,7 +213,23 @@ const staticAvatarUrlMap = new Map([
   ["4566570178", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-44D44A9D0325F6D57ED0AC8C6940A063-Png"],
   ["8631375518", "https://t1.rbxcdn.com/30DAY-AvatarHeadshot-227414ECC97362F7E68B8B2B90F78158-Png"],
   ["8815206411", "https://t3.rbxcdn.com/30DAY-AvatarHeadshot-802413DB06966FE0BEF45EE3EA5432DC-Png"],
-  ["10028454488", "https://t4.rbxcdn.com/30DAY-AvatarHeadshot-D1B6AD7A7686A4BC304019605A75C85A-Png"]
+  ["10028454488", "https://t4.rbxcdn.com/30DAY-AvatarHeadshot-D1B6AD7A7686A4BC304019605A75C85A-Png"],
+  ["1543155", "https://t2.rbxcdn.com/30DAY-AvatarHeadshot-C02E6EB9A44E487789BF41C77CA846B2-Png"],
+  ["261097961", "https://t6.rbxcdn.com/30DAY-AvatarHeadshot-A4425FFF0F377C7F639B32CDF28B5D2A-Png"],
+  ["368663564", "https://t7.rbxcdn.com/30DAY-AvatarHeadshot-0FB3AA70AC927DFB2CCEE62C660A3EE3-Png"],
+  ["610467084", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-56DFC0F87BABBE49C6D1BE708AE9A66A-Png"],
+  ["1533471582", "https://t4.rbxcdn.com/30DAY-AvatarHeadshot-7D436D59E611C4AE3E217D992E8124B7-Png"],
+  ["1677220024", "https://t4.rbxcdn.com/30DAY-AvatarHeadshot-97E62D82F05E802F0FF7333869FB164F-Png"],
+  ["1801015130", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-3A540C0A60AC6B3F6A4950C678C242BA-Png"],
+  ["2372980252", "https://t1.rbxcdn.com/30DAY-AvatarHeadshot-A7D1723D4FC3DB51108A1F1340514E8A-Png"],
+  ["3545954097", "https://t6.rbxcdn.com/30DAY-AvatarHeadshot-B4F3D735C4D08CAAD10FE6CCF67E3158-Png"],
+  ["4033702732", "https://t1.rbxcdn.com/30DAY-AvatarHeadshot-B05D7F170551019C3D86E2ABB6197581-Png"],
+  ["4442076338", "https://t7.rbxcdn.com/30DAY-AvatarHeadshot-6B87787C55091D2AE73989162FB3C23D-Png"],
+  ["7428505407", "https://t7.rbxcdn.com/30DAY-AvatarHeadshot-7FE0EA3BA75717D1BEC1DA934F4260C7-Png"],
+  ["7772492991", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-2EB7DFB73A53DFE8E8FB617272D03398-Png"],
+  ["8309032957", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-733C335567F7136DA3FD42F70845A34A-Png"],
+  ["8759790392", "https://t5.rbxcdn.com/30DAY-AvatarHeadshot-4458A3C6B17F1DE1A0B42E9574FFD460-Png"],
+  ["10481262425", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-B9951F43CE2567D84D13218B5B2064B0-Png"]
 ]);
 
 const playersGrid = document.getElementById("playersGrid");
