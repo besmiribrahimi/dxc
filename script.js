@@ -4,6 +4,7 @@
   let fallbackPlayerLines = [];
   let avatarIdMap = new Map();
   let staticAvatarUrlMap = new Map();
+  let globalDataPromise = null;
 
   async function loadGlobalData() {
     try {
@@ -1941,6 +1942,11 @@ function isTypingTarget(target) {
 }
 
   async function loadPlayerLines() {
+    // Ensure we wait for global data (mappings, fallbacks) to load first
+    if (globalDataPromise) {
+      await globalDataPromise;
+    }
+
     try {
       const response = await fetch("discordlink", { cache: "no-store" });
       if (response.ok) {
@@ -1988,8 +1994,10 @@ function renderPlayers(players, avatarMap) {
       return;
     }
 
-    // Load external mappings and fallbacks first
-    await loadGlobalData();
+    // Ensure global data is ready
+    if (globalDataPromise) {
+      await globalDataPromise;
+    }
 
     const [lines, syncedConfig] = await Promise.all([
       loadPlayerLines(),
@@ -2120,5 +2128,8 @@ if (typeof window !== "undefined") {
 
   startOpsHud();
   startLfgQueueSystem();
+
+  // Initiate global data loading immediately on every page
+  globalDataPromise = loadGlobalData();
 
 })();
