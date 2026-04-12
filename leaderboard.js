@@ -659,8 +659,10 @@ async function loadAndRenderLeaderboard() {
     return;
   }
 
-  const lines = await loadPlayerLines();
-  const remoteConfig = await fetchRemoteConfig();
+  const [lines, remoteConfig] = await Promise.all([
+    loadPlayerLines(),
+    fetchRemoteConfig()
+  ]);
   const syncedPlayers = normalizeConfigPlayers(remoteConfig);
   const syncedExtraPlayers = normalizeExtraPlayers(remoteConfig);
 
@@ -730,10 +732,17 @@ async function loadAndRenderLeaderboard() {
     players.sort((a, b) => b.level - a.level || b.kd - a.kd || a.sourceIndex - b.sourceIndex);
   }
 
-  const avatarMap = await fetchAvatarUrls(players);
   const syncLabel = remoteConfig?.lastSyncTime ? ` (Synced: ${new Date(remoteConfig.lastSyncTime).toLocaleString()})` : "";
+  const options = { syncLabel, hasManualOrder };
 
-  renderLeaderboard(players, avatarMap, { syncLabel, hasManualOrder });
+  // Render immediately so page is interactive while avatar fetch continues in background.
+  renderLeaderboard(players, new Map(), options);
+
+  fetchAvatarUrls(players)
+    .then((avatarMap) => {
+      renderLeaderboard(players, avatarMap, options);
+    })
+    .catch(() => {});
 }
 
 function setupSearch() {

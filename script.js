@@ -1478,42 +1478,60 @@ function ensureShowcaseControls(players, avatarMap) {
     return;
   }
 
-  const baseList = players.map((player, index) => ({ ...player, baseRank: index + 1 }));
+  if (!controls.__showcaseState) {
+    controls.__showcaseState = {
+      players: [],
+      avatarMap: new Map(),
+      applyView: null
+    };
 
-  const applyView = () => {
-    const query = normalizeText(searchNode.value).toLowerCase();
-    const mode = String(sortNode.value || "rank");
+    const applyView = () => {
+      const currentPlayers = Array.isArray(controls.__showcaseState.players)
+        ? controls.__showcaseState.players
+        : [];
+      const currentAvatarMap = controls.__showcaseState.avatarMap instanceof Map
+        ? controls.__showcaseState.avatarMap
+        : new Map();
+      const baseList = currentPlayers.map((player, index) => ({ ...player, baseRank: index + 1 }));
+      const query = normalizeText(searchNode.value).toLowerCase();
+      const mode = String(sortNode.value || "rank");
 
-    const filtered = baseList.filter((player) => {
-      if (!query) {
-        return true;
-      }
+      const filtered = baseList.filter((player) => {
+        if (!query) {
+          return true;
+        }
 
-      const searchText = `${player.name} ${player.faction} ${player.country}`.toLowerCase();
-      return searchText.includes(query);
-    });
+        const searchText = `${player.name} ${player.faction} ${player.country}`.toLowerCase();
+        return searchText.includes(query);
+      });
 
-    filtered.sort((a, b) => {
-      if (mode === "kd") {
-        return Number(b.kd) - Number(a.kd);
-      }
+      filtered.sort((a, b) => {
+        if (mode === "kd") {
+          return Number(b.kd) - Number(a.kd);
+        }
 
-      if (mode === "level") {
-        return Number(b.level) - Number(a.level);
-      }
+        if (mode === "level") {
+          return Number(b.level) - Number(a.level);
+        }
 
-      if (mode === "name") {
-        return String(a.name).localeCompare(String(b.name));
-      }
+        if (mode === "name") {
+          return String(a.name).localeCompare(String(b.name));
+        }
 
-      return Number(a.baseRank) - Number(b.baseRank);
-    });
+        return Number(a.baseRank) - Number(b.baseRank);
+      });
 
-    renderPlayers(filtered, avatarMap);
-  };
+      renderPlayers(filtered, currentAvatarMap);
+    };
 
-  searchNode.addEventListener("input", applyView);
-  sortNode.addEventListener("change", applyView);
+    controls.__showcaseState.applyView = applyView;
+    searchNode.addEventListener("input", applyView);
+    sortNode.addEventListener("change", applyView);
+  }
+
+  controls.__showcaseState.players = Array.isArray(players) ? players : [];
+  controls.__showcaseState.avatarMap = avatarMap instanceof Map ? avatarMap : new Map();
+  controls.__showcaseState.applyView();
 }
 
 function getPlayerStats(name, isTopPlayer) {
@@ -1837,9 +1855,13 @@ async function fetchAvatarUrls(players) {
 
   if (unresolvedNames.length) {
     const CHUNK_SIZE = 50;
+    const chunks = [];
     for (let index = 0; index < unresolvedNames.length; index += CHUNK_SIZE) {
-      const chunkNames = unresolvedNames.slice(index, index + CHUNK_SIZE);
-      const resolvedMap = await resolveRobloxUserIdsByUsernames(chunkNames);
+      chunks.push(unresolvedNames.slice(index, index + CHUNK_SIZE));
+    }
+
+    const resolvedMaps = await Promise.all(chunks.map((chunkNames) => resolveRobloxUserIdsByUsernames(chunkNames)));
+    resolvedMaps.forEach((resolvedMap) => {
       resolvedMap.forEach((resolvedUserId, nameKey) => {
         if (Number.isFinite(Number(resolvedUserId)) && Number(resolvedUserId) > 0) {
           ids.push(Number(resolvedUserId));
@@ -1849,7 +1871,7 @@ async function fetchAvatarUrls(players) {
           });
         }
       });
-    }
+    });
   }
 
   const uniqueIds = [...new Set(ids.filter((id) => Number.isFinite(id) && id > 0))];
@@ -1863,11 +1885,11 @@ async function fetchAvatarUrls(players) {
     chunks.push(uniqueIds.slice(i, i + CHUNK_SIZE));
   }
 
-  for (const chunk of chunks) {
+  await Promise.all(chunks.map(async (chunk) => {
     try {
       const response = await fetch(getThumbnailApiUrl(chunk), { cache: "no-store" });
       if (!response.ok) {
-        continue;
+        return;
       }
 
       const payload = await response.json();
@@ -1881,7 +1903,7 @@ async function fetchAvatarUrls(players) {
     } catch {
       // Gracefully continue with legacy image fallback.
     }
-  }
+  }));
 
   return avatarMap;
 }
@@ -2163,18 +2185,41 @@ async function init() {
     }
   });
 
-  const avatarMap = await fetchAvatarUrls(players);
-
   const topPlayer = players.find((player) => player.name.toLowerCase() === TOP_PLAYER_NAME.toLowerCase()) || players[0];
+  const initialAvatarMap = new Map();
+
   if (topPlayer) {
-    topPlayer.bodyAvatarUrl = await fetchTopBodyAvatar(topPlayer.userId);
     renderTopPlayerCard(topPlayer);
   }
 
-  renderPlayers(players, avatarMap);
-  ensureShowcaseControls(players, avatarMap);
+  renderPlayers(players, initialAvatarMap);
+  ensureShowcaseControls(players, initialAvatarMap);
   renderFactionNewsFeed(players);
   renderFactionPulse(players);
+
+  fetchAvatarUrls(players)
+    .then((avatarMap) => {
+      renderPlayers(players, avatarMap);
+      ensureShowcaseControls(players, avatarMap);
+
+      if (topPlayer) {
+        renderTopPlayerCard(topPlayer);
+      }
+    })
+    .catch(() => {});
+
+  if (topPlayer) {
+    fetchTopBodyAvatar(topPlayer.userId)
+      .then((bodyAvatarUrl) => {
+        if (!bodyAvatarUrl) {
+          return;
+        }
+
+        topPlayer.bodyAvatarUrl = bodyAvatarUrl;
+        renderTopPlayerCard(topPlayer);
+      })
+      .catch(() => {});
+  }
 }
 
 if (closeModalButton) {
