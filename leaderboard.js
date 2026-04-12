@@ -444,6 +444,8 @@ function buildTopThreeCard(player, rank, avatarMap) {
   card.tabIndex = 0;
   card.setAttribute("role", "button");
   card.setAttribute("aria-label", `Open Player ${player.name}`);
+  // Set faction flag background image for watermark
+  card.style.setProperty('--faction-flag-bg-image', getPrimaryFactionBackgroundImage(player.faction));
 
   const avatarUrl = getResolvedAvatar(player, avatarMap);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);

@@ -37,21 +37,24 @@
 }
 
 .leaderboard-search {
-  width: min(400px, 100%);
-  padding: 0.75rem 1rem;
-  background-color: var(--leaderboard-header-bg);
+  width: min(480px, 100%);
+  padding: 0.85rem 1.2rem;
+  background:
+    linear-gradient(135deg, rgba(15, 20, 32, 0.9), rgba(10, 14, 24, 0.95));
   border: 1px solid var(--leaderboard-border);
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--leaderboard-text-primary);
   font-family: 'Exo 2', sans-serif;
-  font-size: 0.9rem;
-  transition: border-color 300ms ease, box-shadow 300ms ease;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+  transition: border-color 300ms ease, box-shadow 300ms ease, background 300ms ease;
 }
 
 .leaderboard-search:focus {
   outline: none;
-  border-color: var(--leaderboard-border-focus);
-  box-shadow: 0 0 15px var(--leaderboard-glow);
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 0 20px var(--leaderboard-glow);
+  background: linear-gradient(135deg, rgba(18, 24, 38, 0.95), rgba(12, 18, 30, 0.98));
 }
 
 .leaderboard-warroom-link {
@@ -178,15 +181,19 @@
 
 .podium-card {
   position: relative;
-  background: var(--leaderboard-card-bg);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.1), transparent 60%),
+    linear-gradient(165deg, rgba(18, 24, 38, 0.95), rgba(12, 16, 28, 0.98));
   border: 1px solid var(--leaderboard-border);
-  border-radius: 12px;
-  padding: 1.5rem;
+  border-radius: 16px;
+  padding: 1.8rem 1.5rem 1.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(132, 160, 255, 0.06) inset;
   transition: transform 300ms ease, box-shadow 300ms ease, border-color 300ms ease;
   overflow: hidden;
   opacity: 0;
@@ -231,19 +238,47 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 3px;
   background: transparent;
-  transition: background 300ms ease;
+  transition: background 300ms ease, box-shadow 300ms ease;
 }
 
-.podium-card.rank-1::before { background: linear-gradient(90deg, transparent, var(--leaderboard-rank-1), transparent); }
-.podium-card.rank-2::before { background: linear-gradient(90deg, transparent, var(--leaderboard-rank-2), transparent); }
-.podium-card.rank-3::before { background: linear-gradient(90deg, transparent, var(--leaderboard-rank-3), transparent); }
+.podium-card.rank-1::before {
+  background: linear-gradient(90deg, transparent, var(--leaderboard-rank-1), var(--leaderboard-rank-1), transparent);
+  box-shadow: 0 0 20px rgba(255, 201, 61, 0.3);
+}
+.podium-card.rank-2::before {
+  background: linear-gradient(90deg, transparent, var(--leaderboard-rank-2), var(--leaderboard-rank-2), transparent);
+  box-shadow: 0 0 14px rgba(219, 228, 255, 0.2);
+}
+.podium-card.rank-3::before {
+  background: linear-gradient(90deg, transparent, var(--leaderboard-rank-3), var(--leaderboard-rank-3), transparent);
+  box-shadow: 0 0 14px rgba(212, 154, 91, 0.2);
+}
+
+.podium-card.rank-1 {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 201, 61, 0.12), transparent 55%),
+    radial-gradient(circle at 50% 100%, rgba(255, 170, 0, 0.06), transparent 50%),
+    linear-gradient(165deg, rgba(24, 22, 14, 0.96), rgba(14, 14, 20, 0.98));
+  border-color: rgba(255, 201, 61, 0.25);
+}
+
+.podium-card.rank-1:hover {
+  border-color: rgba(255, 201, 61, 0.55);
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.5),
+    0 0 32px rgba(255, 201, 61, 0.18),
+    0 0 0 1px rgba(255, 201, 61, 0.1) inset;
+}
 
 .podium-card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-10px);
   border-color: var(--leaderboard-border-focus);
-  box-shadow: 0 15px 35px rgba(0,0,0,0.4), 0 0 20px var(--leaderboard-glow);
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.5),
+    0 0 28px var(--leaderboard-glow),
+    0 0 0 1px rgba(132, 160, 255, 0.12) inset;
 }
 
 .podium-rank {
@@ -260,17 +295,19 @@
 .podium-card.rank-3 .podium-rank { color: var(--leaderboard-rank-3); }
 
 .podium-avatar {
-  width: 100px;
-  height: 100px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
   border: 3px solid var(--leaderboard-border);
   margin-bottom: 1rem;
   object-fit: cover;
-  transition: transform 300ms ease;
+  transition: transform 300ms ease, box-shadow 300ms ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .podium-card:hover .podium-avatar {
-  transform: scale(1.05);
+  transform: scale(1.08);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 20px var(--leaderboard-glow);
 }
 
 .podium-card.rank-1 .podium-avatar { border-color: var(--leaderboard-rank-1); }
@@ -355,11 +392,14 @@
 }
 
 .leaderboard-panel {
-  background: var(--leaderboard-card-bg);
+  background:
+    linear-gradient(165deg, rgba(16, 20, 30, 0.96), rgba(10, 14, 22, 0.98));
   border: 1px solid var(--leaderboard-border);
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(132, 160, 255, 0.05) inset;
 }
 
 .leaderboard-header {
@@ -415,8 +455,11 @@
 }
 
 .leaderboard-row:hover {
-  background-color: rgba(59, 130, 246, 0.1);
-  transform: scale(1.01);
+  background-color: rgba(59, 130, 246, 0.08);
+  transform: scale(1.005);
+  border-left: 3px solid rgba(59, 130, 246, 0.6);
+  padding-left: calc(1.5rem - 3px);
+  box-shadow: inset 0 0 30px rgba(59, 130, 246, 0.04);
 }
 
 .leader-rank {
