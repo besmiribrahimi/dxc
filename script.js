@@ -46,7 +46,7 @@ const fallbackPlayerLines = [
   "45  kkevin789- Faction: AH |Country: USA -770824804676010004",
   "46. AvgEggEnjoyer- Faction: DK | Country: Czech Republic -805144861417144331",
   "47. besiliekkesi - Faction: AH | Country: Albania -1359614368559534301",
-  "48. Eleventhcommandment - Faction: AH | Country: Canada -1473787201807585450",
+  "48. EleventhCommandment - Faction: AH | Country: Canada -1473787201807585450",
   "49. pvpkinnng - Faction: N/A | Country: UK -69159138956948277",
   "50. FTF_Dingleberrysolos - Faction: N/A | Country: UK -1461318954134802479",
   "51. Catalinharang - Faction: RKA | Country: Canada -1463584787561189479",
@@ -98,6 +98,7 @@ const avatarIdMap = new Map([
   ["daspokeynameyt", 531227865],
   ["dociusaltius", 8942473402],
   ["doudperfectcom", 1500083866],
+  ["eleventhcommandment", 2439366551],
   ["fernichtung1", 1353538228],
   ["flexmaster2002", 1580348110],
   ["hamit_gamer13000", 962032467],
@@ -178,12 +179,10 @@ const avatarIdMap = new Map([
   ["orbify3", 7744541535]
 ]);
 
-// Expose maps to window for global access (required by leaderboard.js)
-if (typeof window !== "undefined") {
-  window.avatarIdMap = avatarIdMap;
-}
+// Expose maps and constants TO WINDOW IMMEDIATELY for use by other scripts (leaderboard.js, warroom.js)
+window.avatarIdMap = avatarIdMap;
+window.fallbackAvatarId = 1;
 
-const fallbackAvatarId = 1;
 const staticAvatarUrlMap = new Map([
   ["1", "https://t5.rbxcdn.com/30DAY-AvatarHeadshot-310966282D3529E36976BF6B07B1DC90-Png"],
   ["15795537", "https://t6.rbxcdn.com/30DAY-AvatarHeadshot-E3983E6C0261B86BD2771F423013EE82-Png"],
@@ -269,12 +268,17 @@ const staticAvatarUrlMap = new Map([
   ["8704157338", "https://www.roblox.com/headshot-thumbnail/image?userId=8704157338&width=420&height=420&format=png"],
   ["4129401197", "https://www.roblox.com/headshot-thumbnail/image?userId=4129401197&width=420&height=420&format=png"],
   ["10107863002", "https://www.roblox.com/headshot-thumbnail/image?userId=10107863002&width=420&height=420&format=png"],
-  ["7744541535", "https://www.roblox.com/headshot-thumbnail/image?userId=7744541535&width=420&height=420&format=png"]
+  ["7744541535", "https://www.roblox.com/headshot-thumbnail/image?userId=7744541535&width=420&height=420&format=png"],
+  ["2439366551", "https://www.roblox.com/headshot-thumbnail/image?userId=2439366551&width=420&height=420&format=png"]
 ]);
 
-if (typeof window !== "undefined") {
-  window.staticAvatarUrlMap = staticAvatarUrlMap;
-}
+window.staticAvatarUrlMap = staticAvatarUrlMap;
+
+// Expose core headshot functions to window
+window.getStaticAvatarUrl = getStaticAvatarUrl;
+window.getRobloxHeadshotUrl = getRobloxHeadshotUrl;
+window.getFallbackAvatarUrl = getFallbackAvatarUrl;
+window.escapeHtml = escapeHtml;
 
 const playersGrid = document.getElementById("playersGrid");
 const modal = document.getElementById("playerModal");
@@ -375,10 +379,6 @@ function isAdminPanelPage() {
 let opsHudMotdIntervalId = null;
 let opsHudMotdIndex = 0;
 let factionNewsRotateIntervalId = null;
-
-function normalizeText(value) {
-  return String(value || "").replace(/\s+/g, " ").trim();
-}
 
 function escapeHtml(value) {
   return String(value || "")
@@ -2026,7 +2026,7 @@ function buildPlayerCard(player, index, avatarMap) {
   });
 
   card.innerHTML = `
-    <img class="player-image" src="${primaryAvatar}" alt="${player.name} Roblox avatar" loading="lazy" referrerpolicy="no-referrer">
+    <img class="player-image" src="${primaryAvatar}" alt="${escapeHtml(player.name)} Roblox avatar" loading="lazy" referrerpolicy="no-referrer">
     <div class="player-overlay">
       <span class="player-label">Player</span>
       ${factionChipMarkup}
@@ -2034,7 +2034,7 @@ function buildPlayerCard(player, index, avatarMap) {
         ${classChipsMarkup}
         <span class="player-meta-chip">${getDeviceIconSvg(deviceLabel)}${escapeHtml(deviceLabel)}</span>
       </div>
-      <h3 class="player-name">${player.name}</h3>
+      <h3 class="player-name">${escapeHtml(player.name)}</h3>
     </div>
   `;
 
@@ -2118,7 +2118,7 @@ function renderTopPlayerCard(player) {
   const badgeFlagMarkup = badgeFlagPath
     ? `<img class="faction-flag-icon" src="${badgeFlagPath}" alt="${safeFactionToken} flag" loading="lazy">`
     : "";
-  topFactionBadgeNode.innerHTML = `${badgeFlagMarkup}${safeFactionToken}`;
+  topFactionBadgeNode.innerHTML = `${badgeFlagMarkup}${escapeHtml(safeFactionToken)}`;
 
   const heroAvatar = player.bodyAvatarUrl
     || player.avatarUrl

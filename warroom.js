@@ -115,7 +115,7 @@ function normalizeConfigExtraPlayers(config) {
       }
 
       const key = name.toLowerCase();
-      const mappedUserId = Number(typeof avatarIdMap?.get === "function" ? avatarIdMap.get(key) : 0);
+      const mappedUserId = Number(typeof window.avatarIdMap?.get === "function" ? window.avatarIdMap.get(key) : 0);
       const parsedUserId = Number(normalizeConfigUserId(item.userId));
       const resolvedUserId = Number.isFinite(parsedUserId) && parsedUserId > 0
         ? parsedUserId
@@ -370,7 +370,7 @@ function renderTopOperators(players, avatarMap) {
     const kd = clampKd(player.kd);
     const impact = Math.round(getPlayerImpact(level, kd, index));
     const fallbackAvatar = getFallbackAvatarUrl(player.name);
-    const avatar = avatarMap.get(Number(player.userId))
+    const avatar = (typeof avatarMap?.get === "function" ? avatarMap.get(Number(player.userId)) : null)
       || getRobloxHeadshotUrl(player.userId, 420)
       || getStaticAvatarUrl(player.userId)
       || fallbackAvatar;

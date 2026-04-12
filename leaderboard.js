@@ -363,7 +363,7 @@ function normalizeExtraPlayers(config) {
         return null;
       }
 
-      const mappedUserId = Number(avatarIdMap?.get?.(name.toLowerCase()) || 0);
+      const mappedUserId = Number(window.avatarIdMap?.get?.(name.toLowerCase()) || 0);
       const normalizedUserId = normalizeOptionalUserId(item.userId);
 
       return {
@@ -472,14 +472,14 @@ function buildTopThreeCard(player, rank, avatarMap) {
   card.innerHTML = `
     <div class="holographic-shine"></div>
     <span class="podium-rank">#${rank}</span>
-    <img class="podium-avatar" src="${avatarUrl}" alt="${player.name} Roblox avatar" loading="lazy" referrerpolicy="no-referrer">
+    <img class="podium-avatar" src="${avatarUrl}" alt="${escapeHtml(player.name)} Roblox avatar" loading="lazy" referrerpolicy="no-referrer">
     <div class="podium-body">
-      <h2 class="podium-title">${player.name}</h2>
+      <h2 class="podium-title">${escapeHtml(player.name)}</h2>
       ${factionMarkup}
       <div class="podium-meta">
-        <span class="podium-stat">${countryToFlag(player.country)} ${player.country}</span>
+        <span class="podium-stat">${countryToFlag(player.country)} ${escapeHtml(player.country)}</span>
         ${classChipsMarkup}
-        <span class="podium-stat podium-detail-chip">${deviceIconMarkup}<span>${deviceLabel}</span></span>
+        <span class="podium-stat podium-detail-chip">${deviceIconMarkup}<span>${escapeHtml(deviceLabel)}</span></span>
         <span class="podium-stat">K/D ${Number(player.kd).toFixed(1)}</span>
         <span class="podium-stat podium-level"><img class="level-badge" src="${levelBadgeUrl}" alt="Level ${player.level}" loading="lazy">Level ${player.level}</span>
       </div>
@@ -541,19 +541,19 @@ function buildLeaderboardRow(player, rank, avatarMap) {
     <span class="leader-rank rank-${rank <= 3 ? rank : 0}">#${rank}</span>
     <div class="leader-row-main">
       <span class="leader-player">
-        <img class="leader-avatar" src="${avatarUrl}" alt="${player.name} Roblox avatar" loading="lazy" referrerpolicy="no-referrer">
+        <img class="leader-avatar" src="${avatarUrl}" alt="${escapeHtml(player.name)} Roblox avatar" loading="lazy" referrerpolicy="no-referrer">
         <span>
-          <strong class="leader-name">${player.name}</strong>
-          <small class="leader-discord">Discord ${player.discordId}</small>
+          <strong class="leader-name">${escapeHtml(player.name)}</strong>
+          <small class="leader-discord">Discord ${escapeHtml(player.discordId)}</small>
         </span>
       </span>
       <div class="leader-row-meta">
         ${classChipsMarkup}
-        <span class="leader-detail-chip">${deviceIconMarkup}<span>${deviceLabel}</span></span>
+        <span class="leader-detail-chip">${deviceIconMarkup}<span>${escapeHtml(deviceLabel)}</span></span>
       </div>
     </div>
     <span class="leader-faction">${factionMarkup}</span>
-    <span class="leader-country">${countryToFlag(player.country)} ${player.country}</span>
+    <span class="leader-country">${countryToFlag(player.country)} ${escapeHtml(player.country)}</span>
     <strong class="leader-kd">${Number(player.kd).toFixed(1)}</strong>
     <span class="leader-level"><img class="level-badge" src="${levelBadgeUrl}" alt="Level ${player.level}" loading="lazy"><strong>${player.level}</strong></span>
   `;
