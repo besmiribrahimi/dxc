@@ -1806,7 +1806,7 @@ async function handleLeaderboardCommand(interaction, context) {
   const pageSize = clampInt(interaction.options.getInteger("page_size"), 5, 20, 10);
   const postToConfiguredChannel = interaction.options.getBoolean("post") === true;
 
-  await interaction.deferReply({ ephemeral: !postToConfiguredChannel });
+  await interaction.deferReply({ ephemeral: false });
 
   try {
     const leaderboard = await fetchLeaderboardData(endpoint);
@@ -2451,6 +2451,30 @@ const slashCommandBuilders = [
         .setName("reason")
         .setDescription("Reason for ban")
         .setRequired(false)
+    ),
+  new SlashCommandBuilder()
+    .setName("serverstats")
+    .setDescription("Show detailed server statistics")
+    .setDMPermission(false),
+  new SlashCommandBuilder()
+    .setName("joke")
+    .setDescription("Receive a random gaming or military joke")
+    .setDMPermission(false),
+  new SlashCommandBuilder()
+    .setName("template")
+    .setDescription("Send an official Ascend Entrenched template message")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .setDMPermission(false)
+    .addStringOption((option) =>
+      option
+        .setName("name")
+        .setDescription("The template to send")
+        .setRequired(true)
+        .addChoices(
+          { name: "Welcome / Rules", value: "rules" },
+          { name: "Application Guidelines", value: "app_guide" },
+          { name: "War Room Notice", value: "war_room" }
+        )
     )
 ];
 
@@ -3199,6 +3223,94 @@ async function handleEightBallCommand(interaction, context) {
   });
 }
 
+async function handleHelpCommand(interaction, context) {
+  const brandIcon = BRAND_ICON || "https://ascendentrenched.vercel.app/assets/brand/logo-mark-512.png";
+  const embed = new EmbedBuilder()
+    .setAuthor({ name: "Ascend Command Center", iconURL: brandIcon })
+    .setTitle("Command Directory")
+    .setColor("#3B82F6")
+    .setDescription("Here are the available commands, separated by permission level.")
+    .addFields(
+      { name: "🛡️ Admin & Staff Commands", value: "`mute`, `warn`, `kick`, `ban`, `hqpost`, `ticketpanel`, `syncaudit`, `setup`, `template`, `refreshcommands`\n*(Requires specific server permissions)*" },
+      { name: "👤 Member Core Commands", value: "`leaderboard` (Show public rankings), `userinfo`, `1v1`, `avatar`, `serverstats` (View server info)" },
+      { name: "🎲 Fun & Utilities", value: "`eightball`, `coinflip`, `roll`, `choose`, `joke`, `ping`" }
+    )
+    .setFooter({ text: "Ascend Entrenched", iconURL: brandIcon })
+    .setTimestamp();
+  
+  await interaction.reply({ embeds: [embed], ephemeral: false });
+}
+
+async function handleServerStatsCommand(interaction, context) {
+  if (!interaction.guild) {
+    await interaction.reply({ content: "This command can only be used in a server.", ephemeral: true });
+    return;
+  }
+  const brandIcon = BRAND_ICON || "https://ascendentrenched.vercel.app/assets/brand/logo-mark-512.png";
+  const embed = new EmbedBuilder()
+    .setAuthor({ name: "Ascend Telemetry", iconURL: brandIcon })
+    .setTitle(`📈 ${interaction.guild.name} Statistics`)
+    .setColor("#3B82F6")
+    .setThumbnail(interaction.guild.iconURL({ dynamic: true }) || brandIcon)
+    .addFields(
+      { name: "👥 Members", value: `\`\`\`\n${interaction.guild.memberCount}\n\`\`\``, inline: true },
+      { name: "🔰 Roles", value: `\`\`\`\n${interaction.guild.roles.cache.size}\n\`\`\``, inline: true },
+      { name: "💬 Channels", value: `\`\`\`\n${interaction.guild.channels.cache.size}\n\`\`\``, inline: true },
+      { name: "🚀 Boosts", value: `> ${interaction.guild.premiumSubscriptionCount || 0} Boosts (Tier ${interaction.guild.premiumTier})`, inline: false }
+    )
+    .setFooter({ text: "Ascend Entrenched", iconURL: brandIcon })
+    .setTimestamp();
+
+  await interaction.reply({ embeds: [embed], ephemeral: false });
+}
+
+async function handleJokeCommand(interaction, context) {
+  const jokes = [
+    "Why do programmers prefer dark mode? Because light attracts bugs.",
+    "Why did the soldier bring a ladder to the bar? He heard the drinks were on the house.",
+    "I tried to explain to my squad how to throw a grenade, but it went over their heads.",
+    "What's a tactical gamer's favorite type of music? Heavy Metal Gear.",
+    "Why are keyboards great at warfare? Because they have two Shifts and a Space to retreat.",
+    "How many programmers does it take to change a light bulb? None, that's a hardware problem."
+  ];
+  const selectedJoke = randomItem(jokes, jokes[0]);
+  
+  const embed = new EmbedBuilder()
+    .setTitle("🎲 Humor Module")
+    .setColor("#FACC15")
+    .setDescription(`> ${selectedJoke}`);
+    
+  await interaction.reply({ embeds: [embed] });
+}
+
+async function handleTemplateCommand(interaction, context) {
+  const templateName = interaction.options.getString("name", true);
+  const brandIcon = BRAND_ICON || "https://ascendentrenched.vercel.app/assets/brand/logo-mark-512.png";
+  let title = "Template";
+  let desc = "";
+
+  if (templateName === "rules") {
+    title = "📜 Server Rules & Welcome";
+    desc = "**1. Respect Everyone**\nTreat all members with respect. No harassment or toxicity.\n\n**2. No Exploiting or Cheating**\nAny forms of exploiting in-game will result in an immediate ban.\n\n**3. Listen to Staff**\nStaff decisions are final.\n\n> *Ignorance of the rules is not an excuse.*";
+  } else if (templateName === "app_guide") {
+    title = "📝 Application Guidelines";
+    desc = "To join the roster, ensure you meet the level requirements.\n\n1. Use the Create Application button.\n2. Provide your exact Discord tag and Roblox username.\n3. Wait patiently for staff to review your submission in the designated channels.";
+  } else if (templateName === "war_room") {
+    title = "⚔️ War Room Operational";
+    desc = "**The War Room is now active.**\n\nAll forces must report to their designated voice channels immediately. Ensure your gear and loadouts are prepared before deployment.";
+  }
+
+  const embed = new EmbedBuilder()
+    .setAuthor({ name: "Ascend Dispatch", iconURL: brandIcon })
+    .setTitle(title)
+    .setColor("#F43F5E")
+    .setDescription(desc)
+    .setFooter({ text: "Official Ascend Entrenched Template", iconURL: brandIcon })
+    .setTimestamp();
+    
+  await interaction.reply({ embeds: [embed] });
+}
+
 async function handleSlashCommand(interaction, context) {
   if (await handleApplyDecisionButton(interaction, context)) {
     return;
@@ -3237,6 +3349,26 @@ async function handleSlashCommand(interaction, context) {
   }
 
   if (!interaction.isChatInputCommand()) {
+    return;
+  }
+
+  if (interaction.commandName === "help") {
+    await handleHelpCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "serverstats") {
+    await handleServerStatsCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "joke") {
+    await handleJokeCommand(interaction, context);
+    return;
+  }
+
+  if (interaction.commandName === "template") {
+    await handleTemplateCommand(interaction, context);
     return;
   }
 
