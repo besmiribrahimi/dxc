@@ -2138,6 +2138,8 @@ if (playersGrid) {
 if (typeof window !== "undefined") {
   window.renderFactionNewsFeed = renderFactionNewsFeed;
   window.renderFactionPulse = renderFactionPulse;
+  window.openModal = openModal;
+  window.closeModal = closeModal;
 }
 
   startOpsHud();
