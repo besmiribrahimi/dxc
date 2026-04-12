@@ -389,6 +389,10 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function normalizeText(value) {
+  return escapeHtml(String(value || "").replace(/\s+/g, " ").trim());
+}
+
 function splitFactionTokens(faction) {
   const normalized = normalizeText(faction).toUpperCase();
   if (!normalized || normalized.toUpperCase() === "N/A") {
