@@ -39,11 +39,17 @@
   window.staticAvatarUrlMap = staticAvatarUrlMap;
   window.fallbackAvatarId = 1;
 
-  // Expose core headshot functions to window
+  // Expose core headshot functions and utilities to window
+  window.loadGlobalData = loadGlobalData;
   window.getStaticAvatarUrl = getStaticAvatarUrl;
   window.getRobloxHeadshotUrl = getRobloxHeadshotUrl;
   window.getFallbackAvatarUrl = getFallbackAvatarUrl;
   window.escapeHtml = escapeHtml;
+  window.normalizeText = normalizeText;
+  window.sanitizeFactionValue = sanitizeFactionValue;
+  window.normalizePlayerClassValue = normalizePlayerClassValue;
+  window.normalizePlayerClassList = normalizePlayerClassList;
+  window.splitFactionTokens = splitFactionTokens;
 
 const playersGrid = document.getElementById("playersGrid");
 const modal = document.getElementById("playerModal");
