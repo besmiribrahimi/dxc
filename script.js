@@ -234,6 +234,7 @@ const staticAvatarUrlMap = new Map([
 
 const playersGrid = document.getElementById("playersGrid");
 const modal = document.getElementById("playerModal");
+const modalPanelNode = modal?.querySelector(".modal-panel") || null;
 const closeModalButton = document.getElementById("closeModal");
 const modalAvatar = document.getElementById("modalAvatar");
 const modalName = document.getElementById("modalName");
@@ -426,6 +427,16 @@ function getClassIconPath(playerClass) {
 
 function getFactionFlagPath(token) {
   return factionFlagMap.get(String(token || "").toUpperCase()) || "";
+}
+
+function getPrimaryFactionBackgroundImage(faction) {
+  const token = splitFactionTokens(faction).find((entry) => entry !== "N/A") || "";
+  const flagPath = getFactionFlagPath(token);
+  if (!flagPath) {
+    return "none";
+  }
+
+  return `url("${encodeURI(flagPath)}")`;
 }
 
 function buildFactionChipHtml(faction, options = {}) {
@@ -1934,6 +1945,7 @@ function getWaveStep(indexInGroup, groupSize) {
 function buildPlayerCard(player, index, avatarMap) {
   const card = document.createElement("article");
   card.className = "player-card";
+  card.style.setProperty("--faction-flag-bg-image", getPrimaryFactionBackgroundImage(player.faction));
   card.tabIndex = 0;
   const groupIndex = Math.floor(index / GROUP_SIZE);
   const indexInGroup = index % GROUP_SIZE;
@@ -2006,6 +2018,10 @@ function openModal(player) {
     return;
   }
 
+  if (modalPanelNode) {
+    modalPanelNode.style.setProperty("--faction-flag-bg-image", getPrimaryFactionBackgroundImage(player.faction));
+  }
+
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   applyImageFallbackChain(modalAvatar, [
     player.bodyAvatarUrl,
@@ -2044,6 +2060,8 @@ function renderTopPlayerCard(player) {
   if (!topPlayerCard || !topPlayerNameNode || !topPlayerSubtitleNode || !topPlayerLevelNode || !topPlayerKdNode || !topCountryBadgeNode || !topPlayerAvatarNode || !topFactionBadgeNode) {
     return;
   }
+
+  topPlayerCard.style.setProperty("--faction-flag-bg-image", getPrimaryFactionBackgroundImage(player.faction));
 
   topPlayerNameNode.textContent = player.name;
   topPlayerSubtitleNode.textContent = TOP_PLAYER_OVERRIDES.subtitle;

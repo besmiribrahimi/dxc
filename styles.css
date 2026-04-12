@@ -243,6 +243,7 @@ body::after {
 }
 
 .top-player-card {
+  --faction-flag-bg-image: none;
   position: relative;
   width: 100%;
   border-radius: 18px;
@@ -252,6 +253,7 @@ body::after {
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
   background:
+    var(--faction-flag-bg-image) center center / min(60%, 560px) auto no-repeat,
     linear-gradient(105deg, rgba(10, 16, 33, 0.95), rgba(19, 25, 43, 0.88) 48%, rgba(22, 22, 34, 0.92)),
     radial-gradient(circle at 78% 42%, rgba(59, 130, 246, 0.34), rgba(59, 130, 246, 0));
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.54), 0 0 24px rgba(59, 130, 246, 0.24);
@@ -264,10 +266,12 @@ body::after {
   position: absolute;
   inset: 0;
   background:
+    radial-gradient(circle at 82% 50%, rgba(239, 68, 68, 0.16), rgba(239, 68, 68, 0) 35%),
+    linear-gradient(90deg, rgba(2, 6, 23, 0.58), rgba(2, 6, 23, 0.28) 42%, rgba(2, 6, 23, 0.52)),
     linear-gradient(90deg, rgba(147, 197, 253, 0.07) 1px, transparent 1px),
     linear-gradient(180deg, rgba(147, 197, 253, 0.06) 1px, transparent 1px);
-  background-size: 48px 48px, 48px 48px;
-  opacity: 0.2;
+  background-size: auto, auto, 48px 48px, 48px 48px;
+  opacity: 0.34;
   filter: blur(0.2px);
   pointer-events: none;
 }
@@ -460,6 +464,7 @@ body::after {
 }
 
 .player-card {
+  --faction-flag-bg-image: none;
   position: relative;
   border: 1px solid rgba(147, 197, 253, 0.3);
   border-radius: 16px;
@@ -480,10 +485,14 @@ body::after {
   position: absolute;
   inset: 0;
   background:
+    var(--faction-flag-bg-image) center center / min(76%, 300px) auto no-repeat,
+    radial-gradient(circle at 88% 14%, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0) 32%),
+    linear-gradient(130deg, rgba(2, 6, 23, 0.52), rgba(2, 6, 23, 0.14) 48%, rgba(2, 6, 23, 0.54)),
     linear-gradient(150deg, rgba(59, 130, 246, 0.22), transparent 42%),
     radial-gradient(circle at 90% 12%, rgba(147, 197, 253, 0.3), transparent 30%);
   z-index: 1;
   pointer-events: none;
+  opacity: 0.38;
 }
 
 .player-card:hover,
@@ -635,11 +644,16 @@ body::after {
 }
 
 .modal-panel {
+  --faction-flag-bg-image: none;
   position: relative;
   width: min(900px, 100%);
   border-radius: 18px;
   border: 1px solid rgba(147, 197, 253, 0.28);
-  background: linear-gradient(165deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+  background:
+    radial-gradient(circle at 84% 50%, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0) 34%),
+    linear-gradient(120deg, rgba(2, 6, 23, 0.56), rgba(2, 6, 23, 0.22) 38%, rgba(2, 6, 23, 0.58)),
+    var(--faction-flag-bg-image) center center / min(70%, 560px) auto no-repeat,
+    linear-gradient(165deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
   box-shadow: 0 24px 54px rgba(2, 8, 23, 0.64), 0 0 26px rgba(59, 130, 246, 0.2);
   display: grid;
   grid-template-columns: 0.95fr 1.15fr;
