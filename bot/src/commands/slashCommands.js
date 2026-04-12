@@ -1009,27 +1009,38 @@ function buildLeaderboardPages(entries, pageSize) {
 }
 
 function buildLeaderboardEmbed({ settings, page, pageIndex, pages, updatedAt, endpoint }) {
-  const lines = page.items.map((entry) => (
-    `#${entry.rank} **${entry.player}** | Lvl ${entry.level} | K/D ${entry.kd.toFixed(1)} | Matches ${entry.totalMatches}`
-  ));
-
+  const brandIcon = "https://ascendentrenched.vercel.app/assets/brand/logo-mark-512.png";
+  
   const embed = new EmbedBuilder()
-    .setTitle("Ascend Entrenched Leaderboard")
+    .setAuthor({ name: "Ascend Sector Control", iconURL: brandIcon })
+    .setTitle("🏆 Global Ranking Feed")
     .setColor(statusColor(settings, "active"))
-    .setDescription(lines.length ? lines.join("\n") : "No players in this section.")
-    .addFields({
-      name: "Note",
-      value: "Live leaderboard standings. Not a tournament bracket.",
-      inline: false
-    })
-    .setFooter({ text: `${footerText(settings)} • Page ${pageIndex + 1}/${pages.length}` })
+    .setThumbnail(brandIcon)
+    .setFooter({ text: `${footerText(settings)} • Page ${pageIndex + 1}/${pages.length}`, iconURL: brandIcon })
     .setTimestamp(new Date(updatedAt || Date.now()));
+
+  if (!page.items || !page.items.length) {
+    embed.setDescription("> No players registered in this sector.");
+    return embed;
+  }
+
+  const fields = page.items.map((entry) => {
+    const rankEmoji = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : "🏅";
+    return {
+      name: `${rankEmoji} Rank #${entry.rank} — ${entry.player}`,
+      value: `\`\`\`yaml\nLevel: ${entry.level} | K/D: ${entry.kd.toFixed(1)} | Matches: ${entry.totalMatches}\n\`\`\``,
+      inline: false
+    };
+  });
+
+  embed.addFields(...fields);
 
   if (settings.highlightEnabled && page.items.length > 0) {
     const top = page.items[0];
     embed.addFields({
-      name: "Highlight",
-      value: `${top.player} leads this page with Level ${top.level} and K/D ${top.kd.toFixed(1)}.`
+      name: "🌟 Sector VIP",
+      value: `> **${top.player}** dominates this bracket.\n> **Lvl:** ${top.level} | **K/D:** ${top.kd.toFixed(1)}`,
+      inline: false
     });
   }
 
