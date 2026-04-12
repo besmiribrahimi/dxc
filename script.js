@@ -129,7 +129,23 @@ const avatarIdMap = new Map([
   ["loh999akk", 3213978478],
   ["monderthanmenace", 1039382252],
   ["mrsmysterious3", 712856982],
-  ["npoleon_ziborsnew", 4151404182]
+  ["npoleon_ziborsnew", 4151404182],
+  ["troopadoopak", 4442076338],
+  ["1983foxgaming", 1677220024],
+  ["hdjladhausdh", 3545954097],
+  ["albiero16", 368663564],
+  ["kemelo996", 261097961],
+  ["infishashaas", 7428505407],
+  ["belief063", 610467084],
+  ["brr0dy", 1801015130],
+  ["msmarlon11", 47459207],
+  ["gurman9044", 7772492991],
+  ["xjnbbqaq", 1533471582],
+  ["kneelgrowsofficial", 8309032957],
+  ["iwiejsidid", 4033702732],
+  ["owenrob", 1543155],
+  ["solicituddetrabajo10", 8759790392],
+  ["3eir0x", 2372980252]
 ]);
 
 const fallbackAvatarId = 1;
@@ -425,6 +441,45 @@ function parsePlayerLine(rawLine) {
   const line = normalizeText(rawLine);
   if (!line) {
     return null;
+  }
+
+  // Accept synced core format: Name | UserId | ProfileLink | DiscordId | Faction | Country
+  const pipeParts = line.split("|").map((part) => normalizeText(part));
+  if (pipeParts.length >= 5) {
+    const rawName = pipeParts[0] || "";
+    const rawUserId = pipeParts[1] || "";
+    const rawProfileLink = pipeParts[2] || "";
+    const rawDiscordId = pipeParts[3] || "";
+    const rawFaction = pipeParts[4] || "N/A";
+    const rawCountry = pipeParts[5] || "N/A";
+
+    const name = normalizeText(rawName.replace(/^\d+\s*\.?\s*/, ""));
+    if (name) {
+      const lowerName = name.toLowerCase();
+      const directUserId = normalizeSyncedUserId(rawUserId);
+      const profileUserId = normalizeSyncedUserId(rawProfileLink);
+      const mappedUserId = Number(avatarIdMap.get(lowerName) || fallbackAvatarId);
+      const resolvedUserId = Number(directUserId || profileUserId || mappedUserId || fallbackAvatarId);
+
+      if (Number.isFinite(resolvedUserId) && resolvedUserId > 0) {
+        avatarIdMap.set(lowerName, resolvedUserId);
+      }
+
+      return {
+        name,
+        faction: sanitizeFactionValue(rawFaction || "N/A"),
+        country: normalizeText(rawCountry) || "N/A",
+        discordId: normalizeSyncedDiscordId(rawDiscordId),
+        userId: Number.isFinite(resolvedUserId) && resolvedUserId > 0 ? resolvedUserId : fallbackAvatarId,
+        avatarUrl: "",
+        bodyAvatarUrl: "",
+        level: 1,
+        kd: 0,
+        playerClasses: [],
+        playerClass: "Unknown",
+        device: "Unknown"
+      };
+    }
   }
 
   const withoutIndex = line.replace(/^\d+\s*\.?\s*/, "");
