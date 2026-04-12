@@ -62,7 +62,29 @@ const fallbackPlayerLines = [
   "61. Loh999akk - Faction: CZSK | Country: Russia -1026076268053147658",
   "62. Monderthanmenace - Faction: DSA | Country: USA -1474606307951509616",
   "63. MrsMysterious3 - Faction: TAE | Country: Malaysia -651667387166228495",
-  "64. Npoleon_ziborsnew - Faction: CZSK | Country: Romania -1426165475108327514"
+  "64. Npoleon_ziborsnew - Faction: CZSK | Country: Romania -1426165475108327514",
+  "65. TroopaDoopaK - Faction: N/A | Country: USA -710934261556969487",
+  "66. 1983foxgaming - Faction: N/A | Country: UK -1235778136638095371",
+  "67. hdjladhausdh - Faction: SR | Country: Pakistan -1144577133809762386",
+  "68. albiero16 - Faction: INS | Country: Peru -1424551081718976563",
+  "69. Kemelo996 - Faction: DK | Country: Colombia -456605783619141633",
+  "70. Infishashaas - Faction: HKB | Country: India -1346418450829934602",
+  "71. Belief063 - Faction: RRF | Country: Philippines -1439262186253058079",
+  "72. Brr0dy - Faction: DK | Country: USA -556736172450250763",
+  "73. msmarlon11 - Faction: TWA | Country: Brazil -667081747221184527",
+  "74. 101TheOnlyOne101 - Faction: AH | Country: UK -1485314233099882557",
+  "75. gurman9044 - Faction: TWA | Country: Russia -1328088203910971445",
+  "76. xjnbbQAQ - Faction: AH | Country: UK -784784826338508880",
+  "77. Kneelgrowsofficial - Faction: TWA | Country: Philippines -1475730519374303355",
+  "78. iwiejsidid - Faction: TWA | Country: Australia -1126765149236232212",
+  "79. owenrob - Faction: TWA | Country: USA -1420400244004229150",
+  "80. solicituddetrabajo10 - Faction: AH | Country: Spain -750777254203883591",
+  "81. 3eir0x - Faction: SR | Country: Lithuania -801476859467399218",
+  "82. indra091101 - Faction: DK | Country: Afghanistan -1299102409158823967",
+  "83. Izan - Faction: TWA | Country: Pakistan -1179085856737333270",
+  "84. BobTrexh - Faction: TAE | Country: Singapore -1158358352376631397",
+  "85. Sleepytyme_1 - Faction: Scythia | Country: USA -1045406303222243389",
+  "86. certifiedsobber9 - Faction: sermetya | Country: indonesia -1116698696457920542"
 ];
 
 const avatarIdMap = new Map([
@@ -146,7 +168,12 @@ const avatarIdMap = new Map([
   ["owenrob", 1543155],
   ["solicituddetrabajo10", 8759790392],
   ["3eir0x", 2372980252],
-  ["101theonlyone101", 10481262425]
+  ["101theonlyone101", 10481262425],
+  ["indra091101", 90203900],
+  ["izan", 10771337052],
+  ["bobtrexh", 8704157338],
+  ["sleepytyme_1", 4129401197],
+  ["certifiedsobber9", 10107863002]
 ]);
 
 const fallbackAvatarId = 1;
