@@ -2,7 +2,7 @@ const ADMIN_TOKEN_KEY = "draxar-admin-token-v1";
 const LOGIN_ENDPOINT = "/api/admin/login";
 const ADMIN_CONFIG_ENDPOINT = "/api/admin/config";
 const BOT_EVENT_ENDPOINT = "/api/admin/bot-event";
-const WEB_SYNC_ENDPOINT = "/api/leaderboard-config";
+const ADMIN_WEB_SYNC_ENDPOINT = "/api/leaderboard-config";
 
 const authCardNode = document.getElementById("adminAuthCard");
 const panelNode = document.getElementById("adminPanel");
@@ -1514,7 +1514,7 @@ async function probeInsightEndpoint(endpoint, token) {
 async function probeWebInsightEndpoints() {
   const token = getStoredToken();
   const endpoints = [
-    { label: "Web sync config", url: WEB_SYNC_ENDPOINT, method: "GET", requiresAuth: false },
+    { label: "Web sync config", url: ADMIN_WEB_SYNC_ENDPOINT, method: "GET", requiresAuth: false },
     { label: "Admin login", url: LOGIN_ENDPOINT, method: "GET", requiresAuth: false },
     { label: "Admin config", url: ADMIN_CONFIG_ENDPOINT, method: "GET", requiresAuth: true },
     { label: "Bot event", url: BOT_EVENT_ENDPOINT, method: "GET", requiresAuth: true },
