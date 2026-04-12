@@ -176,6 +176,11 @@ const avatarIdMap = new Map([
   ["certifiedsobber9", 10107863002]
 ]);
 
+// Expose maps to window for global access (required by leaderboard.js)
+if (typeof window !== "undefined") {
+  window.avatarIdMap = avatarIdMap;
+}
+
 const fallbackAvatarId = 1;
 const staticAvatarUrlMap = new Map([
   ["1", "https://t5.rbxcdn.com/30DAY-AvatarHeadshot-310966282D3529E36976BF6B07B1DC90-Png"],
@@ -256,8 +261,17 @@ const staticAvatarUrlMap = new Map([
   ["7772492991", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-2EB7DFB73A53DFE8E8FB617272D03398-Png"],
   ["8309032957", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-733C335567F7136DA3FD42F70845A34A-Png"],
   ["8759790392", "https://t5.rbxcdn.com/30DAY-AvatarHeadshot-4458A3C6B17F1DE1A0B42E9574FFD460-Png"],
-  ["10481262425", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-B9951F43CE2567D84D13218B5B2064B0-Png"]
+  ["10481262425", "https://t0.rbxcdn.com/30DAY-AvatarHeadshot-B9951F43CE2567D84D13218B5B2064B0-Png"],
+  ["90203900", "https://www.roblox.com/headshot-thumbnail/image?userId=90203900&width=420&height=420&format=png"],
+  ["10771337052", "https://www.roblox.com/headshot-thumbnail/image?userId=10771337052&width=420&height=420&format=png"],
+  ["8704157338", "https://www.roblox.com/headshot-thumbnail/image?userId=8704157338&width=420&height=420&format=png"],
+  ["4129401197", "https://www.roblox.com/headshot-thumbnail/image?userId=4129401197&width=420&height=420&format=png"],
+  ["10107863002", "https://www.roblox.com/headshot-thumbnail/image?userId=10107863002&width=420&height=420&format=png"]
 ]);
+
+if (typeof window !== "undefined") {
+  window.staticAvatarUrlMap = staticAvatarUrlMap;
+}
 
 const playersGrid = document.getElementById("playersGrid");
 const modal = document.getElementById("playerModal");
