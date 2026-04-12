@@ -130,11 +130,12 @@ module.exports = {
   defaultTicketReviewerRoleIds: firstEnv(["TICKET_REVIEWER_ROLE_IDS"]),
   defaultTicketAllowedRoleIds: firstEnv(["TICKET_ALLOWED_ROLE_IDS"]),
   brandingFooter: firstEnv(["BRANDING_FOOTER"], "Ascend Entrenched"),
-  embedInfoColor: firstEnv(["EMBED_INFO_COLOR"], "#C8A2C8"),
-  embedWinnerColor: firstEnv(["EMBED_WINNER_COLOR"], "#FFD700"),
-  embedActiveColor: firstEnv(["EMBED_ACTIVE_COLOR"], "#C8A2C8"),
-  embedEliminatedColor: firstEnv(["EMBED_ELIMINATED_COLOR"], "#9B59B6"),
-  embedHighlightColor: firstEnv(["EMBED_HIGHLIGHT_COLOR"], "#FFECB3"),
+  embedIconUrl: firstEnv(["EMBED_ICON_URL"], "https://ascendentrenched.vercel.app/assets/brand/logo-mark-512.png"),
+  embedInfoColor: firstEnv(["EMBED_INFO_COLOR"], "#3B82F6"),
+  embedWinnerColor: firstEnv(["EMBED_WINNER_COLOR"], "#FACC15"),
+  embedActiveColor: firstEnv(["EMBED_ACTIVE_COLOR"], "#3B82F6"),
+  embedEliminatedColor: firstEnv(["EMBED_ELIMINATED_COLOR"], "#F43F5E"),
+  embedHighlightColor: firstEnv(["EMBED_HIGHLIGHT_COLOR"], "#60A5FA"),
   applicationsPanelChannelId: String(runtimeSettings.applicationsPanelChannelId || "").trim()
     || firstEnv(["APPLICATIONS_PANEL_CHANNEL_ID", "APPLY_PANEL_CHANNEL_ID"]),
   applicationsChannelId: String(runtimeSettings.applicationsChannelId || "").trim()

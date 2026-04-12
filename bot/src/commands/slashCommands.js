@@ -40,6 +40,7 @@ const LEADERBOARD_NAV_PREFIX = "lbnav";
 const LFG_QUEUE_TTL_SECONDS = 60 * 60;
 const LFG_STATUS_LABEL = "Looking for 1v1";
 
+const BRAND_ICON = "https://ascendentrenched.vercel.app/assets/brand/logo-mark-512.png";
 const DEFAULT_FOOTER = "Ascend Entrenched";
 const BOT_START_TIME = Date.now();
 const EIGHTBALL_RESPONSES = [
@@ -471,37 +472,47 @@ function buildApplyDecisionRows(applicantId, disabled = false) {
 
 function buildApplySetupEmbed(settings, configState) {
   return new EmbedBuilder()
-    .setTitle("Setup Apply")
+    .setAuthor({ name: "Ascend Operations Core", iconURL: BRAND_ICON })
+    .setTitle("🛡️ Setup Applications")
     .setColor(statusColor(settings, "active"))
+    .setDescription("Initialise the Faction Application deployment sector.")
+    .setThumbnail(BRAND_ICON)
     .addFields(
       {
-        name: "setchannel",
-        value: configState.panelChannelId ? `<#${configState.panelChannelId}>` : "Not set"
+        name: "📥 Panel Channel",
+        value: configState.panelChannelId ? `<#${configState.panelChannelId}>` : "Not set",
+        inline: true
       },
       {
-        name: "setmodapp",
-        value: configState.channelId ? `<#${configState.channelId}>` : "Not set"
+        name: "📋 Mod App Channel",
+        value: configState.channelId ? `<#${configState.channelId}>` : "Not set",
+        inline: true
       }
     )
-    .setFooter({ text: footerText(settings) })
+    .setFooter({ text: footerText(settings), iconURL: BRAND_ICON })
     .setTimestamp(new Date());
 }
 
 function buildTicketSetupEmbed(settings, configState) {
   return new EmbedBuilder()
-    .setTitle("Setup Ticket")
+    .setAuthor({ name: "Ascend Operations Core", iconURL: BRAND_ICON })
+    .setTitle("🎫 Setup Support Tickets")
     .setColor(statusColor(settings, "active"))
+    .setDescription("Initialise the support ticket operations desk.")
+    .setThumbnail(BRAND_ICON)
     .addFields(
       {
-        name: "setchannel",
-        value: configState.panelChannelId ? `<#${configState.panelChannelId}>` : "Not set"
+        name: "📥 Panel Channel",
+        value: configState.panelChannelId ? `<#${configState.panelChannelId}>` : "Not set",
+        inline: true
       },
       {
-        name: "setmodapp",
-        value: configState.moderationChannelId ? `<#${configState.moderationChannelId}>` : "Not set"
+        name: "📋 Mod App Channel",
+        value: configState.moderationChannelId ? `<#${configState.moderationChannelId}>` : "Not set",
+        inline: true
       }
     )
-    .setFooter({ text: footerText(settings) })
+    .setFooter({ text: footerText(settings), iconURL: BRAND_ICON })
     .setTimestamp(new Date());
 }
 
@@ -531,15 +542,16 @@ function buildTicketEmbed({ settings, ticketId, applicant, subject, details, sta
   const detailsText = String(details || "").trim() || "No details provided";
 
   return new EmbedBuilder()
-    .setTitle(`Ticket ${ticketId}`)
+    .setAuthor({ name: "Ascend Operations Core", iconURL: BRAND_ICON })
+    .setTitle(`🎫 Ticket ${ticketId}`)
     .setColor(statusColor(settings, status))
-    .setDescription(`${statusIcon(status)} **Status:** ${normalizeStatusLabel(status)}`)
+    .setDescription(`> ${statusIcon(status)} **Current Status:** ${normalizeStatusLabel(status)}`)
     .addFields(
-      { name: "Applicant", value: `<@${applicant.id}>`, inline: true },
-      { name: "Subject", value: subjectText.slice(0, 1024), inline: true },
-      { name: "Details", value: detailsText.slice(0, 1024), inline: false }
+      { name: "👤 Applicant", value: `<@${applicant.id}>`, inline: true },
+      { name: "📄 Subject", value: `\`\`\`text\n${subjectText.slice(0, 1010)}\n\`\`\``, inline: false },
+      { name: "🔍 Details", value: `> ${detailsText.slice(0, 1020)}`, inline: false }
     )
-    .setFooter({ text: footerText(settings) })
+    .setFooter({ text: footerText(settings), iconURL: BRAND_ICON })
     .setTimestamp(new Date());
 }
 
@@ -2484,17 +2496,20 @@ async function handleStatusCommand(interaction, context) {
   const settings = getGuildSettings(interaction.guild.id, context.config);
 
   const embed = new EmbedBuilder()
-    .setTitle("Ascend Entrenched Status")
+    .setAuthor({ name: "Ascend Control", iconURL: BRAND_ICON })
+    .setTitle("⚡ Ascend Entrenched Status")
     .setColor(statusColor(settings, "active"))
+    .setDescription("Live telemetry from the operations core.")
+    .setThumbnail(BRAND_ICON)
     .addFields(
-      { name: "Bot Uptime", value: durationLabel(uptimeMs), inline: true },
-      { name: "WS Ping", value: `${wsPing} ms`, inline: true },
-      { name: "Queue", value: `${context.updateQueue.size()} pending`, inline: true },
-      { name: "Guilds", value: String(interaction.client.guilds.cache.size), inline: true },
-      { name: "Leaderboard Endpoint", value: settings.leaderboardEndpoint || context.config.leaderboardApiUrl || "Not configured", inline: false },
-      { name: "Brand", value: "Ascend Entrenched Operational", inline: false }
+      { name: "⏱️ Uptime", value: `\`\`\`\n${durationLabel(uptimeMs)}\n\`\`\``, inline: true },
+      { name: "📶 WS Ping", value: `\`\`\`\n${wsPing} ms\n\`\`\``, inline: true },
+      { name: "🚦 Queue", value: `\`\`\`\n${context.updateQueue.size()} pending\n\`\`\``, inline: true },
+      { name: "🏰 Guilds", value: `\`\`\`\n${interaction.client.guilds.cache.size}\n\`\`\``, inline: true },
+      { name: "🌐 Endpoint", value: `\`\`\`\n${settings.leaderboardEndpoint || context.config.leaderboardApiUrl || "Not configured"}\n\`\`\``, inline: false },
+      { name: "🌟 Brand", value: "> Ascend Entrenched Operational", inline: false }
     )
-    .setFooter({ text: footerText(settings) })
+    .setFooter({ text: footerText(settings), iconURL: BRAND_ICON })
     .setTimestamp(new Date());
 
   await interaction.reply({ embeds: [embed], ephemeral: true });
@@ -2518,32 +2533,22 @@ async function handleWebStatusCommand(interaction, context) {
   };
 
   const embed = new EmbedBuilder()
-    .setTitle("Ascend Entrenched Web/API Check")
+    .setAuthor({ name: "Ascend Diagnostics", iconURL: BRAND_ICON })
+    .setTitle("🌐 API / Web Diagnostics")
     .setColor(statusColor(settings, leaderboardCheck.ok ? "active" : "eliminated"))
+    .setDescription("Validating connection to core Entrenched services.")
+    .setThumbnail(BRAND_ICON)
     .addFields(
       {
-        name: "Leaderboard API",
-        value: [
-          `URL: ${resolvedEndpoint || "Not configured"}`,
-          `Status: ${leaderboardCheck.ok ? "Online" : "Issue"}`,
-          `HTTP: ${leaderboardCheck.status ?? "N/A"}`,
-          `Latency: ${leaderboardCheck.durationMs} ms`,
-          `Updated At: ${leaderboardCheck.payload?.config?.updatedAt || "N/A"}`,
-          leaderboardCheck.error ? `Error: ${leaderboardCheck.error}` : ""
-        ].filter(Boolean).join("\n")
+        name: "📊 Leaderboard Feed",
+        value: `\`\`\`yaml\nURL: ${resolvedEndpoint || "Not configured"}\nStatus: ${leaderboardCheck.ok ? "Online" : "Issue"}\nHTTP: ${leaderboardCheck.status ?? "N/A"}\nLatency: ${leaderboardCheck.durationMs} ms\nUpdated At: ${leaderboardCheck.payload?.config?.updatedAt || "N/A"}\n${leaderboardCheck.error ? `Error: ${leaderboardCheck.error}` : ""}\n\`\`\``
       },
       {
-        name: "Website Root",
-        value: [
-          `URL: ${origin || "Not available"}`,
-          `Status: ${homepageCheck.ok ? "Online" : "Unknown"}`,
-          `HTTP: ${homepageCheck.status ?? "N/A"}`,
-          `Latency: ${homepageCheck.durationMs} ms`,
-          homepageCheck.error ? `Error: ${homepageCheck.error}` : ""
-        ].filter(Boolean).join("\n")
+        name: "🖥️ Website Root",
+        value: `\`\`\`yaml\nURL: ${origin || "Not available"}\nStatus: ${homepageCheck.ok ? "Online" : "Unknown"}\nHTTP: ${homepageCheck.status ?? "N/A"}\nLatency: ${homepageCheck.durationMs} ms\n${homepageCheck.error ? `Error: ${homepageCheck.error}` : ""}\n\`\`\``
       }
     )
-    .setFooter({ text: footerText(settings) })
+    .setFooter({ text: footerText(settings), iconURL: BRAND_ICON })
     .setTimestamp(new Date());
 
   await interaction.reply({ embeds: [embed], ephemeral: true });
@@ -2570,31 +2575,21 @@ async function handleSyncAuditCommand(interaction, context) {
       : null;
 
     const embed = new EmbedBuilder()
-      .setTitle("Ascend Entrenched Sync Audit")
+      .setAuthor({ name: "Ascend Sync Server", iconURL: BRAND_ICON })
+      .setTitle("🔄 Sync Audit")
       .setColor(statusColor(settings, isStale ? "eliminated" : "active"))
+      .setDescription(isStale ? "> ⚠️ **Warning:** Data feed is stale." : "> ✅ **Status:** Data feed is fresh.")
       .addFields(
         {
-          name: "Leaderboard Feed",
-          value: [
-            `Endpoint: ${leaderboard.endpoint}`,
-            `Entries: ${leaderboard.entries.length}`,
-            `Updated: ${updatedAt ? updatedAt.toLocaleString() : "Unknown"}`,
-            `Age: ${ageMs !== null ? durationLabel(ageMs) : "Unknown"}`,
-            `Freshness: ${isStale ? "Stale" : "Fresh"}`
-          ].join("\n")
+          name: "📊 Leaderboard Feed",
+          value: `\`\`\`yaml\nEndpoint: ${leaderboard.endpoint}\nEntries: ${leaderboard.entries.length}\nUpdated: ${updatedAt ? updatedAt.toLocaleString() : "Unknown"}\nAge: ${ageMs !== null ? durationLabel(ageMs) : "Unknown"}\nFreshness: ${isStale ? "Stale" : "Fresh"}\n\`\`\``
         },
         {
-          name: "Auto Post",
-          value: [
-            `Enabled: ${settings.leaderboardAutoPostEnabled ? "Yes" : "No"}`,
-            `Channel: ${settings.leaderboardChannelId ? `<#${settings.leaderboardChannelId}>` : "Not set"}`,
-            `Interval: ${intervalHours} hour(s)`,
-            `Last Run: ${lastRunAt ? lastRunAt.toLocaleString() : "Never"}`,
-            `Next Due: ${nextRunAt ? nextRunAt.toLocaleString() : "Pending first run"}`
-          ].join("\n")
+          name: "⚙️ Auto Post Schedule",
+          value: `\`\`\`yaml\nEnabled: ${settings.leaderboardAutoPostEnabled ? "Yes" : "No"}\nChannel: ${settings.leaderboardChannelId ? `#${settings.leaderboardChannelId}` : "Not set"}\nInterval: ${intervalHours} hour(s)\nLast Run: ${lastRunAt ? lastRunAt.toLocaleString() : "Never"}\nNext Due: ${nextRunAt ? nextRunAt.toLocaleString() : "Pending run"}\n\`\`\``
         }
       )
-      .setFooter({ text: footerText(settings) })
+      .setFooter({ text: footerText(settings), iconURL: BRAND_ICON })
       .setTimestamp(new Date());
 
     await interaction.editReply({ embeds: [embed] });
@@ -2617,15 +2612,16 @@ async function handleRefreshCommandsCommand(interaction, context) {
       : "Global";
 
     const embed = new EmbedBuilder()
-      .setTitle("Ascend Entrenched Command Refresh")
+      .setAuthor({ name: "Ascend Command Core", iconURL: BRAND_ICON })
+      .setTitle("🚀 Command Refresh")
       .setColor(statusColor(settings, "active"))
-      .setDescription("Slash commands were refreshed successfully.")
+      .setDescription("> Slash commands were synchronized successfully.")
       .addFields(
-        { name: "Scope", value: scopeText, inline: true },
-        { name: "Command Count", value: String(registration.count), inline: true },
-        { name: "Warning", value: registration.warning || "None", inline: false }
+        { name: "🌐 Scope", value: `\`\`\`\n${scopeText}\n\`\`\``, inline: true },
+        { name: "🔢 Deployed", value: `\`\`\`\n${registration.count} commands\n\`\`\``, inline: true },
+        { name: "⚠️ Warnings", value: `\`\`\`\n${registration.warning || "None"}\n\`\`\``, inline: false }
       )
-      .setFooter({ text: footerText(settings) })
+      .setFooter({ text: footerText(settings), iconURL: BRAND_ICON })
       .setTimestamp(new Date());
 
     await interaction.editReply({ embeds: [embed] });
@@ -2655,14 +2651,15 @@ async function handleConfigCheckCommand(interaction, context) {
   const failed = checks.length - passed;
 
   const embed = new EmbedBuilder()
-    .setTitle("Ascend Entrenched Config Check")
+    .setAuthor({ name: "Ascend Initialisation", iconURL: BRAND_ICON })
+    .setTitle("🛠️ Config Check")
     .setColor(statusColor(settings, failed ? "eliminated" : "active"))
-    .setDescription(checks.map((item) => `${item.ok ? "[OK]" : "[WARN]"} ${item.label}`).join("\n"))
+    .setDescription("Validating module configuration.\n\n" + checks.map((item) => `> ${item.ok ? "✅" : "⚠️"} **${item.label}**`).join("\n"))
     .addFields(
-      { name: "Passed", value: String(passed), inline: true },
-      { name: "Warnings", value: String(failed), inline: true }
+      { name: "Passed", value: `\`\`\`\n${passed}\n\`\`\``, inline: true },
+      { name: "Warnings", value: `\`\`\`\n${failed}\n\`\`\``, inline: true }
     )
-    .setFooter({ text: footerText(settings) })
+    .setFooter({ text: footerText(settings), iconURL: BRAND_ICON })
     .setTimestamp(new Date());
 
   await interaction.reply({ embeds: [embed], ephemeral: true });

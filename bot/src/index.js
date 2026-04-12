@@ -213,11 +213,12 @@ async function start() {
 
       const description = buildWelcomeDescription(member, autoRoleId);
       const embed = new EmbedBuilder()
-        .setTitle(`Welcome to ${member.guild.name}`)
+        .setAuthor({ name: "Ascend Intake", iconURL: config.embedIconUrl })
+        .setTitle(`👋 Welcome to ${member.guild.name}`)
         .setColor(welcomeColor(settings))
-        .setDescription(description.slice(0, 4096))
+        .setDescription(`> ${description.replace(/\n/g, '\n> ')}`)
         .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
-        .setFooter({ text: String(settings?.brandingFooter || "Ascend Entrenched") })
+        .setFooter({ text: String(settings?.brandingFooter || "Ascend Entrenched"), iconURL: config.embedIconUrl })
         .setTimestamp(new Date());
 
       await channel.send({ embeds: [embed] });

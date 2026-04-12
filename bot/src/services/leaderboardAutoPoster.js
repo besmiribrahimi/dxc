@@ -20,21 +20,27 @@ function colorToInt(hex, fallback) {
 }
 
 function buildAutoPostEmbed(settings, data) {
+  const brandIcon = "https://ascendentrenched.vercel.app/assets/brand/logo-mark-512.png";
   const entries = Array.isArray(data?.entries) ? data.entries.slice(0, 10) : [];
-  const lines = entries.map((entry) => (
-    `#${entry.rank} **${entry.player}** | Lvl ${entry.level} | K/D ${Number(entry.kd || 0).toFixed(1)} | Matches ${entry.totalMatches || 0}`
-  ));
+  
+  const lines = entries.map((entry) => {
+    const rankEmoji = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : "🏅";
+    return `${rankEmoji} **#${entry.rank}** \`${entry.player}\` • Lvl ${entry.level} • K/D ${Number(entry.kd || 0).toFixed(1)}`;
+  });
 
   return new EmbedBuilder()
-    .setTitle("Ascend Entrenched Leaderboard")
-    .setColor(colorToInt(settings?.colors?.active, "#C8A2C8"))
-    .setDescription(lines.length ? lines.join("\n") : "No leaderboard entries available.")
+    .setAuthor({ name: "Ascend Sector Control", iconURL: brandIcon })
+    .setTitle("🏆 Leaderboard Standings")
+    .setColor(colorToInt(settings?.colors?.active, "#3B82F6"))
+    .setDescription(lines.length ? lines.join("\n\n") : "> No leaderboard entries available.")
+    .setThumbnail(brandIcon)
     .addFields({
-      name: "Note",
-      value: "Live leaderboard standings. Not a tournament bracket."
+      name: "📢 Note",
+      value: "```text\nLive leaderboard standings based on roster API. Not a tournament bracket.\n```"
     })
     .setFooter({
-      text: `${String(settings?.brandingFooter || "Ascend Entrenched").trim() || "Ascend Entrenched"} | Auto post`
+      text: `${String(settings?.brandingFooter || "Ascend Entrenched").trim()} | Auto post`,
+      iconURL: brandIcon
     })
     .setTimestamp(new Date(data?.updatedAt || Date.now()));
 }
