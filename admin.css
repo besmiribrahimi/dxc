@@ -114,7 +114,7 @@
 }
 
 .admin-synced-wrap .admin-transfer-row {
-  grid-template-columns: minmax(160px, 1.1fr) minmax(100px, 0.7fr) minmax(180px, 1fr) minmax(100px, 0.7fr) minmax(120px, 0.75fr) minmax(100px, 0.65fr) minmax(100px, 0.65fr) minmax(84px, 0.6fr) 108px;
+  grid-template-columns: minmax(160px, 1.1fr) minmax(100px, 0.7fr) minmax(180px, 1fr) minmax(100px, 0.7fr) minmax(120px, 0.75fr) minmax(100px, 0.65fr) minmax(100px, 0.65fr) minmax(84px, 0.6fr) minmax(170px, 0.9fr);
 }
 
 .admin-clips-wrap .admin-transfer-row {
@@ -171,6 +171,18 @@
   display: inline-flex;
   align-items: center;
   padding: 0 0.42rem;
+}
+
+.admin-synced-actions {
+  display: flex;
+  gap: 0.32rem;
+  justify-content: flex-end;
+}
+
+.admin-synced-actions .admin-button {
+  min-height: 30px;
+  font-size: 0.64rem;
+  padding: 0.1rem 0.42rem;
 }
 
 .admin-row {

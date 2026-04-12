@@ -90,6 +90,7 @@ let currentClips = [];
 let activeClipTypeTab = "clip";
 let draggingPlayerKey = "";
 let draggingInitialized = false;
+let editingSyncedPlayerId = "";
 const dynamicAvatarUrlMap = new Map();
 const pendingAvatarUserIds = new Set();
 
@@ -457,6 +458,46 @@ function normalizeOptionalUserId(value) {
   return /^\d{3,14}$/.test(normalized) ? normalized : "";
 }
 
+function normalizeUserIdInput(value) {
+  const directId = normalizeOptionalUserId(value);
+  if (directId) {
+    return directId;
+  }
+
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  const pathMatch = raw.match(/\/users\/(\d{3,14})(?:\/|$|\?)/i);
+  if (pathMatch?.[1]) {
+    return normalizeOptionalUserId(pathMatch[1]);
+  }
+
+  const queryMatch = raw.match(/[?&]userId=(\d{3,14})(?:&|$)/i);
+  if (queryMatch?.[1]) {
+    return normalizeOptionalUserId(queryMatch[1]);
+  }
+
+  try {
+    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    const parsed = new URL(withProtocol);
+    const parsedPathMatch = parsed.pathname.match(/\/users\/(\d{3,14})(?:\/|$)/i);
+    if (parsedPathMatch?.[1]) {
+      return normalizeOptionalUserId(parsedPathMatch[1]);
+    }
+
+    const parsedQueryId = parsed.searchParams.get("userId");
+    if (parsedQueryId) {
+      return normalizeOptionalUserId(parsedQueryId);
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
+}
+
 function normalizeExtraPlayerEntry(raw, index = 0) {
   const entry = raw && typeof raw === "object" ? raw : {};
   const name = String(entry.name || entry.playerName || "").trim();
@@ -467,7 +508,7 @@ function normalizeExtraPlayerEntry(raw, index = 0) {
     faction: normalizeFactionValue(entry.faction || "N/A"),
     country: String(entry.country || "N/A").trim() || "N/A",
     discordId: normalizeDiscordId(entry.discordId),
-    userId: normalizeOptionalUserId(entry.userId),
+    userId: normalizeUserIdInput(entry.userId),
     class: normalizePlayerClassValue(entry.class),
     classes: normalizePlayerClassList(entry.classes ?? entry.class),
     device: normalizeDeviceValue(entry.device)
@@ -541,6 +582,16 @@ function buildMergedRosterPlayers(lines, extraPlayers) {
 }
 
 function resetSyncedPlayerInputs() {
+  editingSyncedPlayerId = "";
+
+  if (addSyncedPlayerButtonNode) {
+    addSyncedPlayerButtonNode.textContent = "Add Synced Player";
+  }
+
+  if (clearSyncedPlayerInputsButtonNode) {
+    clearSyncedPlayerInputsButtonNode.textContent = "Clear Fields";
+  }
+
   if (newPlayerNameNode) {
     newPlayerNameNode.value = "";
   }
@@ -578,6 +629,59 @@ function resetSyncedPlayerInputs() {
   }
 }
 
+function populateSyncedPlayerInputs(entry) {
+  if (!entry || typeof entry !== "object") {
+    return;
+  }
+
+  editingSyncedPlayerId = String(entry.id || "").trim();
+
+  if (addSyncedPlayerButtonNode) {
+    addSyncedPlayerButtonNode.textContent = "Update Synced Player";
+  }
+
+  if (clearSyncedPlayerInputsButtonNode) {
+    clearSyncedPlayerInputsButtonNode.textContent = "Cancel Edit";
+  }
+
+  if (newPlayerNameNode) {
+    newPlayerNameNode.value = String(entry.name || "").trim();
+  }
+
+  if (newPlayerFactionNode) {
+    newPlayerFactionNode.value = normalizeFactionValue(entry.faction || "N/A");
+  }
+
+  if (newPlayerCountryNode) {
+    newPlayerCountryNode.value = String(entry.country || "").trim();
+  }
+
+  if (newPlayerDiscordIdNode) {
+    newPlayerDiscordIdNode.value = String(entry.discordId || "").trim();
+  }
+
+  if (newPlayerUserIdNode) {
+    newPlayerUserIdNode.value = String(entry.userId || "").trim();
+  }
+
+  if (newPlayerDeviceNode) {
+    newPlayerDeviceNode.value = normalizeDeviceValue(entry.device);
+  }
+
+  const classes = normalizePlayerClassList(entry.classes ?? entry.class);
+  if (newPlayerClassPrimaryNode) {
+    newPlayerClassPrimaryNode.value = classes[0] || "Unknown";
+  }
+
+  if (newPlayerClassSecondaryNode) {
+    newPlayerClassSecondaryNode.value = classes[1] || "Unknown";
+  }
+
+  if (newPlayerClassTertiaryNode) {
+    newPlayerClassTertiaryNode.value = classes[2] || "Unknown";
+  }
+}
+
 function removeSyncedPlayerFromState(predicate, statusMessage = "Synced player removed locally. Click Save Global Sync to publish.") {
   const rowValues = collectRowValues();
   const rowOrder = collectRowOrder();
@@ -592,9 +696,15 @@ function removeSyncedPlayerFromState(predicate, statusMessage = "Synced player r
 
   const beforeCount = currentExtraPlayers.length;
   currentExtraPlayers = currentExtraPlayers.filter((item) => !predicate(item));
+  const editingRemoved = editingSyncedPlayerId
+    && !currentExtraPlayers.some((item) => item.id === editingSyncedPlayerId);
 
   if (currentExtraPlayers.length === beforeCount) {
     return;
+  }
+
+  if (editingRemoved) {
+    resetSyncedPlayerInputs();
   }
 
   const mergedRosterPlayers = buildMergedRosterPlayers(currentRosterLines, currentExtraPlayers);
@@ -647,8 +757,24 @@ function renderSyncedPlayerRows(players) {
       <span>${safeText(entry.userId || "Auto")}</span>
       <span>${safeText(entry.device)}</span>
       <span>Admin Sync</span>
-      <span><button type="button" class="admin-button danger admin-synced-player-delete">Remove</button></span>
+      <span class="admin-synced-actions">
+        <button type="button" class="admin-button secondary admin-synced-player-edit">Edit</button>
+        <button type="button" class="admin-button danger admin-synced-player-delete">Remove</button>
+      </span>
     `;
+
+    const editNode = row.querySelector(".admin-synced-player-edit");
+    editNode?.addEventListener("click", () => {
+      const target = currentExtraPlayers.find((item) => item.id === row.dataset.syncedPlayerId);
+      if (!target) {
+        setSyncStatus("Unable to find that synced player entry for editing.", true);
+        return;
+      }
+
+      populateSyncedPlayerInputs(target);
+      newPlayerNameNode?.focus();
+      setSyncStatus(`Editing ${target.name}. Click Update Synced Player to apply changes.`);
+    });
 
     const removeNode = row.querySelector(".admin-synced-player-delete");
     removeNode?.addEventListener("click", () => {
@@ -2117,8 +2243,22 @@ async function onAddSyncedPlayerClick() {
     return;
   }
 
+  const editTarget = editingSyncedPlayerId
+    ? currentExtraPlayers.find((item) => item.id === editingSyncedPlayerId)
+    : null;
+
+  if (editingSyncedPlayerId && !editTarget) {
+    resetSyncedPlayerInputs();
+    setSyncStatus("Edit target no longer exists. Please try again.", true);
+    return;
+  }
+
   const existingKey = playerName.toLowerCase();
-  if (currentPlayers.some((player) => String(player?.name || "").trim().toLowerCase() === existingKey)) {
+  const editPlayerKey = String(editTarget?.name || "").trim().toLowerCase();
+  if (currentPlayers.some((player) => {
+    const playerKey = String(player?.name || "").trim().toLowerCase();
+    return playerKey === existingKey && (!editTarget || playerKey !== editPlayerKey);
+  })) {
     setSyncStatus("That player already exists in the roster sync list.", true);
     return;
   }
@@ -2129,7 +2269,7 @@ async function onAddSyncedPlayerClick() {
     newPlayerClassTertiaryNode?.value
   ]);
 
-  let resolvedUserId = normalizeOptionalUserId(newPlayerUserIdNode?.value);
+  let resolvedUserId = normalizeUserIdInput(newPlayerUserIdNode?.value);
   if (!resolvedUserId) {
     resolvedUserId = await resolveRobloxUserIdByUsername(playerName);
     if (resolvedUserId && newPlayerUserIdNode) {
@@ -2138,7 +2278,7 @@ async function onAddSyncedPlayerClick() {
   }
 
   const nextEntry = normalizeExtraPlayerEntry({
-    id: `extra-player-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    id: editTarget?.id || `extra-player-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
     name: playerName,
     faction: newPlayerFactionNode?.value,
     country: newPlayerCountryNode?.value,
@@ -2165,7 +2305,18 @@ async function onAddSyncedPlayerClick() {
     order: rowOrder.length ? rowOrder : (Array.isArray(currentConfig?.order) ? currentConfig.order : [])
   };
 
-  currentExtraPlayers = [...currentExtraPlayers, nextEntry];
+  if (editTarget) {
+    currentExtraPlayers = currentExtraPlayers.map((item) => {
+      if (item.id !== editTarget.id) {
+        return item;
+      }
+
+      return nextEntry;
+    });
+  } else {
+    currentExtraPlayers = [...currentExtraPlayers, nextEntry];
+  }
+
   const mergedRosterPlayers = buildMergedRosterPlayers(currentRosterLines, currentExtraPlayers);
   currentPlayers = mergePlayersWithConfig(mergedRosterPlayers, currentConfig, currentExtraPlayers);
   renderRows(currentPlayers);
@@ -2179,7 +2330,7 @@ async function onAddSyncedPlayerClick() {
   }
 
   let dmStatusSuffix = "";
-  if (addPlayerSendDmNode?.checked) {
+  if (!editTarget && addPlayerSendDmNode?.checked) {
     if (!nextEntry.discordId) {
       dmStatusSuffix = " DM skipped (missing valid Discord ID).";
       setAddPlayerDmStatus("DM skipped: player has no valid Discord ID.", true);
@@ -2195,16 +2346,19 @@ async function onAddSyncedPlayerClick() {
       }
     }
   } else {
-    setAddPlayerDmStatus("DM on add is disabled.");
+    setAddPlayerDmStatus(editTarget
+      ? "Player updated locally. DM is only sent on new adds."
+      : "DM on add is disabled.");
   }
 
   resetSyncedPlayerInputs();
-  setSyncStatus(`Synced player added locally. Click Save Global Sync to publish.${dmStatusSuffix}`);
+  setSyncStatus(`${editTarget ? "Synced player updated" : "Synced player added"} locally. Click Save Global Sync to publish.${dmStatusSuffix}`);
 }
 
 function onClearSyncedPlayerInputsClick() {
+  const wasEditing = Boolean(editingSyncedPlayerId);
   resetSyncedPlayerInputs();
-  setSyncStatus("Add Player fields were cleared.");
+  setSyncStatus(wasEditing ? "Edit canceled and fields were cleared." : "Add Player fields were cleared.");
 }
 
 function onAddTransferClick() {

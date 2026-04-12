@@ -273,6 +273,46 @@ function normalizeOptionalUserId(value) {
   return /^\d{3,14}$/.test(normalized) ? normalized : "";
 }
 
+function normalizeUserIdInput(value) {
+  const directId = normalizeOptionalUserId(value);
+  if (directId) {
+    return directId;
+  }
+
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  const pathMatch = raw.match(/\/users\/(\d{3,14})(?:\/|$|\?)/i);
+  if (pathMatch?.[1]) {
+    return normalizeOptionalUserId(pathMatch[1]);
+  }
+
+  const queryMatch = raw.match(/[?&]userId=(\d{3,14})(?:&|$)/i);
+  if (queryMatch?.[1]) {
+    return normalizeOptionalUserId(queryMatch[1]);
+  }
+
+  try {
+    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    const parsed = new URL(withProtocol);
+    const parsedPathMatch = parsed.pathname.match(/\/users\/(\d{3,14})(?:\/|$)/i);
+    if (parsedPathMatch?.[1]) {
+      return normalizeOptionalUserId(parsedPathMatch[1]);
+    }
+
+    const parsedQueryId = parsed.searchParams.get("userId");
+    if (parsedQueryId) {
+      return normalizeOptionalUserId(parsedQueryId);
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
+}
+
 function normalizeExtraPlayers(raw) {
   if (!Array.isArray(raw)) {
     return [];
@@ -295,7 +335,7 @@ function normalizeExtraPlayers(raw) {
         classes: normalizePlayerClassList(item.classes ?? item.class),
         country: String(item.country || "N/A").trim() || "N/A",
         discordId: normalizeDiscordId(item.discordId),
-        userId: normalizeOptionalUserId(item.userId),
+        userId: normalizeUserIdInput(item.userId),
         device: normalizeDeviceValue(item.device)
       };
     })
