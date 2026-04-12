@@ -84,7 +84,8 @@ const fallbackPlayerLines = [
   "83. Izan - Faction: TWA | Country: Pakistan -1179085856737333270",
   "84. BobTrexh - Faction: TAE | Country: Singapore -1158358352376631397",
   "85. Sleepytyme_1 - Faction: Scythia | Country: USA -1045406303222243389",
-  "86. certifiedsobber9 - Faction: sermetya | Country: indonesia -1116698696457920542"
+  "86. certifiedsobber9 - Faction: sermetya | Country: indonesia -1116698696457920542",
+  "87. orbify3 - Faction: Scythia | Country: USA -1326775318320644148"
 ];
 
 const avatarIdMap = new Map([
@@ -173,7 +174,8 @@ const avatarIdMap = new Map([
   ["izan", 10771337052],
   ["bobtrexh", 8704157338],
   ["sleepytyme_1", 4129401197],
-  ["certifiedsobber9", 10107863002]
+  ["certifiedsobber9", 10107863002],
+  ["orbify3", 7744541535]
 ]);
 
 // Expose maps to window for global access (required by leaderboard.js)
@@ -266,7 +268,8 @@ const staticAvatarUrlMap = new Map([
   ["10771337052", "https://www.roblox.com/headshot-thumbnail/image?userId=10771337052&width=420&height=420&format=png"],
   ["8704157338", "https://www.roblox.com/headshot-thumbnail/image?userId=8704157338&width=420&height=420&format=png"],
   ["4129401197", "https://www.roblox.com/headshot-thumbnail/image?userId=4129401197&width=420&height=420&format=png"],
-  ["10107863002", "https://www.roblox.com/headshot-thumbnail/image?userId=10107863002&width=420&height=420&format=png"]
+  ["10107863002", "https://www.roblox.com/headshot-thumbnail/image?userId=10107863002&width=420&height=420&format=png"],
+  ["7744541535", "https://www.roblox.com/headshot-thumbnail/image?userId=7744541535&width=420&height=420&format=png"]
 ]);
 
 if (typeof window !== "undefined") {
