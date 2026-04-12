@@ -76,6 +76,73 @@ function normalizeConfigPlayers(config) {
   return output;
 }
 
+function normalizeConfigUserId(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return "";
+  }
+
+  if (/^\d{3,14}$/.test(normalized)) {
+    return normalized;
+  }
+
+  const pathMatch = normalized.match(/\/users\/(\d{3,14})(?:\/|$|\?)/i);
+  if (pathMatch?.[1]) {
+    return pathMatch[1];
+  }
+
+  const queryMatch = normalized.match(/[?&]userId=(\d{3,14})(?:&|$)/i);
+  if (queryMatch?.[1]) {
+    return queryMatch[1];
+  }
+
+  return "";
+}
+
+function normalizeConfigExtraPlayers(config) {
+  const raw = config?.extraPlayers;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .slice(0, 120)
+    .map((entry) => {
+      const item = entry && typeof entry === "object" ? entry : {};
+      const name = String(item.name || item.playerName || "").trim();
+      if (!name) {
+        return null;
+      }
+
+      const key = name.toLowerCase();
+      const mappedUserId = Number(typeof avatarIdMap?.get === "function" ? avatarIdMap.get(key) : 0);
+      const parsedUserId = Number(normalizeConfigUserId(item.userId));
+      const resolvedUserId = Number.isFinite(parsedUserId) && parsedUserId > 0
+        ? parsedUserId
+        : (Number.isFinite(mappedUserId) && mappedUserId > 0 ? mappedUserId : fallbackAvatarId);
+
+      const faction = typeof sanitizeFactionValue === "function"
+        ? sanitizeFactionValue(item.faction || "N/A")
+        : (String(item.faction || "N/A").trim().toUpperCase() || "N/A");
+
+      return {
+        name,
+        faction,
+        country: String(item.country || "N/A").trim() || "N/A",
+        discordId: String(item.discordId || "").trim(),
+        userId: resolvedUserId,
+        avatarUrl: "",
+        bodyAvatarUrl: "",
+        level: 1,
+        kd: 1,
+        playerClasses: [],
+        playerClass: "Unknown",
+        device: "Unknown"
+      };
+    })
+    .filter(Boolean);
+}
+
 function normalizeConfigOrder(config, validKeys) {
   const keys = Array.isArray(validKeys) ? validKeys : [];
   const valid = new Set(keys);
@@ -302,16 +369,17 @@ function renderTopOperators(players, avatarMap) {
     const level = clampLevel(player.level);
     const kd = clampKd(player.kd);
     const impact = Math.round(getPlayerImpact(level, kd, index));
+    const fallbackAvatar = getFallbackAvatarUrl(player.name);
     const avatar = avatarMap.get(Number(player.userId))
-      || getStaticAvatarUrl(player.userId)
       || getRobloxHeadshotUrl(player.userId, 420)
-      || getFallbackAvatarUrl(player.name);
+      || getStaticAvatarUrl(player.userId)
+      || fallbackAvatar;
     const faction = splitFactionTokens(player.faction).join("/");
 
     return `
       <article class="warroom-operator-row">
         <span class="warroom-operator-rank">#${index + 1}</span>
-        <img src="${avatar}" alt="${safe(player.name)} avatar" loading="lazy" referrerpolicy="no-referrer">
+        <img src="${avatar}" data-fallback="${safe(fallbackAvatar)}" alt="${safe(player.name)} avatar" loading="lazy" referrerpolicy="no-referrer">
         <div>
           <strong>${safe(player.name)}</strong>
           <p>${safe(faction)} • ${countryToFlag(player.country)} ${safe(player.country)} • Lvl ${level} • K/D ${kd.toFixed(1)}</p>
@@ -320,6 +388,21 @@ function renderTopOperators(players, avatarMap) {
       </article>
     `;
   }).join("");
+
+  warRoomTopOperatorsNode.querySelectorAll(".warroom-operator-row img").forEach((imageNode) => {
+    const fallback = String(imageNode.getAttribute("data-fallback") || "").trim();
+    if (!fallback) {
+      return;
+    }
+
+    imageNode.addEventListener("error", () => {
+      if (imageNode.src === fallback) {
+        return;
+      }
+
+      imageNode.src = fallback;
+    }, { once: true });
+  });
 }
 
 function renderFactionTable(factions) {
@@ -478,19 +561,42 @@ async function gatherPlayers() {
   ]);
 
   const syncedPlayers = normalizeConfigPlayers(remoteConfig);
-  const players = lines
+  const parsedPlayers = lines
     .map(parsePlayerLine)
-    .filter(Boolean)
-    .map((player, sourceIndex) => {
-      const stats = getLeaderboardStats(player.name);
-      const key = String(player.name || "").toLowerCase();
-      const override = syncedPlayers[key];
-      player.key = key;
-      player.sourceIndex = sourceIndex;
-      player.level = override?.level ?? stats.level;
-      player.kd = override?.kd ?? stats.kd;
-      return player;
-    });
+    .filter(Boolean);
+
+  const players = [];
+  const seenKeys = new Set();
+
+  parsedPlayers.forEach((player) => {
+    const key = String(player.name || "").trim().toLowerCase();
+    if (!key || seenKeys.has(key)) {
+      return;
+    }
+
+    seenKeys.add(key);
+    players.push(player);
+  });
+
+  normalizeConfigExtraPlayers(remoteConfig).forEach((extraPlayer) => {
+    const key = String(extraPlayer.name || "").trim().toLowerCase();
+    if (!key || seenKeys.has(key)) {
+      return;
+    }
+
+    seenKeys.add(key);
+    players.push(extraPlayer);
+  });
+
+  players.forEach((player, sourceIndex) => {
+    const stats = getLeaderboardStats(player.name);
+    const key = String(player.name || "").toLowerCase();
+    const override = syncedPlayers[key];
+    player.key = key;
+    player.sourceIndex = sourceIndex;
+    player.level = override?.level ?? stats.level;
+    player.kd = override?.kd ?? stats.kd;
+  });
 
   const configuredOrder = normalizeConfigOrder(remoteConfig, players.map((player) => player.key));
   const orderMap = new Map(configuredOrder.map((key, index) => [key, index]));

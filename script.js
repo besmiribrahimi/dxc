@@ -1518,7 +1518,37 @@ function normalizeSyncedUserId(value) {
     return "";
   }
 
-  return /^\d{3,14}$/.test(normalized) ? normalized : "";
+  if (/^\d{3,14}$/.test(normalized)) {
+    return normalized;
+  }
+
+  const pathMatch = normalized.match(/\/users\/(\d{3,14})(?:\/|$|\?)/i);
+  if (pathMatch?.[1]) {
+    return pathMatch[1];
+  }
+
+  const queryMatch = normalized.match(/[?&]userId=(\d{3,14})(?:&|$)/i);
+  if (queryMatch?.[1]) {
+    return queryMatch[1];
+  }
+
+  try {
+    const withProtocol = /^https?:\/\//i.test(normalized) ? normalized : `https://${normalized}`;
+    const parsed = new URL(withProtocol);
+    const parsedPathMatch = parsed.pathname.match(/\/users\/(\d{3,14})(?:\/|$)/i);
+    if (parsedPathMatch?.[1]) {
+      return parsedPathMatch[1];
+    }
+
+    const parsedQueryId = parsed.searchParams.get("userId");
+    if (parsedQueryId && /^\d{3,14}$/.test(parsedQueryId)) {
+      return parsedQueryId;
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
 }
 
 async function resolveRobloxUserIdsByUsernames(usernames) {
@@ -1786,10 +1816,12 @@ function buildPlayerCard(player, index, avatarMap) {
   card.setAttribute("role", "button");
   card.setAttribute("aria-label", `Open Player ${player.name}`);
 
+  const robloxHeadshotAvatar = getRobloxHeadshotUrl(player.userId, 720);
+  const staticAvatar = getStaticAvatarUrl(player.userId);
   const primaryAvatar =
     avatarMap.get(Number(player.userId)) ||
-    getStaticAvatarUrl(player.userId) ||
-    getRobloxHeadshotUrl(player.userId, 720) ||
+    robloxHeadshotAvatar ||
+    staticAvatar ||
     getFallbackAvatarUrl(player.name);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
   player.avatarUrl = primaryAvatar;
@@ -1825,6 +1857,12 @@ function buildPlayerCard(player, index, avatarMap) {
 
   const imageNode = card.querySelector(".player-image");
   imageNode.addEventListener("error", () => {
+    if (!imageNode.dataset.robloxRetry && robloxHeadshotAvatar && imageNode.src !== robloxHeadshotAvatar) {
+      imageNode.dataset.robloxRetry = "1";
+      imageNode.src = robloxHeadshotAvatar;
+      return;
+    }
+
     imageNode.src = fallbackAvatar;
   });
 
@@ -1844,7 +1882,16 @@ function openModal(player) {
     return;
   }
 
-  modalAvatar.src = player.bodyAvatarUrl || player.avatarUrl || getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
+  const fallbackAvatar = getFallbackAvatarUrl(player.name);
+  modalAvatar.src = player.bodyAvatarUrl
+    || player.avatarUrl
+    || getRobloxHeadshotUrl(player.userId, 720)
+    || getStaticAvatarUrl(player.userId)
+    || fallbackAvatar;
+  modalAvatar.onerror = () => {
+    modalAvatar.onerror = null;
+    modalAvatar.src = fallbackAvatar;
+  };
   modalAvatar.alt = `${player.name} Roblox avatar`;
   modalName.textContent = player.name;
   modalFaction.innerHTML = buildFactionChipHtml(player.faction, {
@@ -1889,7 +1936,11 @@ function renderTopPlayerCard(player) {
     : "";
   topFactionBadgeNode.innerHTML = `${badgeFlagMarkup}${safeFactionToken}`;
 
-  const heroAvatar = player.bodyAvatarUrl || player.avatarUrl || getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
+  const heroAvatar = player.bodyAvatarUrl
+    || player.avatarUrl
+    || getRobloxHeadshotUrl(player.userId, 720)
+    || getStaticAvatarUrl(player.userId)
+    || getFallbackAvatarUrl(player.name);
   topPlayerAvatarNode.src = heroAvatar;
   topPlayerAvatarNode.alt = `${player.name} Roblox avatar`;
 
