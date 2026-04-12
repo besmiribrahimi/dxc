@@ -51,6 +51,20 @@
   window.normalizePlayerClassValue = normalizePlayerClassValue;
   window.normalizePlayerClassList = normalizePlayerClassList;
   window.splitFactionTokens = splitFactionTokens;
+  
+  // Data Loading & Processing (Used by Leaderboard/War Room)
+  window.loadPlayerLines = loadPlayerLines;
+  window.parsePlayerLine = parsePlayerLine;
+  window.fetchAvatarUrls = fetchAvatarUrls;
+  window.fetchTopBodyAvatar = fetchTopBodyAvatar;
+  window.resolveRobloxUserIdsByUsernames = resolveRobloxUserIdsByUsernames;
+  
+  // Visual & Formatting Utilities
+  window.buildFactionChipHtml = buildFactionChipHtml;
+  window.countryToFlag = countryToFlag;
+  window.getPrimaryFactionBackgroundImage = getPrimaryFactionBackgroundImage;
+  window.getClassIconPath = getClassIconPath;
+  window.getFactionFlagPath = getFactionFlagPath;
 
 const playersGrid = document.getElementById("playersGrid");
 const modal = document.getElementById("playerModal");
