@@ -238,6 +238,19 @@
             <p id="adminWeeklyTopStatus" class="admin-status">Waiting for weekly Top 10 generation.</p>
           </section>
 
+          <section class="admin-tab-panel hidden" data-admin-tab-panel="insights" aria-label="Website insights and diagnostics">
+            <div class="admin-panel-header">
+              <h2>Web Insights</h2>
+              <div class="admin-actions">
+                <button id="adminRefreshInsightsBtn" type="button" class="admin-button secondary">Refresh Insights</button>
+                <button id="adminExportInsightsBtn" type="button" class="admin-button">Export JSON</button>
+              </div>
+            </div>
+            <p>Monitor website runtime details, browser telemetry, sync snapshot, and endpoint diagnostics in one place.</p>
+            <div id="adminWebInsightsGrid" class="admin-insights-grid"></div>
+            <p id="adminWebInsightsStatus" class="admin-status">Waiting for insights refresh.</p>
+          </section>
+
           <section class="admin-tab-panel hidden" data-admin-tab-panel="clips" aria-label="Clips manager">
             <div class="admin-panel-header">
               <h2>Clips</h2>
@@ -319,6 +332,7 @@
           <button type="button" class="admin-tab-button" data-admin-tab-target="dm-sender">DM Sender</button>
           <button type="button" class="admin-tab-button" data-admin-tab-target="add-player">Add Player</button>
           <button type="button" class="admin-tab-button" data-admin-tab-target="top-ten">Top Ten</button>
+          <button type="button" class="admin-tab-button" data-admin-tab-target="insights">Web Insights</button>
           <button type="button" class="admin-tab-button" data-admin-tab-target="other">Other</button>
         </aside>
       </div>

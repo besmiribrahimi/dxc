@@ -220,6 +220,65 @@
   border-color: rgba(147, 197, 253, 0.8);
 }
 
+.admin-insights-grid {
+  margin-top: 0.35rem;
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.admin-insight-card {
+  border: 1px solid rgba(147, 197, 253, 0.24);
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.28);
+  padding: 0.62rem;
+  display: grid;
+  gap: 0.42rem;
+}
+
+.admin-insight-card h3 {
+  margin: 0;
+  font-family: "Rajdhani", sans-serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #dbeafe;
+}
+
+.admin-insight-rows {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.admin-insight-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.72rem;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.2);
+  padding-bottom: 0.2rem;
+}
+
+.admin-insight-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.admin-insight-row span {
+  color: #bfdbfe;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.admin-insight-row strong {
+  color: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: right;
+  line-height: 1.2;
+}
+
 @keyframes admin-panel-fade-in {
   from {
     opacity: 0;
@@ -241,6 +300,19 @@
 @media (max-width: 760px) {
   .admin-tab-rail {
     grid-template-columns: 1fr;
+  }
+
+  .admin-insights-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-insight-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-insight-row strong {
+    text-align: left;
   }
 
   .admin-synced-wrap .admin-transfer-row {

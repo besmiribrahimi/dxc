@@ -2,6 +2,7 @@ const ADMIN_TOKEN_KEY = "draxar-admin-token-v1";
 const LOGIN_ENDPOINT = "/api/admin/login";
 const ADMIN_CONFIG_ENDPOINT = "/api/admin/config";
 const BOT_EVENT_ENDPOINT = "/api/admin/bot-event";
+const WEB_SYNC_ENDPOINT = "/api/leaderboard-config";
 
 const authCardNode = document.getElementById("adminAuthCard");
 const panelNode = document.getElementById("adminPanel");
@@ -41,6 +42,10 @@ const weeklyTopWeekNode = document.getElementById("adminWeeklyTopWeek");
 const weeklyTopBoardNode = document.getElementById("adminWeeklyTopBoard");
 const weeklyTopMessageNode = document.getElementById("adminWeeklyTopMessage");
 const weeklyTopStatusNode = document.getElementById("adminWeeklyTopStatus");
+const refreshInsightsButtonNode = document.getElementById("adminRefreshInsightsBtn");
+const exportInsightsButtonNode = document.getElementById("adminExportInsightsBtn");
+const webInsightsGridNode = document.getElementById("adminWebInsightsGrid");
+const webInsightsStatusNode = document.getElementById("adminWebInsightsStatus");
 const clipRowsNode = document.getElementById("adminClipRows");
 const postClipButtonNode = document.getElementById("adminPostClipBtn");
 const clipTitleNode = document.getElementById("adminClipTitle");
@@ -91,6 +96,8 @@ let activeClipTypeTab = "clip";
 let draggingPlayerKey = "";
 let draggingInitialized = false;
 let editingSyncedPlayerId = "";
+let cachedEndpointInsights = [];
+let insightsRefreshInFlight = false;
 const dynamicAvatarUrlMap = new Map();
 const pendingAvatarUserIds = new Set();
 
@@ -1145,6 +1152,408 @@ function setWeeklyTopStatus(message, isError = false) {
   weeklyTopStatusNode.classList.toggle("error", isError);
 }
 
+function setWebInsightsStatus(message, isError = false) {
+  if (!webInsightsStatusNode) {
+    return;
+  }
+
+  webInsightsStatusNode.textContent = message;
+  webInsightsStatusNode.classList.toggle("error", isError);
+}
+
+function formatInsightDuration(milliseconds) {
+  const value = Number(milliseconds);
+  if (!Number.isFinite(value) || value < 0) {
+    return "n/a";
+  }
+
+  return `${Math.round(value)} ms`;
+}
+
+function formatInsightBytes(bytes) {
+  const value = Number(bytes);
+  if (!Number.isFinite(value) || value < 0) {
+    return "n/a";
+  }
+
+  if (value < 1024) {
+    return `${Math.round(value)} B`;
+  }
+
+  const units = ["KB", "MB", "GB", "TB"];
+  let scaled = value / 1024;
+  let index = 0;
+
+  while (scaled >= 1024 && index < units.length - 1) {
+    scaled /= 1024;
+    index += 1;
+  }
+
+  return `${scaled.toFixed(1)} ${units[index]}`;
+}
+
+function safeStorageSize(storage) {
+  try {
+    return Number(storage?.length || 0);
+  } catch {
+    return 0;
+  }
+}
+
+function getFactionCount(players) {
+  const factions = new Set();
+
+  (Array.isArray(players) ? players : []).forEach((player) => {
+    const normalized = normalizeFactionValue(player?.faction || "N/A");
+
+    normalized
+      .split("/")
+      .map((token) => String(token || "").trim().toUpperCase())
+      .filter((token) => token && token !== "N/A")
+      .forEach((token) => factions.add(token));
+  });
+
+  return factions.size;
+}
+
+function getClipTypeCountSummary() {
+  const summary = {
+    clips: 0,
+    edits: 0
+  };
+
+  (Array.isArray(currentClips) ? currentClips : []).forEach((clip) => {
+    const type = String(clip?.type || "clip").trim().toLowerCase();
+    if (type === "edit") {
+      summary.edits += 1;
+      return;
+    }
+
+    summary.clips += 1;
+  });
+
+  return `${summary.clips} clips / ${summary.edits} edits`;
+}
+
+function getPerformanceInsightRows() {
+  const navigationEntry = performance.getEntriesByType("navigation")[0] || null;
+  const paintEntries = performance.getEntriesByType("paint");
+  const firstPaintEntry = paintEntries.find((entry) => entry.name === "first-paint") || null;
+  const firstContentfulPaintEntry = paintEntries.find((entry) => entry.name === "first-contentful-paint") || null;
+  const heapMemory = performance?.memory || null;
+
+  return [
+    {
+      label: "Navigation Type",
+      value: navigationEntry?.type || "unknown"
+    },
+    {
+      label: "DOM Interactive",
+      value: formatInsightDuration(navigationEntry?.domInteractive)
+    },
+    {
+      label: "DOM Complete",
+      value: formatInsightDuration(navigationEntry?.domComplete)
+    },
+    {
+      label: "Load Event End",
+      value: formatInsightDuration(navigationEntry?.loadEventEnd)
+    },
+    {
+      label: "First Paint",
+      value: formatInsightDuration(firstPaintEntry?.startTime)
+    },
+    {
+      label: "First Contentful Paint",
+      value: formatInsightDuration(firstContentfulPaintEntry?.startTime)
+    },
+    {
+      label: "JS Heap Used",
+      value: formatInsightBytes(heapMemory?.usedJSHeapSize)
+    }
+  ];
+}
+
+function buildWebInsightCard(title, rows) {
+  const rowMarkup = (Array.isArray(rows) ? rows : [])
+    .map((row) => {
+      return `
+        <div class="admin-insight-row">
+          <span>${safeText(row?.label || "Metric")}</span>
+          <strong>${safeText(row?.value || "n/a")}</strong>
+        </div>
+      `;
+    })
+    .join("");
+
+  return `
+    <article class="admin-insight-card">
+      <h3>${safeText(title)}</h3>
+      <div class="admin-insight-rows">${rowMarkup}</div>
+    </article>
+  `;
+}
+
+function buildWebInsightCards() {
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const isOnline = Boolean(navigator.onLine);
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown";
+  const languages = Array.isArray(navigator.languages) && navigator.languages.length
+    ? navigator.languages.join(", ")
+    : (navigator.language || "unknown");
+
+  const networkParts = [];
+  if (connection?.effectiveType) {
+    networkParts.push(`type ${String(connection.effectiveType).toUpperCase()}`);
+  }
+
+  if (Number.isFinite(Number(connection?.downlink))) {
+    networkParts.push(`${Number(connection.downlink).toFixed(1)} Mbps`);
+  }
+
+  if (Number.isFinite(Number(connection?.rtt))) {
+    networkParts.push(`${Math.round(Number(connection.rtt))} ms RTT`);
+  }
+
+  const hasManualOrder = Array.isArray(currentConfig?.order) && currentConfig.order.length > 0;
+  const endpointRows = cachedEndpointInsights.length
+    ? cachedEndpointInsights.map((item) => ({
+      label: item.label,
+      value: `${item.statusLabel} | ${item.latencyLabel}`
+    }))
+    : [{
+      label: "Diagnostics",
+      value: "Not probed yet"
+    }];
+
+  return [
+    {
+      title: "Site Runtime",
+      rows: [
+        { label: "Path", value: window.location.pathname || "/" },
+        { label: "Host", value: window.location.host || "unknown" },
+        { label: "Protocol", value: window.location.protocol === "https:" ? "HTTPS" : "HTTP" },
+        { label: "Online", value: isOnline ? "Yes" : "No" },
+        { label: "Local Time", value: new Date().toLocaleString() },
+        { label: "Timezone", value: timezone }
+      ]
+    },
+    {
+      title: "Browser and Device",
+      rows: [
+        { label: "Platform", value: navigator.userAgentData?.platform || navigator.platform || "unknown" },
+        { label: "Languages", value: languages },
+        { label: "Viewport", value: `${window.innerWidth}x${window.innerHeight}` },
+        { label: "Screen", value: `${window.screen?.width || "?"}x${window.screen?.height || "?"}` },
+        { label: "Cookies Enabled", value: navigator.cookieEnabled ? "Yes" : "No" },
+        { label: "Touch Points", value: String(Number(navigator.maxTouchPoints || 0)) },
+        { label: "Connection", value: networkParts.join(" | ") || "Unavailable" }
+      ]
+    },
+    {
+      title: "Content Snapshot",
+      rows: [
+        { label: "Roster Players", value: String(currentPlayers.length) },
+        { label: "Admin Synced Extras", value: String(currentExtraPlayers.length) },
+        { label: "Transfers", value: String(currentTransfers.length) },
+        { label: "Clips and Edits", value: getClipTypeCountSummary() },
+        { label: "Unique Factions", value: String(getFactionCount(currentPlayers)) },
+        { label: "Sync Mode", value: hasManualOrder ? "Custom admin order" : "Level-ranked fallback" },
+        { label: "Last Global Sync", value: formatSyncTime(currentConfig?.updatedAt) }
+      ]
+    },
+    {
+      title: "Performance",
+      rows: getPerformanceInsightRows()
+    },
+    {
+      title: "Storage",
+      rows: [
+        { label: "Local Storage Keys", value: String(safeStorageSize(window.localStorage)) },
+        { label: "Session Storage Keys", value: String(safeStorageSize(window.sessionStorage)) },
+        { label: "Admin Token Present", value: getStoredToken() ? "Yes" : "No" }
+      ]
+    },
+    {
+      title: "Endpoint Diagnostics",
+      rows: endpointRows
+    }
+  ];
+}
+
+function renderWebInsights() {
+  if (!webInsightsGridNode) {
+    return;
+  }
+
+  webInsightsGridNode.innerHTML = buildWebInsightCards()
+    .map((card) => buildWebInsightCard(card.title, card.rows))
+    .join("");
+}
+
+function buildWebInsightsExportPayload() {
+  const cards = buildWebInsightCards().map((card) => ({
+    title: String(card?.title || "Section"),
+    rows: (Array.isArray(card?.rows) ? card.rows : []).map((row) => ({
+      label: String(row?.label || "Metric"),
+      value: String(row?.value || "n/a")
+    }))
+  }));
+
+  return {
+    generatedAt: new Date().toISOString(),
+    page: {
+      path: window.location.pathname || "/",
+      host: window.location.host || "unknown",
+      href: window.location.href || ""
+    },
+    summary: {
+      players: currentPlayers.length,
+      syncedExtraPlayers: currentExtraPlayers.length,
+      transfers: currentTransfers.length,
+      clips: currentClips.length,
+      lastGlobalSync: currentConfig?.updatedAt || null
+    },
+    endpointDiagnostics: Array.isArray(cachedEndpointInsights) ? cachedEndpointInsights : [],
+    cards
+  };
+}
+
+function downloadInsightsJson(payload) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const fileName = `admin-web-insights-${timestamp}.json`;
+  const data = `${JSON.stringify(payload, null, 2)}\n`;
+  const blob = new Blob([data], { type: "application/json;charset=utf-8" });
+  const blobUrl = window.URL.createObjectURL(blob);
+
+  const linkNode = document.createElement("a");
+  linkNode.href = blobUrl;
+  linkNode.download = fileName;
+  linkNode.rel = "noreferrer";
+  document.body.append(linkNode);
+  linkNode.click();
+  linkNode.remove();
+  window.URL.revokeObjectURL(blobUrl);
+
+  return fileName;
+}
+
+async function onExportInsightsClick() {
+  if (!cachedEndpointInsights.length) {
+    await refreshWebInsights({ probeEndpoints: true });
+  }
+
+  try {
+    const payload = buildWebInsightsExportPayload();
+    const fileName = downloadInsightsJson(payload);
+    setWebInsightsStatus(`Insights exported: ${fileName}`);
+  } catch {
+    setWebInsightsStatus("Failed to export insights JSON.", true);
+  }
+}
+
+function formatEndpointProbeLabel(statusCode) {
+  if (!Number.isFinite(statusCode) || statusCode <= 0) {
+    return "unreachable";
+  }
+
+  if (statusCode >= 200 && statusCode < 300) {
+    return `ok (${statusCode})`;
+  }
+
+  if (statusCode === 401 || statusCode === 403) {
+    return `auth required (${statusCode})`;
+  }
+
+  if (statusCode === 405) {
+    return `reachable (${statusCode})`;
+  }
+
+  if (statusCode >= 500) {
+    return `server error (${statusCode})`;
+  }
+
+  return `http ${statusCode}`;
+}
+
+async function probeInsightEndpoint(endpoint, token) {
+  const startedAt = performance.now();
+  const headers = {
+    Accept: "application/json,text/plain,*/*"
+  };
+
+  if (endpoint.requiresAuth && token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(endpoint.url, {
+      method: endpoint.method || "GET",
+      cache: "no-store",
+      headers
+    });
+
+    const elapsed = performance.now() - startedAt;
+    return {
+      label: endpoint.label,
+      statusCode: response.status,
+      statusLabel: formatEndpointProbeLabel(response.status),
+      latencyLabel: formatInsightDuration(elapsed)
+    };
+  } catch {
+    const elapsed = performance.now() - startedAt;
+    return {
+      label: endpoint.label,
+      statusCode: 0,
+      statusLabel: "unreachable",
+      latencyLabel: formatInsightDuration(elapsed)
+    };
+  }
+}
+
+async function probeWebInsightEndpoints() {
+  const token = getStoredToken();
+  const endpoints = [
+    { label: "Web sync config", url: WEB_SYNC_ENDPOINT, method: "GET", requiresAuth: false },
+    { label: "Admin login", url: LOGIN_ENDPOINT, method: "GET", requiresAuth: false },
+    { label: "Admin config", url: ADMIN_CONFIG_ENDPOINT, method: "GET", requiresAuth: true },
+    { label: "Bot event", url: BOT_EVENT_ENDPOINT, method: "GET", requiresAuth: true },
+    { label: "Roster source", url: "discordlink", method: "GET", requiresAuth: false },
+    { label: "News file new.txt", url: "new.txt", method: "GET", requiresAuth: false },
+    { label: "News file news.txt", url: "news.txt", method: "GET", requiresAuth: false }
+  ];
+
+  return Promise.all(endpoints.map((endpoint) => probeInsightEndpoint(endpoint, token)));
+}
+
+async function refreshWebInsights(options = {}) {
+  const shouldProbeEndpoints = options.probeEndpoints !== false;
+  renderWebInsights();
+
+  if (!shouldProbeEndpoints) {
+    setWebInsightsStatus(`Insights updated at ${new Date().toLocaleTimeString()}.`);
+    return;
+  }
+
+  if (insightsRefreshInFlight) {
+    setWebInsightsStatus("Insights refresh already in progress.");
+    return;
+  }
+
+  insightsRefreshInFlight = true;
+  setWebInsightsStatus("Refreshing endpoint diagnostics...");
+
+  try {
+    cachedEndpointInsights = await probeWebInsightEndpoints();
+    renderWebInsights();
+    setWebInsightsStatus(`Insights refreshed at ${new Date().toLocaleTimeString()}.`);
+  } catch {
+    setWebInsightsStatus("Failed to refresh endpoint diagnostics.", true);
+  } finally {
+    insightsRefreshInFlight = false;
+  }
+}
+
 function getDefaultWeeklyTopWeekLabel() {
   const now = new Date();
   const month = now.toLocaleString(undefined, { month: "short" });
@@ -1377,6 +1786,16 @@ function activateAdminTab(tabName) {
     const panelName = String(panelTabNode.dataset.adminTabPanel || "").trim().toLowerCase();
     panelTabNode.classList.toggle("hidden", panelName !== activeTab);
   });
+
+  if (activeTab === "insights") {
+    if (!cachedEndpointInsights.length) {
+      refreshWebInsights({ probeEndpoints: true });
+      return;
+    }
+
+    renderWebInsights();
+    setWebInsightsStatus("Showing cached insights. Click Refresh Insights to probe endpoints again.");
+  }
 }
 
 function setupAdminTabs() {
@@ -2069,6 +2488,7 @@ async function loadPanelData() {
     renderAdminNewsFeed(currentPlayers);
     renderBotSettings(config);
     renderWeeklyTopTenPreview();
+    renderWebInsights();
 
     const hasManualOrder = Array.isArray(config?.order) && config.order.length > 0;
     const modeText = hasManualOrder
@@ -2149,6 +2569,7 @@ async function onSaveClick() {
     renderClipRows();
     renderAdminNewsFeed(currentPlayers);
     renderWeeklyTopTenPreview();
+    renderWebInsights();
 
     const botDispatch = saveResult.botDispatch;
     const botSuffix = botDispatch
@@ -2324,6 +2745,7 @@ async function onAddSyncedPlayerClick() {
   renderTransferRows(currentTransfers);
   renderAdminNewsFeed(currentPlayers);
   renderWeeklyTopTenPreview();
+  renderWebInsights();
 
   if (resolvedUserId) {
     fetchDynamicAvatarUrlForUserId(resolvedUserId).catch(() => {});
@@ -2364,6 +2786,7 @@ function onClearSyncedPlayerInputsClick() {
 function onAddTransferClick() {
   currentTransfers = [...currentTransfers, createBlankTransfer()];
   renderTransferRows(currentTransfers);
+  renderWebInsights();
   setSyncStatus("Transfer added locally. Click Save Global Sync to publish.");
 }
 
@@ -2397,6 +2820,7 @@ function onPostClipClick() {
   currentClips = [...currentClips, postedClip];
   renderClipRows();
   resetClipComposer();
+  renderWebInsights();
   setSyncStatus(`${activeClipTypeTab === "edit" ? "Edit" : "Clip"} posted locally. Click Save Global Sync to publish.`);
 }
 
@@ -2445,6 +2869,14 @@ if (weeklyTopTitleNode) {
 if (weeklyTopWeekNode) {
   weeklyTopWeekNode.addEventListener("input", () => renderWeeklyTopTenPreview());
 }
+if (refreshInsightsButtonNode) {
+  refreshInsightsButtonNode.addEventListener("click", () => {
+    refreshWebInsights({ probeEndpoints: true });
+  });
+}
+if (exportInsightsButtonNode) {
+  exportInsightsButtonNode.addEventListener("click", onExportInsightsClick);
+}
 if (addPlayerSendDmNode) {
   addPlayerSendDmNode.addEventListener("change", () => {
     setAddPlayerDmStatus(addPlayerSendDmNode.checked
@@ -2453,10 +2885,15 @@ if (addPlayerSendDmNode) {
   });
 }
 
+window.addEventListener("online", () => refreshWebInsights({ probeEndpoints: false }));
+window.addEventListener("offline", () => refreshWebInsights({ probeEndpoints: false }));
+window.addEventListener("resize", () => renderWebInsights());
+
 initializeAddPlayerDmTemplate();
 setAddPlayerDmStatus(addPlayerSendDmNode?.checked
   ? "DM on add is enabled."
   : "DM on add is disabled.");
+renderWebInsights();
 setupAdminTabs();
 setupClipTypeTabs();
 setupClipComposerUpload();
