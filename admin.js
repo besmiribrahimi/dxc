@@ -63,7 +63,7 @@ const DEFAULT_ADD_PLAYER_DM_TEMPLATE = [
   "",
   "You have been **successfully added to the system**.",
   "Your profile is now live on the leaderboard:",
-  "🔗 https://dxc-chi.vercel.app",
+  "🔗 https://ascendentrenched.xyz",
   "",
   "━━━ 📊 **RANKING STATUS** ━━━",
   "You are **not ranked yet** — your placement will be processed shortly.",
