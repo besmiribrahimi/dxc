@@ -512,6 +512,39 @@ function getFallbackAvatarUrl(name) {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
+function applyImageFallbackChain(node, candidates) {
+  if (!node) {
+    return;
+  }
+
+  const queue = [];
+  (Array.isArray(candidates) ? candidates : []).forEach((candidate) => {
+    const value = String(candidate || "").trim();
+    if (!value || queue.includes(value)) {
+      return;
+    }
+
+    queue.push(value);
+  });
+
+  if (!queue.length) {
+    return;
+  }
+
+  let pointer = 0;
+  node.onerror = () => {
+    pointer += 1;
+    if (pointer >= queue.length) {
+      node.onerror = null;
+      return;
+    }
+
+    node.src = queue[pointer];
+  };
+
+  node.src = queue[0];
+}
+
 function countryToFlag(country) {
   const normalized = normalizeText(country).toLowerCase();
   const map = {
@@ -1816,14 +1849,14 @@ function buildPlayerCard(player, index, avatarMap) {
   card.setAttribute("role", "button");
   card.setAttribute("aria-label", `Open Player ${player.name}`);
 
-  const robloxHeadshotAvatar = getRobloxHeadshotUrl(player.userId, 720);
   const staticAvatar = getStaticAvatarUrl(player.userId);
+  const robloxHeadshotAvatar = getRobloxHeadshotUrl(player.userId, 720);
+  const fallbackAvatar = getFallbackAvatarUrl(player.name);
   const primaryAvatar =
     avatarMap.get(Number(player.userId)) ||
-    robloxHeadshotAvatar ||
     staticAvatar ||
-    getFallbackAvatarUrl(player.name);
-  const fallbackAvatar = getFallbackAvatarUrl(player.name);
+    robloxHeadshotAvatar ||
+    fallbackAvatar;
   player.avatarUrl = primaryAvatar;
   const classList = normalizePlayerClassList(player.playerClasses ?? player.playerClass);
   const classChipsMarkup = (classList.length ? classList : ["Unknown"])
@@ -1856,15 +1889,12 @@ function buildPlayerCard(player, index, avatarMap) {
   `;
 
   const imageNode = card.querySelector(".player-image");
-  imageNode.addEventListener("error", () => {
-    if (!imageNode.dataset.robloxRetry && robloxHeadshotAvatar && imageNode.src !== robloxHeadshotAvatar) {
-      imageNode.dataset.robloxRetry = "1";
-      imageNode.src = robloxHeadshotAvatar;
-      return;
-    }
-
-    imageNode.src = fallbackAvatar;
-  });
+  applyImageFallbackChain(imageNode, [
+    primaryAvatar,
+    staticAvatar,
+    robloxHeadshotAvatar,
+    fallbackAvatar
+  ]);
 
   card.addEventListener("click", () => openModal(player));
   card.addEventListener("keydown", (event) => {
@@ -1883,15 +1913,13 @@ function openModal(player) {
   }
 
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
-  modalAvatar.src = player.bodyAvatarUrl
-    || player.avatarUrl
-    || getRobloxHeadshotUrl(player.userId, 720)
-    || getStaticAvatarUrl(player.userId)
-    || fallbackAvatar;
-  modalAvatar.onerror = () => {
-    modalAvatar.onerror = null;
-    modalAvatar.src = fallbackAvatar;
-  };
+  applyImageFallbackChain(modalAvatar, [
+    player.bodyAvatarUrl,
+    player.avatarUrl,
+    getStaticAvatarUrl(player.userId),
+    getRobloxHeadshotUrl(player.userId, 720),
+    fallbackAvatar
+  ]);
   modalAvatar.alt = `${player.name} Roblox avatar`;
   modalName.textContent = player.name;
   modalFaction.innerHTML = buildFactionChipHtml(player.faction, {
@@ -1938,16 +1966,16 @@ function renderTopPlayerCard(player) {
 
   const heroAvatar = player.bodyAvatarUrl
     || player.avatarUrl
-    || getRobloxHeadshotUrl(player.userId, 720)
     || getStaticAvatarUrl(player.userId)
+    || getRobloxHeadshotUrl(player.userId, 720)
     || getFallbackAvatarUrl(player.name);
-  topPlayerAvatarNode.src = heroAvatar;
+  applyImageFallbackChain(topPlayerAvatarNode, [
+    heroAvatar,
+    getStaticAvatarUrl(player.userId),
+    getRobloxHeadshotUrl(player.userId, 720),
+    getFallbackAvatarUrl(player.name)
+  ]);
   topPlayerAvatarNode.alt = `${player.name} Roblox avatar`;
-
-  const fallbackAvatar = getFallbackAvatarUrl(player.name);
-  topPlayerAvatarNode.addEventListener("error", () => {
-    topPlayerAvatarNode.src = fallbackAvatar;
-  }, { once: true });
 
   topPlayerCard.onclick = () => openModal(player);
   topPlayerCard.onkeydown = (event) => {
