@@ -819,6 +819,65 @@
     return opsHudNodes;
   }
 
+  function startOpsHud() {
+    const nodes = ensureOpsHud();
+    if (!nodes) {
+      return;
+    }
+
+    updateOpsHudClock();
+    runOpsSyncCheck();
+    runLfgQueueSync();
+    startOpsHudMotdRotation();
+    startLfgQueueSystem();
+  }
+
+  function startLiveGameIntel() {
+    const heroNode = document.querySelector(".hero");
+    if (!heroNode) return;
+
+    let intelNode = document.getElementById("gameLiveIntel");
+    if (!intelNode) {
+      intelNode = document.createElement("div");
+      intelNode.id = "gameLiveIntel";
+      intelNode.className = "game-intel-pulse";
+      const statusBanner = heroNode.querySelector(".live-pulse");
+      if (statusBanner) {
+        statusBanner.insertAdjacentElement("afterend", intelNode);
+      } else {
+        heroNode.appendChild(intelNode);
+      }
+    }
+
+    async function refreshIntel() {
+      try {
+        const res = await fetch("/api/game-info", { cache: "no-store" });
+        const data = await res.json();
+        if (data.ok && data.stats) {
+          const { playing, visits } = data.stats;
+          const formattedVisits = Number(visits).toLocaleString();
+          intelNode.innerHTML = `
+            <div class="intel-item">
+              <span class="intel-label">Active Players</span>
+              <strong class="intel-value">${playing}</strong>
+            </div>
+            <div class="intel-sep"></div>
+            <div class="intel-item">
+              <span class="intel-label">Total Visits</span>
+              <strong class="intel-value">${formattedVisits}</strong>
+            </div>
+          `;
+          intelNode.classList.add("is-visible");
+        }
+      } catch (err) {
+        console.warn("Failed to fetch game intel:", err);
+      }
+    }
+
+    refreshIntel();
+    window.setInterval(refreshIntel, 60000);
+  }
+
   function ensureLfgDock() {
     if (isAdminPanelPage()) {
       return null;
@@ -826,6 +885,8 @@
 
     const existing = document.getElementById("opsLfgDock");
     if (existing) {
+      const isHidden = localStorage.getItem("opsLfgDockHidden") === "true";
+      existing.classList.toggle("hidden", isHidden);
       return {
         root: existing,
         lfgCount: existing.querySelector("#opsLfgCount"),
@@ -837,6 +898,9 @@
     const dock = document.createElement("aside");
     dock.id = "opsLfgDock";
     dock.className = "ops-lfg-dock";
+    const isHidden = localStorage.getItem("opsLfgDockHidden") === "true";
+    if (isHidden) dock.classList.add("hidden");
+
     dock.setAttribute("aria-label", "Live 1v1 queue");
     dock.innerHTML = `
     <div class="ops-lfg-head">
@@ -844,12 +908,30 @@
         <span>Live 1v1 Queue</span>
         <small id="opsLfgMeta">Syncing...</small>
       </div>
-      <strong id="opsLfgCount">0 online</strong>
+      <div class="ops-lfg-controls">
+        <strong id="opsLfgCount">0 online</strong>
+        <button id="hideLfgBtn" class="ops-lfg-hide-btn" title="Hide Queue">×</button>
+      </div>
     </div>
     <div id="opsLfgList" class="ops-lfg-list">No one is looking for 1v1 right now.</div>
+    <button id="showLfgBtn" class="ops-lfg-restore-btn">Show 1v1 Queue</button>
   `;
 
     document.body.appendChild(dock);
+
+    const hideBtn = dock.querySelector("#hideLfgBtn");
+    const showBtn = dock.querySelector("#showLfgBtn");
+
+    hideBtn.onclick = () => {
+      dock.classList.add("hidden");
+      localStorage.setItem("opsLfgDockHidden", "true");
+    };
+
+    showBtn.onclick = () => {
+      dock.classList.remove("hidden");
+      localStorage.setItem("opsLfgDockHidden", "false");
+    };
+
     return {
       root: dock,
       lfgCount: dock.querySelector("#opsLfgCount"),
@@ -2181,6 +2263,7 @@
 
   startOpsHud();
   startLfgQueueSystem();
+  startLiveGameIntel();
 
   // Initiate global data loading immediately on every page
   window.globalDataPromise = loadGlobalData();
