@@ -270,18 +270,15 @@ async function loadClips() {
     const payload = await response.json().catch(() => ({}));
     const clips = mergeClipSources(normalizeClips(payload?.config?.clips));
     renderClipBoards(clips);
-  } catch {
+  } catch (err) {
+    console.warn("Could not fetch remote clips from API. Falling back to local edits.", err);
     if (clipsStatusNode) {
-      clipsStatusNode.textContent = "Could not load clips right now.";
+      clipsStatusNode.textContent = "Offline Mode: Showing local edits only.";
     }
 
-    if (editsGridNode) {
-      editsGridNode.innerHTML = "<p class=\"clip-empty\">Could not load edits.</p>";
-    }
-
-    if (clipsGridNode) {
-      clipsGridNode.innerHTML = "<p class=\"clip-empty\">Please try again in a moment.</p>";
-    }
+    // Still render what we have locally (LOCAL_EDITS)
+    const localClips = mergeClipSources([]);
+    renderClipBoards(localClips);
   }
 }
 

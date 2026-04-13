@@ -372,3 +372,280 @@
   .division-header { padding: 1.5rem; }
   .division-header h2 { font-size: 1.6rem; }
 }
+
+/* ── Official Battles Schedule ── */
+.league-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.schedule-header {
+  padding: 2.5rem;
+  background: 
+    radial-gradient(circle at 14% 10%, rgba(59, 130, 246, 0.1), transparent 40%),
+    linear-gradient(160deg, rgba(18, 24, 38, 0.95), rgba(12, 16, 28, 0.98));
+  border: 1px solid var(--stats-border, rgba(132, 160, 255, 0.15));
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.schedule-header::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; width: 300px; height: 100%;
+  background: radial-gradient(circle at 100% 50%, rgba(59, 130, 246, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.schedule-header h2 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 2.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #eff6ff;
+  text-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+  margin-bottom: 0.5rem;
+}
+
+.schedule-header p {
+  color: var(--stats-text-secondary, #8a9bb3);
+  font-size: 1rem;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+.schedule-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 3.5rem;
+}
+
+.schedule-day {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.day-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(132, 160, 255, 0.15);
+  padding-bottom: 0.8rem;
+}
+
+.day-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #93c5fd;
+  margin: 0;
+}
+
+.match-count {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--stats-text-muted, #6b7f9c);
+  background: rgba(132, 160, 255, 0.08);
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(132, 160, 255, 0.12);
+}
+
+.matchup-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+  gap: 2rem;
+}
+
+.battle-matchup {
+  position: relative;
+  background: linear-gradient(165deg, rgba(20, 26, 40, 0.95), rgba(12, 16, 28, 0.98));
+  border: 1px solid rgba(132, 160, 255, 0.2);
+  border-radius: 20px;
+  padding: 2px; /* For animated border */
+  overflow: hidden;
+  transition: all 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Glass-border animation */
+.battle-matchup::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  background: conic-gradient(transparent, rgba(59, 130, 246, 0.3), transparent 30%);
+  animation: rotate-glow 8s linear infinite;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.battle-matchup:hover::before {
+  opacity: 1;
+}
+
+.battle-matchup:hover {
+  transform: translateY(-8px) scale(1.01);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6), 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.matchup-inner {
+  position: relative;
+  z-index: 1;
+  background: #0d121f;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+.side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+}
+
+.side-glow {
+  position: absolute;
+  inset: -1rem;
+  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.08), transparent 70%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.battle-matchup:hover .side-glow {
+  opacity: 1;
+}
+
+.side img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5));
+  transition: transform 300ms ease;
+}
+
+.battle-matchup:hover .side img {
+  transform: scale(1.1) translateY(-5px);
+}
+
+.side strong {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+  color: #eff6ff;
+  text-align: center;
+  max-width: 160px;
+}
+
+.vs-zone {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vs-aura {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.2), transparent 70%);
+  border-radius: 50%;
+  animation: vs-pulse 2s ease-in-out infinite;
+}
+
+.vs-badge {
+  position: relative;
+  z-index: 2;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 900;
+  font-size: 1.4rem;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+  font-style: italic;
+}
+
+@keyframes vs-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+}
+
+.match-footer {
+  position: relative;
+  z-index: 1;
+  background: rgba(16, 20, 28, 0.6);
+  padding: 0.8rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(132, 160, 255, 0.1);
+}
+
+.match-type {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #6b7f9c;
+  letter-spacing: 0.08em;
+}
+
+.status-tag {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.status-tag.tbc {
+  color: #fbbf24;
+}
+
+.status-tag.live {
+  color: #4ade80;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.status-tag.live::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: #4ade80;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #4ade80;
+  animation: pulse-dot 1.5s infinite;
+}
+
+@media (max-width: 768px) {
+  .matchup-list { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .matchup-inner {
+    flex-direction: column;
+    padding: 3rem 1.5rem 2rem;
+    gap: 2rem;
+  }
+  .side strong { max-width: none; }
+  .vs-zone { order: -1; position: absolute; top: -1.5rem; left: 50%; transform: translateX(-50%); }
+  .match-footer { flex-direction: column; gap: 0.5rem; text-align: center; }
+}
