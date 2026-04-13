@@ -1,0 +1,374 @@
+/* ═══════════════════════════════════════════════════════════════
+   league.css — Entrenched Premier League Dashboard
+   Aligned with the Leaderboard design system
+   ═══════════════════════════════════════════════════════════════ */
+
+.league-page {
+  --league-gold: #ffc93d;
+  --league-silver: #dbe4ff;
+  --league-bronze: #d49a5b;
+  --league-promo: rgba(255, 201, 61, 0.12);
+  --league-releg: rgba(239, 68, 68, 0.08);
+  background-color: var(--stats-bg, #0a0c10);
+}
+
+.league-content {
+  width: min(1280px, 100% - 2rem);
+  margin: 1rem auto 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Status Banner ── */
+.league-status-banner {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+/* ── Division Sections ── */
+.league-division {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.division-header {
+  padding: 2rem 2.5rem;
+  background:
+    radial-gradient(circle at 14% 10%, rgba(59, 130, 246, 0.12), transparent 40%),
+    linear-gradient(160deg, rgba(18, 24, 38, 0.95), rgba(12, 16, 28, 0.98));
+  border: 1px solid var(--stats-border, rgba(132, 160, 255, 0.15));
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+}
+
+.div-badge {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #93c5fd;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.8rem;
+}
+
+.div-badge.secondary {
+  background: rgba(219, 228, 255, 0.06);
+  border-color: rgba(219, 228, 255, 0.3);
+  color: var(--league-silver);
+}
+
+.div-badge.muted {
+  background: rgba(212, 154, 91, 0.08);
+  border-color: rgba(212, 154, 91, 0.3);
+  color: var(--league-bronze);
+}
+
+.division-header h2 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 2.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #eff6ff;
+  text-shadow: 0 2px 14px rgba(59, 130, 246, 0.3);
+  margin-bottom: 0.4rem;
+}
+
+.division-header p {
+  color: var(--stats-text-secondary, #8a9bb3);
+  font-size: 0.95rem;
+}
+
+/* ── Groups Grid ── */
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 1.5rem;
+}
+
+.league-group {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.06), transparent 60%),
+    linear-gradient(165deg, rgba(18, 24, 38, 0.95), rgba(12, 16, 28, 0.98));
+  border: 1px solid var(--stats-border, rgba(132, 160, 255, 0.15));
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(132, 160, 255, 0.06) inset;
+  transition: transform 300ms ease, box-shadow 300ms ease, border-color 300ms ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.league-group::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4), transparent);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+}
+
+.league-group.promo-glow::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 201, 61, 0.5), transparent);
+  box-shadow: 0 0 12px rgba(255, 201, 61, 0.3);
+}
+
+.league-group.releg-glow::before {
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.4), transparent);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+.league-group:hover {
+  transform: translateY(-6px);
+  border-color: rgba(132, 160, 255, 0.35);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5), 0 0 20px rgba(59, 130, 246, 0.15);
+}
+
+.league-group h3 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #eff6ff;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.league-group h3::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(132, 160, 255, 0.2), transparent);
+}
+
+/* ── Faction Rows ── */
+.faction-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.league-faction-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  background: rgba(16, 20, 28, 0.6);
+  border: 1px solid var(--stats-border, rgba(132, 160, 255, 0.15));
+  border-radius: 12px;
+  transition: all 250ms ease;
+  position: relative;
+}
+
+.league-faction-row:hover {
+  background: rgba(59, 130, 246, 0.06);
+  border-color: rgba(132, 160, 255, 0.3);
+  transform: translateX(4px);
+}
+
+.zone-promo {
+  border-left: 3px solid var(--league-gold);
+  background: linear-gradient(90deg, var(--league-promo), transparent) !important;
+}
+
+.zone-releg {
+  border-left: 3px solid #ef4444;
+  background: linear-gradient(90deg, var(--league-releg), transparent) !important;
+}
+
+.league-faction-row img,
+.faction-flag-placeholder {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.faction-flag-placeholder {
+  background: rgba(132, 160, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.72rem;
+  color: var(--stats-text-muted, #6b7f9c);
+  border: 1px dashed rgba(132, 160, 255, 0.2);
+}
+
+.faction-meta {
+  flex: 1;
+}
+
+.faction-meta strong {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #e4e8f0;
+}
+
+.faction-meta span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--stats-text-muted, #6b7f9c);
+}
+
+.league-record {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  letter-spacing: 0.08em;
+}
+
+/* ── Disclaimer Alert ── */
+.league-disclaimer {
+  background:
+    radial-gradient(circle at 14% 10%, rgba(239, 68, 68, 0.08), transparent 40%),
+    linear-gradient(160deg, rgba(18, 24, 38, 0.95), rgba(12, 16, 28, 0.98));
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 16px;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.league-disclaimer::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 4px; height: 100%;
+  background: #ef4444;
+}
+
+.disclaimer-inner {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.disclaimer-logo img {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.15));
+}
+
+.disclaimer-copy {
+  flex: 1;
+}
+
+.disclaimer-copy h3 {
+  font-family: 'Rajdhani', sans-serif;
+  color: #ef4444;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 1.2rem;
+  margin-bottom: 0.6rem;
+}
+
+.disclaimer-copy p {
+  color: var(--stats-text-secondary, #8a9bb3);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.highlight-et {
+  color: #fff;
+  font-weight: 700;
+  border-bottom: 1px dashed #ef4444;
+}
+
+.highlight-leader {
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+.stats-btn.alert {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.stats-btn.alert:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+  color: #fff;
+}
+
+/* ── Rules Section ── */
+.league-rules-section {
+  margin-top: 0;
+}
+
+.rules-card {
+  padding: 2.5rem;
+  background:
+    radial-gradient(circle at 14% 10%, rgba(59, 130, 246, 0.08), transparent 40%),
+    linear-gradient(160deg, rgba(18, 24, 38, 0.95), rgba(12, 16, 28, 0.98));
+  border: 1px solid var(--stats-border, rgba(132, 160, 255, 0.15));
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+}
+
+.rules-card h3 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #eff6ff;
+  text-shadow: 0 2px 10px rgba(59, 130, 246, 0.25);
+  margin-bottom: 2rem;
+}
+
+.rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 2rem;
+}
+
+.rule-item strong {
+  display: block;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #60a5fa;
+  margin-bottom: 0.4rem;
+}
+
+.rule-item p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--stats-text-secondary, #8a9bb3);
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .disclaimer-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .groups-grid { grid-template-columns: 1fr; }
+  .league-content { width: min(100%, 100% - 1.5rem); }
+  .rules-card { padding: 1.5rem; }
+  .division-header { padding: 1.5rem; }
+  .division-header h2 { font-size: 1.6rem; }
+}

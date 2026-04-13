@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ascend Entrenched | Premier League</title>
+  <meta name="description" content="Entrenched Premier League - The ultimate faction competition.">
+  <meta name="theme-color" content="#3b82f6">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ascend Entrenched">
+  <meta property="og:title" content="Ascend Entrenched | Premier League">
+  <meta property="og:description" content="18 Factions. 3 Divisions. 1 Champion.">
+  <meta property="og:image" content="/assets/brand/logo-mark-512.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="statistics.css">
+  <link rel="stylesheet" href="league.css">
+</head>
+<body class="league-page">
+  <div class="stats-overlay-grid" aria-hidden="true"></div>
+  <div class="page-glow" aria-hidden="true"></div>
+  <canvas id="particleCanvas" aria-hidden="true"></canvas>
+
+  <header class="hero">
+    <a class="site-corner-brand" href="index.html" aria-label="Ascend Entrenched home">
+      <img src="assets/brand/logo-mark-512.png" alt="Ascend Entrenched logo" width="56" height="56">
+    </a>
+    <h1 class="stats-glitch-text" data-text="Premier League">Premier League</h1>
+    <p>Official Seasonal Draft Completed</p>
+    <div class="league-status-banner">
+      <div class="stats-hero-signal">
+        <span class="stats-signal-dot"></span>
+        <span id="leagueStatusText">Season One: Active</span>
+      </div>
+    </div>
+    <nav class="site-nav">
+      <a class="nav-link" href="index.html">Showcase</a>
+      <a class="nav-link" href="leaderboard.html">Leaderboard</a>
+      <a class="nav-link" href="statistics.html">Statistics</a>
+      <a class="nav-link active" href="league.html">League</a>
+      <a class="nav-link" href="clips.html">Clips</a>
+    </nav>
+  </header>
+
+  <main class="league-content">
+    <!-- Partnership Disclaimer -->
+    <section class="league-disclaimer">
+      <div class="disclaimer-inner">
+        <div class="disclaimer-logo">
+          <img src="ET.gif" alt="The Entrenched Times Logo">
+        </div>
+        <div class="disclaimer-copy">
+          <h3><svg style="width:20px;height:20px;vertical-align:middle;margin-right:8px;" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L1 21h22L12 2zm0 3.45L19.53 19H4.47L12 5.45zM11 16h2v2h-2v-2zm0-7h2v5h-2V9z"/></svg> Partnership Intel</h3>
+          <p>
+            This project is <strong>not an Ascend associate</strong> but exclusively the work of 
+            <span class="highlight-et">The Entrenched Times</span>. Ascend is promoting this circuit with 
+            the explicit allowance of League Director <span class="highlight-leader">Lefty</span>.
+          </p>
+        </div>
+        <div class="disclaimer-action">
+          <a href="https://discord.gg/JK3DJH2s" class="stats-btn alert" target="_blank">Join The ET Discord</a>
+        </div>
+      </div>
+    </section>
+    <!-- Division 1 -->
+    <section class="league-division" id="div1">
+      <div class="division-header">
+        <div class="div-badge">Division I</div>
+        <h2>Division 1</h2>
+      </div>
+      <div class="groups-grid">
+        <article class="league-group promo-glow">
+          <h3>Group A</h3>
+          <div class="faction-list">
+            <div class="league-faction-row zone-promo" data-faction="DK">
+              <img src="faction_flags/DK.png" alt="DK">
+              <div class="faction-meta">
+                <strong>DK</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+            <div class="league-faction-row" data-faction="IA">
+              <img src="faction_flags/IA.png" alt="IA">
+              <div class="faction-meta">
+                <strong>IA</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+            <div class="league-faction-row zone-releg" data-faction="TSC">
+              <img src="faction_flags/TSC.png" alt="TSC">
+              <div class="faction-meta">
+                <strong>TSC</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+          </div>
+        </article>
+        <article class="league-group promo-glow">
+          <h3>Group B</h3>
+          <div class="faction-list">
+            <div class="league-faction-row zone-promo" data-faction="AH">
+              <img src="faction_flags/AH.png" alt="AH">
+              <div class="faction-meta">
+                <strong>AH</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+            <div class="league-faction-row" data-faction="CZSK">
+              <img src="faction_flags/CZSK.png" alt="CZSK">
+              <div class="faction-meta">
+                <strong>CZSK</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+            <div class="league-faction-row zone-releg" data-faction="TWA">
+              <img src="faction_flags/TWA.png" alt="TWA">
+              <div class="faction-meta">
+                <strong>TWA</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Division 2 -->
+    <section class="league-division" id="div2">
+      <div class="division-header">
+        <div class="div-badge secondary">Division II</div>
+        <h2>Division 2</h2>
+      </div>
+      <div class="groups-grid">
+        <article class="league-group">
+          <h3>Group A</h3>
+          <div class="faction-list">
+            <div class="league-faction-row zone-promo" data-faction="NDV">
+              <img src="faction_flags/NDV.png" alt="NDV">
+              <div class="faction-meta">
+                <strong>NDV</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+            <div class="league-faction-row" data-faction="AEF">
+              <img src="faction_flags/AEF.png" alt="AEF">
+              <div class="faction-meta">
+                <strong>AEF</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+            <div class="league-faction-row zone-releg" data-faction="AOT">
+              <div class="faction-flag-placeholder">AOT</div>
+              <div class="faction-meta">
+                <strong>AOT</strong>
+                <span>Candidate</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+          </div>
+        </article>
+        <article class="league-group">
+          <h3>Group B</h3>
+          <div class="faction-list">
+            <div class="league-faction-row zone-promo" data-faction="RKA">
+              <div class="faction-flag-placeholder">RKA</div>
+              <div class="faction-meta">
+                <strong>RKA</strong>
+                <span>Candidate</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+            <div class="league-faction-row" data-faction="TAE">
+              <img src="faction_flags/TAE.png" alt="TAE">
+              <div class="faction-meta">
+                <strong>TAE</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+            <div class="league-faction-row zone-releg" data-faction="SL">
+              <div class="faction-flag-placeholder">SL</div>
+              <div class="faction-meta">
+                <strong>SL</strong>
+                <span>Candidate</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Division 3 -->
+    <section class="league-division" id="div3">
+      <div class="division-header">
+        <div class="div-badge muted">Division III</div>
+        <h2>Division 3</h2>
+      </div>
+      <div class="groups-grid">
+        <article class="league-group releg-glow">
+          <h3>Group A</h3>
+          <div class="faction-list">
+            <div class="league-faction-row zone-promo" data-faction="SEMETYAN">
+              <img src="faction_flags/SR.png" alt="SEMETYAN">
+              <div class="faction-meta">
+                <strong>SEMETYAN</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+            <div class="league-faction-row" data-faction="RRF">
+              <img src="faction_flags/RRF.png" alt="RRF">
+              <div class="faction-meta">
+                <strong>RRF</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+            <div class="league-faction-row zone-releg" data-faction="URF">
+              <img src="faction_flags/URF.png" alt="URF">
+              <div class="faction-meta">
+                <strong>URF</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+          </div>
+        </article>
+        <article class="league-group releg-glow">
+          <h3>Group B</h3>
+          <div class="faction-list">
+            <div class="league-faction-row zone-promo" data-faction="DSA">
+              <img src="faction_flags/DSA.png" alt="DSA">
+              <div class="faction-meta">
+                <strong>DSA</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+            <div class="league-faction-row" data-faction="INS">
+              <img src="faction_flags/INS.png" alt="INS">
+              <div class="faction-meta">
+                <strong>INS</strong>
+                <span>Verified Division</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+            <div class="league-faction-row zone-releg" data-faction="CIA">
+              <div class="faction-flag-placeholder">CIA</div>
+              <div class="faction-meta">
+                <strong>CIA</strong>
+                <span>Candidate</span>
+              </div>
+              <div class="league-record">0 - 0 - 0</div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+
+
+    <!-- Rules & Specs -->
+    <section class="league-rules-section">
+      <div class="rules-card">
+        <h3> Competition Specifications</h3>
+        <div class="rules-grid">
+          <div class="rule-item">
+            <strong>Draft Format</strong>
+            <p>18 Factions split into 3 Divisions. Each Division contains 2 Groups of 3 Factions.</p>
+          </div>
+          <div class="rule-item">
+            <strong>Match Protocol</strong>
+            <p>5-6 weeks of engagement. Frontlines mode, single round per battle. Schedule is flexible between faction leaders.</p>
+          </div>
+          <div class="rule-item">
+             <strong>Promotion & Relegation</strong>
+             <p>1st place promoted. 2nd place stays. 3rd place relegated. Div 3 relegation results in potential replacement by candidate factions.</p>
+          </div>
+          <div class="rule-item">
+            <strong>The Grand Final</strong>
+            <p>Top factions from Division 1 face off in a seasonal climax to crown the EPL Champion.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <img src="assets/brand/logo-mark-512.png" alt="" width="26" height="26">
+      <span>Ascend Entrenched</span>
+    </div>
+    <p>&copy; 2026 Ascend Entrenched EPL Core &bull; Professional Circuit</p>
+  </footer>
+
+  <script src="particles.js"></script>
+  <script src="league.js"></script>
+</body>
+</html>

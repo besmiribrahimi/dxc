@@ -43,7 +43,7 @@ function normalizeClipUrl(value) {
     return raw.length <= 3_000_000 ? raw : "";
   }
 
-  const extractedMatch = raw.match(/https?:\/\/[^\s<>()]+/i);
+  const extractedMatch = raw.match(/https?:\/\/[^\s<>"]+/i);
   const extractedRaw = extractedMatch
     ? extractedMatch[0]
     : raw

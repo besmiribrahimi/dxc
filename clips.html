@@ -30,8 +30,10 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="clips.css">
 </head>
-<body>
+<body class="clips-page">
+  <div class="stats-overlay-grid" aria-hidden="true"></div>
   <div class="page-glow" aria-hidden="true"></div>
+  <canvas id="particleCanvas" aria-hidden="true"></canvas>
   <a
     class="official-discord-fab"
     href="https://discord.gg/kTsPZcwK"
@@ -49,12 +51,17 @@
     <a class="site-corner-brand" href="index.html" aria-label="Ascend Entrenched home">
       <img src="assets/brand/logo-mark-512.png" alt="Ascend Entrenched logo" width="56" height="56" decoding="async" fetchpriority="high">
     </a>
-    <h1>Ascend Entrenched</h1>
-    <p>Best Clips</p>
+    <h1 class="stats-glitch-text" data-text="Global Media">Global Media</h1>
+    <p>Clips and Edits Showcase</p>
+    <div class="stats-hero-signal">
+      <span class="stats-signal-dot"></span>
+      <span>Live Encrypted Feed</span>
+    </div>
     <nav class="site-nav" aria-label="Primary navigation">
-      <a class="nav-link" href="index.html">Player Showcase</a>
+      <a class="nav-link" href="index.html">Showcase</a>
       <a class="nav-link" href="leaderboard.html">Leaderboard</a>
-      <a class="nav-link" href="war-room.html">War Room</a>
+      <a class="nav-link" href="statistics.html">Statistics</a>
+      <a class="nav-link" href="league.html">League</a>
       <a class="nav-link active" href="clips.html">Clips</a>
     </nav>
   </header>
@@ -73,6 +80,16 @@
     </section>
   </main>
 
+  <footer class="site-footer">
+    <div class="footer-brand">
+      <img src="assets/brand/logo-mark-512.png" alt="" width="26" height="26">
+      <span>Ascend Entrenched</span>
+    </div>
+    <p>&copy; 2026 Ascend Entrenched Core &bull; Media Archive</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script src="particles.js"></script>
   <script src="clips.js"></script>
 </body>
 </html>

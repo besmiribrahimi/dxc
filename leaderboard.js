@@ -12,6 +12,25 @@ const rankStructureCloseNode = document.getElementById("rankStructureClose");
 let previousPlayersState = [];
 const LEADERBOARD_TOP_PLAYER = "20SovietSO21";
 const LEADERBOARD_CONFIG_ENDPOINT = "/api/leaderboard-config";
+const KAWAII_LB_PLAYERS = new Set([
+  "tamika2006s",
+  "sonyah13",
+  "nessa2008s",
+  "maryanette_nsp"
+]);
+function isKawaiiLbPlayer(name) {
+  return KAWAII_LB_PLAYERS.has(String(name || "").trim().toLowerCase());
+}
+function buildKawaiiLbDecorHtml() {
+  // HTML entities for maximum cross-browser compatibility
+  return `<div class="kawaii-decor">
+    <span class="kawaii-particle kawaii-heart kp-1">&#128156;</span>
+    <span class="kawaii-particle kawaii-sparkle kp-2">&#10024;</span>
+    <span class="kawaii-particle kawaii-heart kp-3">&#128150;</span>
+    <span class="kawaii-particle kawaii-star kp-4">&#11088;</span>
+    <span class="kawaii-particle kawaii-sparkle kp-5">&#10024;</span>
+  </div>`;
+}
 
 function clampLevel(value) {
   const numeric = Number(value);
@@ -278,6 +297,7 @@ function openLeaderboardModal(player) {
   if (leaderboardModalPanelNode) {
     leaderboardModalPanelNode.classList.remove("rank-tier-1", "rank-tier-2", "rank-tier-3", "rank-tier-default");
     leaderboardModalPanelNode.classList.add(getRankTierClass(rank));
+    leaderboardModalPanelNode.classList.toggle("is-kawaii", isKawaiiLbPlayer(player?.name));
   }
 }
 
@@ -440,7 +460,12 @@ function getResolvedAvatar(player, avatarMap) {
 
 function buildTopThreeCard(player, rank, avatarMap) {
   const card = document.createElement("article");
-  card.className = `podium-card rank-${rank}`;
+  card.className = isKawaiiLbPlayer(player.name) ? "podium-card is-kawaii" : "podium-card";
+  if (isKawaiiLbPlayer(player.name)) {
+    card.style.opacity = "1";
+    card.style.visibility = "visible";
+    card.style.transform = "none";
+  }
   card.tabIndex = 0;
   card.setAttribute("role", "button");
   card.setAttribute("aria-label", `Open Player ${player.name}`);
@@ -486,6 +511,14 @@ function buildTopThreeCard(player, rank, avatarMap) {
     </div>
   `;
 
+  if (isKawaiiLbPlayer(player.name) && typeof buildKawaiiLbDecorHtml === "function") {
+    try {
+      card.insertAdjacentHTML("beforeend", buildKawaiiLbDecorHtml());
+    } catch (err) {
+      console.warn("Kawaii podium decor failed", err);
+    }
+  }
+
   const avatarNode = card.querySelector(".podium-avatar");
   const levelNode = card.querySelector(".level-badge");
   avatarNode.addEventListener("error", () => {
@@ -508,8 +541,14 @@ function buildTopThreeCard(player, rank, avatarMap) {
 
 function buildLeaderboardRow(player, rank, avatarMap) {
   const row = document.createElement("article");
-  row.className = "leaderboard-row";
-  row.style.setProperty('--row-index', rank -1);
+  const kawaiiLb = isKawaiiLbPlayer(player.name);
+  row.className = kawaiiLb ? "leaderboard-row is-kawaii" : "leaderboard-row";
+  if (kawaiiLb) {
+    row.style.opacity = "1";
+    row.style.visibility = "visible";
+    row.style.transform = "none";
+  }
+  row.style.setProperty('--row-index', rank - 1);
   row.tabIndex = 0;
   row.setAttribute("role", "button");
   row.setAttribute("aria-label", `Open Player ${player.name}`);
@@ -557,6 +596,14 @@ function buildLeaderboardRow(player, rank, avatarMap) {
     <strong class="leader-kd">${Number(player.kd).toFixed(1)}</strong>
     <span class="leader-level"><img class="level-badge" src="${levelBadgeUrl}" alt="Level ${player.level}" loading="lazy"><strong>${player.level}</strong></span>
   `;
+
+  if (kawaiiLb && typeof buildKawaiiLbDecorHtml === "function") {
+    try {
+      row.insertAdjacentHTML("beforeend", buildKawaiiLbDecorHtml());
+    } catch (err) {
+      console.warn("Kawaii row decor failed", err);
+    }
+  }
 
   const avatarNode = row.querySelector(".leader-avatar");
   const levelNode = row.querySelector(".level-badge");
@@ -632,9 +679,9 @@ function renderLeaderboard(players, avatarMap, options = {}) {
         rowNode.classList.remove('rank-up', 'rank-down');
         // Use a timeout to re-apply the class, forcing a reflow and re-triggering the animation
         setTimeout(() => {
-            rowNode.classList.add(animationClass);
-            // Clean up the class after animation ends
-            rowNode.addEventListener('animationend', () => rowNode.classList.remove(animationClass), { once: true });
+          rowNode.classList.add(animationClass);
+          // Clean up the class after animation ends
+          rowNode.addEventListener('animationend', () => rowNode.classList.remove(animationClass), { once: true });
         }, 10);
       }
 
@@ -744,7 +791,7 @@ async function loadAndRenderLeaderboard() {
     .then((avatarMap) => {
       renderLeaderboard(players, avatarMap, options);
     })
-    .catch(() => {});
+    .catch(() => { });
 }
 
 function setupSearch() {

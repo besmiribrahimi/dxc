@@ -103,7 +103,7 @@ const pendingAvatarUserIds = new Set();
 
 function warnDirectAdminAccess() {
   const pathname = String(window.location.pathname || "").toLowerCase();
-  const isAdminPath = pathname.endsWith("/admin.html") || pathname.endsWith("admin.html") || pathname.endsWith("/admin");
+  const isAdminPath = pathname.endsWith("/entrenched-sysadmin-ops-portal.html") || pathname.endsWith("entrenched-sysadmin-ops-portal.html") || pathname.endsWith("/admin");
   if (!isAdminPath) {
     return;
   }
@@ -114,7 +114,7 @@ function warnDirectAdminAccess() {
   }
 
   window.sessionStorage.setItem(warningKey, "1");
-  window.alert("Warning: /admin.html is restricted to authorized admins only. Clips are temporarily hidden.");
+  window.alert("Warning: /entrenched-sysadmin-ops-portal.html is restricted to authorized admins only. Clips are temporarily hidden.");
 }
 
 function setAddPlayerDmStatus(message, isError = false) {
