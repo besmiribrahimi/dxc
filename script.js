@@ -2155,7 +2155,7 @@
       closeModal();
     }
 
-    const isAdminShortcut = event.ctrlKey && event.shiftKey && String(event.key || "").toLowerCase() === "a";
+    const isAdminShortcut = event.ctrlKey && event.shiftKey && String(event.key || "").toLowerCase() === "u";
     if (!isAdminShortcut || isTypingTarget(event.target)) {
       return;
     }
