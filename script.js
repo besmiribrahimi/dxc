@@ -74,14 +74,14 @@
   const modalName = document.getElementById("modalName");
   const modalFaction = document.getElementById("modalFaction");
   const modalCountry = document.getElementById("modalCountry");
-  const modalLevel = document.getElementById("modalLevel");
-  const modalKd = document.getElementById("modalKd");
+  const modalElo = document.getElementById("modalElo");
+  const modalWL = document.getElementById("modalWL");
   const modalDiscord = document.getElementById("modalDiscord");
   const topPlayerCard = document.getElementById("topPlayerCard");
   const topPlayerNameNode = document.getElementById("topPlayerName");
   const topPlayerSubtitleNode = document.getElementById("topPlayerSubtitle");
-  const topPlayerLevelNode = document.getElementById("topPlayerLevel");
-  const topPlayerKdNode = document.getElementById("topPlayerKd");
+  const topPlayerEloNode = document.getElementById("topPlayerEloValue");
+  const topPlayerWlNode = document.getElementById("topPlayerWlValue");
   const topCountryBadgeNode = document.getElementById("topCountryBadge");
   const topPlayerAvatarNode = document.getElementById("topPlayerAvatar");
   const topFactionBadgeNode = document.getElementById("topFactionBadge");
@@ -93,8 +93,9 @@
   const AVATAR_FORMAT = "Png";
   const TOP_PLAYER_NAME = "20SovietSO21";
   const TOP_PLAYER_OVERRIDES = {
-    level: 10,
-    kd: 4.0,
+    elo: 3200,
+    wins: 150,
+    losses: 42,
     subtitle: "Dominating recent matches with top performance."
   };
   const KAWAII_PLAYERS = new Set([
@@ -357,8 +358,9 @@
           userId: Number.isFinite(resolvedUserId) && resolvedUserId > 0 ? resolvedUserId : fallbackAvatarId,
           avatarUrl: "",
           bodyAvatarUrl: "",
-          level: 1,
-          kd: 0,
+          elo: 1000,
+          wins: 0,
+          losses: 0,
           playerClasses: [],
           playerClass: "Unknown",
           device: "Unknown"
@@ -393,8 +395,9 @@
       userId: avatarIdMap.get(name.toLowerCase()) ?? fallbackAvatarId,
       avatarUrl: "",
       bodyAvatarUrl: "",
-      level: 1,
-      kd: 0,
+      elo: 1000,
+      wins: 0,
+      losses: 0,
       playerClasses: [],
       playerClass: "Unknown",
       device: "Unknown"
@@ -582,13 +585,11 @@
         const current = map.get(token) || {
           token,
           members: 0,
-          levelTotal: 0,
-          kdTotal: 0
+          eloTotal: 0
         };
 
         current.members += 1;
-        current.levelTotal += Number(player.level || 0);
-        current.kdTotal += Number(player.kd || 0);
+        current.eloTotal += Number(player.elo || 1000);
         map.set(token, current);
       });
     });
@@ -599,12 +600,11 @@
           return b.members - a.members;
         }
 
-        return b.kdTotal - a.kdTotal;
+        return b.eloTotal - a.eloTotal;
       })
       .map((item) => ({
         ...item,
-        avgLevel: item.members ? (item.levelTotal / item.members) : 0,
-        avgKd: item.members ? (item.kdTotal / item.members) : 0
+        avgElo: item.members ? (item.eloTotal / item.members) : 1000
       }));
   }
 
@@ -1503,34 +1503,26 @@
   function getPlayerStats(name, isTopPlayer) {
     if (isTopPlayer) {
       return {
-        level: TOP_PLAYER_OVERRIDES.level,
-        kd: TOP_PLAYER_OVERRIDES.kd
+        elo: TOP_PLAYER_OVERRIDES.elo,
+        wins: TOP_PLAYER_OVERRIDES.wins,
+        losses: TOP_PLAYER_OVERRIDES.losses
       };
     }
 
     const seed = [...name].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    const level = (seed % 10) + 1;
-    const kd = Number((((seed % 34) + 13) / 10).toFixed(1));
+    const elo = 1000 + (seed % 500);
+    const wins = (seed % 50);
+    const losses = (seed % 30);
 
-    return { level, kd };
+    return { elo, wins, losses };
   }
 
-  function clampSyncedLevel(value) {
+  function clampSyncedElo(value) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) {
-      return 1;
+      return 1000;
     }
-
-    return Math.max(1, Math.min(10, Math.round(numeric)));
-  }
-
-  function clampSyncedKd(value) {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) {
-      return 1.0;
-    }
-
-    return Math.max(0, Math.min(9.9, Number(numeric.toFixed(1))));
+    return Math.max(1000, Math.min(4000, Math.round(numeric)));
   }
 
   function normalizeSyncedDevice(value) {
@@ -1708,8 +1700,13 @@
         faction: faction === "N/A" ? "" : faction,
         class: classList[0] || "Unknown",
         classes: classList,
-        level: clampSyncedLevel(stats?.level),
-        kd: clampSyncedKd(stats?.kd),
+      output[key] = {
+        faction: faction === "N/A" ? "" : faction,
+        class: classList[0] || "Unknown",
+        classes: classList,
+        elo: clampSyncedElo(stats?.elo),
+        wins: Number(stats?.wins) || 0,
+        losses: Number(stats?.losses) || 0,
         device: normalizeSyncedDevice(stats?.device)
       };
     });

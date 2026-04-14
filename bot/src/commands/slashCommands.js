@@ -1028,7 +1028,7 @@ function buildLeaderboardEmbed({ settings, page, pageIndex, pages, updatedAt, en
     const rankEmoji = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : "🏅";
     return {
       name: `${rankEmoji} Rank #${entry.rank} — ${entry.player}`,
-      value: `\`\`\`yaml\nLevel: ${entry.level} | K/D: ${entry.kd.toFixed(1)} | Matches: ${entry.totalMatches}\n\`\`\``,
+      value: `\`\`\`yaml\nELO: ${Number(entry.elo || 1000)} | W/L: ${Number(entry.wins || 0)}/${Number(entry.losses || 0)} | Matches: ${entry.totalMatches}\n\`\`\``,
       inline: false
     };
   });
@@ -1039,7 +1039,7 @@ function buildLeaderboardEmbed({ settings, page, pageIndex, pages, updatedAt, en
     const top = page.items[0];
     embed.addFields({
       name: "🌟 Sector VIP",
-      value: `> **${top.player}** dominates this bracket.\n> **Lvl:** ${top.level} | **K/D:** ${top.kd.toFixed(1)}`,
+      value: `> **${top.player}** dominates this bracket.\n> **ELO:** ${Number(top.elo || 1000)} | **W/L:** ${Number(top.wins || 0)}/${Number(top.losses || 0)}`,
       inline: false
     });
   }

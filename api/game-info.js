@@ -12,7 +12,7 @@ module.exports = async function handler(req, res) {
         try {
           const parsed = JSON.parse(data);
           const gameData = parsed.data?.[0];
-          
+
           if (!gameData) {
             return res.status(404).json({ ok: false, error: "Game not found" });
           }

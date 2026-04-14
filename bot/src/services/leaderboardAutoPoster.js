@@ -25,7 +25,7 @@ function buildAutoPostEmbed(settings, data) {
   
   const lines = entries.map((entry) => {
     const rankEmoji = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : "🏅";
-    return `${rankEmoji} **#${entry.rank}** \`${entry.player}\` • Lvl ${entry.level} • K/D ${Number(entry.kd || 0).toFixed(1)}`;
+    return `${rankEmoji} **#${entry.rank}** \`${entry.player}\` • ELO ${Number(entry.elo || 1000)} • W/L ${Number(entry.wins || 0)}/${Number(entry.losses || 0)}`;
   });
 
   return new EmbedBuilder()

@@ -46,15 +46,18 @@ const refreshInsightsButtonNode = document.getElementById("adminRefreshInsightsB
 const exportInsightsButtonNode = document.getElementById("adminExportInsightsBtn");
 const webInsightsGridNode = document.getElementById("adminWebInsightsGrid");
 const webInsightsStatusNode = document.getElementById("adminWebInsightsStatus");
-const clipRowsNode = document.getElementById("adminClipRows");
-const postClipButtonNode = document.getElementById("adminPostClipBtn");
-const clipTitleNode = document.getElementById("adminClipTitle");
-const clipPlayerNode = document.getElementById("adminClipPlayer");
-const clipUrlNode = document.getElementById("adminClipUrl");
-const clipFileNode = document.getElementById("adminClipFile");
-const clipDescriptionNode = document.getElementById("adminClipDescription");
-const clipFeaturedNode = document.getElementById("adminClipFeatured");
-const clipTypeTabButtonNodes = Array.from(document.querySelectorAll(".admin-clips-type-tab[data-admin-clip-type-tab]"));
+const matchRowsNode = document.getElementById("adminMatchRows");
+const postMatchButtonNode = document.getElementById("adminPostMatchBtn");
+const matchTitleNode = document.getElementById("adminMatchTitle");
+const matchTeamANode = document.getElementById("adminMatchTeamA");
+const matchTeamBNode = document.getElementById("adminMatchTeamB");
+const matchScoreANode = document.getElementById("adminMatchScoreA");
+const matchScoreBNode = document.getElementById("adminMatchScoreB");
+const matchCasualtiesANode = document.getElementById("adminMatchCasualtiesA");
+const matchCasualtiesBNode = document.getElementById("adminMatchCasualtiesB");
+const matchDateNode = document.getElementById("adminMatchDate");
+const matchMediaNode = document.getElementById("adminMatchMedia");
+const matchTypeTabButtonNodes = Array.from(document.querySelectorAll(".admin-matches-type-tab[data-admin-match-type-tab]"));
 const adminTabButtonNodes = Array.from(document.querySelectorAll(".admin-tab-button[data-admin-tab-target]"));
 const adminTabPanelNodes = Array.from(document.querySelectorAll(".admin-tab-panel[data-admin-tab-panel]"));
 
@@ -82,7 +85,7 @@ let currentConfig = {
   order: [],
   extraPlayers: [],
   transfers: [],
-  clips: [],
+  matches: [],
   botSettings: {
     notificationUserIds: []
   }
@@ -91,8 +94,8 @@ let currentPlayers = [];
 let currentExtraPlayers = [];
 let currentRosterLines = [];
 let currentTransfers = [];
-let currentClips = [];
-let activeClipTypeTab = "clip";
+let currentMatches = [];
+let activeMatchTypeTab = "finished";
 let draggingPlayerKey = "";
 let draggingInitialized = false;
 let editingSyncedPlayerId = "";
@@ -100,6 +103,11 @@ let cachedEndpointInsights = [];
 let insightsRefreshInFlight = false;
 const dynamicAvatarUrlMap = new Map();
 const pendingAvatarUserIds = new Set();
+
+// Match Entry State
+let matchTeamARoster = [];
+let matchTeamBRoster = [];
+const MATCH_CALCULATE_ENDPOINT = "/api/admin/match-calculate";
 
 function warnDirectAdminAccess() {
   const pathname = String(window.location.pathname || "").toLowerCase();
@@ -333,33 +341,16 @@ function safeText(value) {
 }
 
 function getDefaultStats(playerName) {
-  const normalized = String(playerName || "").toLowerCase();
-  if (normalized === "20sovietso21") {
-    return { level: 10, kd: 4.0 };
-  }
-
-  const seed = [...String(playerName || "")].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const level = Math.max(1, Math.min(10, (seed % 10) + 1));
-  const kd = Number((((seed % 25) + 14) / 10).toFixed(1));
-  return { level, kd };
+  return { elo: 1000, wins: 0, losses: 0, lastEloChange: 0 };
 }
 
-function clampLevel(value) {
+function clampElo(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
-    return 1;
+    return 1000;
   }
 
-  return Math.max(1, Math.min(10, Math.round(numeric)));
-}
-
-function clampKd(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return 1.0;
-  }
-
-  return Math.max(0, Math.min(9.9, Number(numeric.toFixed(1))));
+  return Math.max(1000, Math.min(4000, Math.round(numeric)));
 }
 
 function normalizeFactionValue(faction) {
@@ -839,281 +830,71 @@ function normalizeTransfers(rawTransfers) {
     .filter((entry) => Boolean(entry.playerName));
 }
 
-function normalizeClipUrl(value) {
+function normalizeMatchMediaUrl(value) {
   const raw = String(value || "").trim();
-  if (!raw) {
-    return "";
-  }
-
-  if (/^data:(video|image)\/[a-z0-9.+-]+;base64,/i.test(raw)) {
-    return raw.length <= 3_000_000 ? raw : "";
-  }
-
-  const extractedMatch = raw.match(/https?:\/\/[^\s<>()]+/i);
-  const extractedRaw = extractedMatch
-    ? extractedMatch[0]
-    : raw
-      .replace(/[<>]/g, "")
-      .split(/\s+/)
-      .filter(Boolean)[0] || "";
-
-  const cleaned = extractedRaw.replace(/[),.;!]+$/g, "").trim();
-  if (!cleaned) {
-    return "";
-  }
-
-  const withProtocol = /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`;
-
-  try {
-    const parsed = new URL(withProtocol);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return "";
-    }
-
-    return parsed.toString();
-  } catch {
-    return "";
-  }
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return "";
 }
 
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Could not read uploaded file."));
-    reader.readAsDataURL(file);
-  });
-}
+function setActiveMatchTypeTab(nextType) {
+  activeMatchTypeTab = nextType;
 
-function normalizeClipType(value) {
-  const type = String(value || "clip").trim().toLowerCase();
-  if (type === "edit") {
-    return "edit";
-  }
-
-  return "clip";
-}
-
-function normalizeClipEntry(raw, index = 0) {
-  const entry = raw && typeof raw === "object" ? raw : {};
-  const title = String(entry.title || "").trim().slice(0, 120);
-  const url = normalizeClipUrl(entry.url);
-
-  return {
-    id: String(entry.id || `clip-${Date.now()}-${index}`).trim(),
-    type: normalizeClipType(entry.type),
-    title,
-    url,
-    player: String(entry.player || "").trim().slice(0, 64),
-    description: String(entry.description || "").trim().slice(0, 280),
-    featured: Boolean(entry.featured)
-  };
-}
-
-function normalizeClips(rawClips) {
-  if (!Array.isArray(rawClips)) {
-    return [];
-  }
-
-  return rawClips
-    .slice(0, 200)
-    .map((entry, index) => normalizeClipEntry(entry, index))
-    .filter((entry) => Boolean(entry.title) && Boolean(entry.url));
-}
-
-function createBlankClip() {
-  return {
-    id: `clip-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-    type: "clip",
-    title: "",
-    url: "",
-    player: "",
-    description: "",
-    featured: false
-  };
-}
-
-function setActiveClipTypeTab(nextType) {
-  const normalized = normalizeClipType(nextType);
-  activeClipTypeTab = normalized;
-
-  clipTypeTabButtonNodes.forEach((buttonNode) => {
-    const buttonType = normalizeClipType(buttonNode.dataset.adminClipTypeTab);
-    buttonNode.classList.toggle("active", buttonType === normalized);
+  matchTypeTabButtonNodes.forEach((buttonNode) => {
+    buttonNode.classList.toggle("active", buttonNode.dataset.adminMatchTypeTab === nextType);
   });
 
-  renderClipRows();
+  renderMatchRows();
 }
 
-function resetClipComposer() {
-  if (clipTitleNode) {
-    clipTitleNode.value = "";
-  }
-
-  if (clipPlayerNode) {
-    clipPlayerNode.value = "";
-  }
-
-  if (clipUrlNode) {
-    clipUrlNode.value = "";
-  }
-
-  if (clipFileNode) {
-    clipFileNode.value = "";
-  }
-
-  if (clipDescriptionNode) {
-    clipDescriptionNode.value = "";
-  }
-
-  if (clipFeaturedNode) {
-    clipFeaturedNode.value = "false";
-  }
+function resetMatchComposer() {
+  if (matchTitleNode) matchTitleNode.value = "";
+  if (matchTeamANode) matchTeamANode.value = "";
+  if (matchTeamBNode) matchTeamBNode.value = "";
+  if (matchScoreANode) matchScoreANode.value = "";
+  if (matchScoreBNode) matchScoreBNode.value = "";
+  if (matchCasualtiesANode) matchCasualtiesANode.value = "";
+  if (matchCasualtiesBNode) matchCasualtiesBNode.value = "";
+  if (matchDateNode) matchDateNode.value = new Date().toISOString().split('T')[0];
+  if (matchMediaNode) matchMediaNode.value = "";
 }
 
-function setupClipComposerUpload() {
-  if (!clipFileNode || !clipUrlNode) {
-    return;
-  }
+function renderMatchRows() {
+  if (!matchRowsNode) return;
+  matchRowsNode.innerHTML = "";
 
-  clipFileNode.addEventListener("change", async () => {
-    const file = clipFileNode.files && clipFileNode.files[0] ? clipFileNode.files[0] : null;
-    if (!file) {
-      return;
-    }
+  const filtered = currentMatches.filter(m => m.type === activeMatchTypeTab);
 
-    if (Number(file.size || 0) > MAX_CLIP_UPLOAD_BYTES) {
-      setSyncStatus("Upload too large. Use a file under 2MB or paste an external URL.", true);
-      clipFileNode.value = "";
-      return;
-    }
-
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const normalized = normalizeClipUrl(dataUrl);
-      if (!normalized) {
-        setSyncStatus("Uploaded file format is not supported.", true);
-        clipFileNode.value = "";
-        return;
-      }
-
-      clipUrlNode.value = normalized;
-      setSyncStatus("Upload ready. Click Post to add it.");
-    } catch (error) {
-      setSyncStatus(error instanceof Error ? error.message : "Upload failed.", true);
-    } finally {
-      clipFileNode.value = "";
-    }
-  });
-}
-
-function updateClipFromRow(rowNode) {
-  const clipId = String(rowNode?.dataset?.clipId || "").trim();
-  if (!clipId) {
-    return;
-  }
-
-  const clipIndex = currentClips.findIndex((clip) => clip.id === clipId);
-  if (clipIndex < 0) {
-    return;
-  }
-
-  const title = String(rowNode.querySelector(".admin-clip-title")?.value || "").trim();
-  const url = normalizeClipUrl(rowNode.querySelector(".admin-clip-url")?.value || "");
-  const player = String(rowNode.querySelector(".admin-clip-player")?.value || "").trim();
-  const description = String(rowNode.querySelector(".admin-clip-description")?.value || "").trim();
-  const featured = String(rowNode.querySelector(".admin-clip-featured")?.value || "false") === "true";
-
-  currentClips[clipIndex] = normalizeClipEntry({
-    ...currentClips[clipIndex],
-    title,
-    url,
-    player,
-    description,
-    featured
-  }, clipIndex);
-}
-
-function renderClipRows() {
-  if (!clipRowsNode) {
-    return;
-  }
-
-  clipRowsNode.innerHTML = "";
-
-  const filteredClips = currentClips.filter((clip) => normalizeClipType(clip.type) === activeClipTypeTab);
-
-  if (!filteredClips.length) {
+  if (!filtered.length) {
     const empty = document.createElement("p");
     empty.className = "admin-transfer-empty";
-    empty.textContent = activeClipTypeTab === "edit"
-      ? "No edits yet. Use Post to add one."
-      : "No clips yet. Use Post to add one.";
-    clipRowsNode.append(empty);
+    empty.textContent = `No ${activeMatchTypeTab} matches added yet.`;
+    matchRowsNode.append(empty);
     return;
   }
 
-  filteredClips.forEach((clip, index) => {
+  filtered.forEach((match) => {
     const row = document.createElement("article");
     row.className = "admin-transfer-row";
-    row.dataset.clipId = clip.id || `clip-${index}`;
-
     row.innerHTML = `
-      <span><input class="admin-transfer-input admin-clip-title" type="text" maxlength="120" value="${safeText(clip.title)}" placeholder="Best clutch in Verdun"></span>
-      <span><input class="admin-transfer-input admin-clip-player" type="text" maxlength="64" value="${safeText(clip.player)}" placeholder="Player name"></span>
-      <span>
-        <input class="admin-transfer-input admin-clip-url" type="url" value="${safeText(clip.url)}" placeholder="https://...">
-        ${clip.url ? `<a class="admin-clip-link" href="${safeText(clip.url)}" target="_blank" rel="noreferrer noopener">Open</a>` : ""}
+      <span>${safeText(match.title)}</span>
+      <span style="font-size:0.8rem">${safeText(match.teamA)} vs ${safeText(match.teamB)}</span>
+      <span>${match.type === 'finished' ? `${match.scoreA} - ${match.scoreB}` : 'TBD'}</span>
+      <span style="font-size:0.75rem">${match.casualtiesA || 0} / ${match.casualtiesB || 0}</span>
+      <span>${match.date}</span>
+      <span class="admin-synced-actions">
+        <button type="button" class="admin-button danger admin-match-delete">Remove</button>
       </span>
-      <span><input class="admin-transfer-input admin-clip-description" type="text" maxlength="280" value="${safeText(clip.description)}" placeholder="Short clip summary"></span>
-      <span>
-        <select class="admin-transfer-select admin-clip-featured">
-          <option value="false"${clip.featured ? "" : " selected"}>No</option>
-          <option value="true"${clip.featured ? " selected" : ""}>Yes</option>
-        </select>
-      </span>
-      <span><button type="button" class="admin-button danger admin-clip-delete">Remove</button></span>
     `;
 
-    const removeNode = row.querySelector(".admin-clip-delete");
-    removeNode?.addEventListener("click", () => {
-      currentClips = currentClips.filter((item) => item.id !== row.dataset.clipId);
-      renderClipRows();
-      setSyncStatus("Clip removed locally. Click Save Global Sync to publish.");
+    row.querySelector(".admin-match-delete")?.addEventListener("click", () => {
+      currentMatches = currentMatches.filter(m => m.id !== match.id);
+      renderMatchRows();
+      setSyncStatus("Match removed locally. Click Save Global Sync to publish.");
     });
 
-    const urlNode = row.querySelector(".admin-clip-url");
-    const titleNode = row.querySelector(".admin-clip-title");
-    const playerNode = row.querySelector(".admin-clip-player");
-    const descriptionNode = row.querySelector(".admin-clip-description");
-    const featuredNode = row.querySelector(".admin-clip-featured");
-
-    urlNode?.addEventListener("input", () => updateClipFromRow(row));
-    urlNode?.addEventListener("blur", () => {
-      const normalized = normalizeClipUrl(urlNode.value);
-      if (normalized) {
-        urlNode.value = normalized;
-      }
-
-      updateClipFromRow(row);
-
-      const linkNode = row.querySelector(".admin-clip-link");
-      if (linkNode && normalized) {
-        linkNode.href = normalized;
-      }
-    });
-
-    titleNode?.addEventListener("input", () => updateClipFromRow(row));
-    playerNode?.addEventListener("input", () => updateClipFromRow(row));
-    descriptionNode?.addEventListener("input", () => updateClipFromRow(row));
-    featuredNode?.addEventListener("change", () => updateClipFromRow(row));
-
-    clipRowsNode.append(row);
+    matchRowsNode.append(row);
   });
-}
-
-function collectClipValues() {
-  return normalizeClips(currentClips);
 }
 
 function setLoginStatus(message, isError = false) {
@@ -1216,23 +997,10 @@ function getFactionCount(players) {
   return factions.size;
 }
 
-function getClipTypeCountSummary() {
-  const summary = {
-    clips: 0,
-    edits: 0
-  };
-
-  (Array.isArray(currentClips) ? currentClips : []).forEach((clip) => {
-    const type = String(clip?.type || "clip").trim().toLowerCase();
-    if (type === "edit") {
-      summary.edits += 1;
-      return;
-    }
-
-    summary.clips += 1;
-  });
-
-  return `${summary.clips} clips / ${summary.edits} edits`;
+function getMatchCountSummary() {
+  const upcoming = (Array.isArray(currentMatches) ? currentMatches : []).filter(m => m.type === "upcoming").length;
+  const finished = (Array.isArray(currentMatches) ? currentMatches : []).filter(m => m.type === "finished").length;
+  return `${finished} finished / ${upcoming} upcoming`;
 }
 
 function getPerformanceInsightRows() {
@@ -1356,9 +1124,9 @@ function buildWebInsightCards() {
         { label: "Roster Players", value: String(currentPlayers.length) },
         { label: "Admin Synced Extras", value: String(currentExtraPlayers.length) },
         { label: "Transfers", value: String(currentTransfers.length) },
-        { label: "Clips and Edits", value: getClipTypeCountSummary() },
+        { label: "Matches", value: getMatchCountSummary() },
         { label: "Unique Factions", value: String(getFactionCount(currentPlayers)) },
-        { label: "Sync Mode", value: hasManualOrder ? "Custom admin order" : "Level-ranked fallback" },
+        { label: "Sync Mode", value: hasManualOrder ? "Custom admin order" : "ELO-ranked" },
         { label: "Last Global Sync", value: formatSyncTime(currentConfig?.updatedAt) }
       ]
     },
@@ -1599,9 +1367,10 @@ function buildWeeklyTopTenMessage(topTenPlayers, headline, weekLabel) {
   topTenPlayers.forEach((player, index) => {
     const faction = normalizeFactionValue(player.faction);
     const country = String(player.country || "N/A").trim() || "N/A";
-    const level = clampLevel(player.level);
-    const kd = clampKd(player.kd).toFixed(1);
-    lines.push(`#${index + 1} ${player.name} | ${faction} | ${country} | LVL ${level} | K/D ${kd}`);
+    const elo = Number(player.elo) || 1000;
+    const wins = Number(player.wins) || 0;
+    const losses = Number(player.losses) || 0;
+    lines.push(`#${index + 1} ${player.name} | ${faction} | ${country} | ELO ${elo} | W/L ${wins}/${losses}`);
   });
 
   lines.push("");
@@ -1640,8 +1409,9 @@ function renderWeeklyTopTenPreview(options = {}) {
     const rank = Number(player.weeklyRank);
     const avatarUrl = getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
     const factionMarkup = buildWeeklyFactionMarkup(player.faction);
-    const level = clampLevel(player.level);
-    const kd = clampKd(player.kd).toFixed(1);
+    const elo = Number(player.elo) || 1000;
+    const wins = Number(player.wins) || 0;
+    const losses = Number(player.losses) || 0;
 
     return `
       <article class="admin-weekly-podium-card rank-${rank}">
@@ -1651,8 +1421,8 @@ function renderWeeklyTopTenPreview(options = {}) {
         <div class="admin-weekly-faction-wrap">${factionMarkup}</div>
         <p>${countryToFlag(player.country)} ${safeText(player.country || "N/A")}</p>
         <div class="admin-weekly-stats">
-          <span>LVL ${level}</span>
-          <span>K/D ${kd}</span>
+          <span>ELO ${elo}</span>
+          <span>W/L ${wins}/${losses}</span>
         </div>
       </article>
     `;
@@ -1662,8 +1432,9 @@ function renderWeeklyTopTenPreview(options = {}) {
     const rank = Number(player.weeklyRank);
     const avatarUrl = getStaticAvatarUrl(player.userId) || getFallbackAvatarUrl(player.name);
     const factionMarkup = buildWeeklyFactionMarkup(player.faction);
-    const level = clampLevel(player.level);
-    const kd = clampKd(player.kd).toFixed(1);
+    const elo = Number(player.elo) || 1000;
+    const wins = Number(player.wins) || 0;
+    const losses = Number(player.losses) || 0;
 
     return `
       <article class="admin-weekly-row">
@@ -1677,8 +1448,8 @@ function renderWeeklyTopTenPreview(options = {}) {
           </div>
         </div>
         <div class="admin-weekly-row-stats">
-          <span>LVL ${level}</span>
-          <span>K/D ${kd}</span>
+          <span>ELO ${elo}</span>
+          <span>W/L ${wins}/${losses}</span>
         </div>
       </article>
     `;
@@ -1884,15 +1655,12 @@ async function saveAdminConfig(token, config) {
   };
 }
 
-function buildLevelOptions(selectedLevel) {
-  const safeLevel = clampLevel(selectedLevel);
+function buildLevelOptions(selectedElo) {
   const options = [];
-
-  for (let level = 1; level <= 10; level += 1) {
-    const selected = level === safeLevel ? " selected" : "";
-    options.push(`<option value="${level}"${selected}>${level}</option>`);
-  }
-
+  [1000, 1200, 1500, 2000, 2500, 3000].forEach(elo => {
+    const selected = (Number(selectedElo) || 1000) === elo ? " selected" : "";
+    options.push(`<option value="${elo}"${selected}>ELO ${elo}</option>`);
+  });
   return options.join("");
 }
 
@@ -1999,12 +1767,13 @@ function renderRows(players) {
         </select>
       </span>
       <span>
-        <select class="admin-level-select" data-player-key="${safeText(player.key)}">
-          ${buildLevelOptions(player.level)}
-        </select>
+        <input class="admin-elo-input" data-player-key="${safeText(player.key)}" type="number" value="${player.elo || 1000}">
       </span>
       <span>
-        <input class="admin-kd-input" data-player-key="${safeText(player.key)}" type="number" step="0.1" min="0" max="9.9" value="${Number(player.kd).toFixed(1)}">
+        <input class="admin-wins-input" data-player-key="${safeText(player.key)}" type="number" value="${player.wins || 0}">
+      </span>
+      <span>
+        <input class="admin-losses-input" data-player-key="${safeText(player.key)}" type="number" value="${player.losses || 0}">
       </span>
       <span class="admin-row-action">
         ${player.isExtra
@@ -2341,8 +2110,9 @@ function mergePlayersWithConfig(players, config, extraPlayers = []) {
         sourceIndex,
         key,
         faction: normalizeFactionValue(override.faction ?? player.faction),
-        level: clampLevel(override.level ?? defaults.level),
-        kd: clampKd(override.kd ?? defaults.kd),
+        elo: clampElo(override.elo ?? defaults.elo),
+        wins: Number(override.wins ?? defaults.wins) || 0,
+        losses: Number(override.losses ?? defaults.losses) || 0,
         playerClasses: classList,
         playerClass: classList[0] || normalizePlayerClassValue(player.playerClass),
         device: normalizeDeviceValue(override.device ?? extra?.device ?? player.device),
@@ -2434,11 +2204,9 @@ function collectRowValues() {
       return;
     }
 
-    const factionNode = row.querySelector(".admin-faction-input");
-    const classNodes = Array.from(row.querySelectorAll(".admin-class-select"));
-    const deviceNode = row.querySelector(".admin-device-select");
-    const levelNode = row.querySelector(".admin-level-select");
-    const kdNode = row.querySelector(".admin-kd-input");
+    const eloNode = row.querySelector(".admin-elo-input");
+    const winsNode = row.querySelector(".admin-wins-input");
+    const lossesNode = row.querySelector(".admin-losses-input");
 
     const faction = normalizeFactionValue(factionNode ? factionNode.value : "N/A");
     const classes = normalizePlayerClassList(
@@ -2448,10 +2216,11 @@ function collectRowValues() {
     );
     const playerClass = classes[0] || "Unknown";
     const device = normalizeDeviceValue(deviceNode ? deviceNode.value : row.dataset.playerDevice);
-    const level = clampLevel(levelNode ? levelNode.value : 1);
-    const kd = clampKd(kdNode ? kdNode.value : 1.0);
+    const elo = Number(eloNode ? eloNode.value : 1000) || 1000;
+    const wins = Number(winsNode ? winsNode.value : 0) || 0;
+    const losses = Number(lossesNode ? lossesNode.value : 0) || 0;
 
-    result[key] = { faction, class: playerClass, classes, level, kd, device };
+    result[key] = { faction, class: playerClass, classes, elo, wins, losses, device };
   });
 
   return result;
@@ -2478,13 +2247,11 @@ async function loadPanelData() {
     currentConfig = config;
     currentExtraPlayers = normalizeExtraPlayers(config?.extraPlayers);
     const mergedRosterPlayers = buildMergedRosterPlayers(currentRosterLines, currentExtraPlayers);
-    currentPlayers = mergePlayersWithConfig(mergedRosterPlayers, config, currentExtraPlayers);
-    currentTransfers = normalizeTransfers(config?.transfers);
-    currentClips = normalizeClips(config?.clips);
+    currentMatches = config?.matches || (Array.isArray(config?.clips) ? config.clips.map(c => ({ id: c.id, title: c.title, teamA: c.player || 'COMMUNITY', teamB: 'N/A', type: 'finished', date: new Date().toISOString().split('T')[0] })) : []);
     renderRows(currentPlayers);
     renderTransferRows(currentTransfers);
     renderSyncedPlayerRows(currentExtraPlayers);
-    renderClipRows();
+    renderMatchRows();
     renderAdminNewsFeed(currentPlayers);
     renderBotSettings(config);
     renderWeeklyTopTenPreview();
@@ -2493,7 +2260,7 @@ async function loadPanelData() {
     const hasManualOrder = Array.isArray(config?.order) && config.order.length > 0;
     const modeText = hasManualOrder
       ? "Mode: custom admin order"
-      : "Mode: leaderboard rank (Level only, K/D ignored)";
+      : "Mode: ELO ranked";
 
     setSyncStatus(`Loaded ${currentPlayers.length} Players (${currentExtraPlayers.length} admin-synced). ${modeText}. Drag with the :: handle to reorder. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
     setBotOpsStatus("DM sender ready.");
@@ -2790,52 +2557,194 @@ function onAddTransferClick() {
   setSyncStatus("Transfer added locally. Click Save Global Sync to publish.");
 }
 
-function onPostClipClick() {
-  const title = String(clipTitleNode?.value || "").trim();
-  const url = normalizeClipUrl(clipUrlNode?.value || "");
-  const player = String(clipPlayerNode?.value || "").trim();
-  const description = String(clipDescriptionNode?.value || "").trim();
-  const featured = String(clipFeaturedNode?.value || "false") === "true";
+function onPostMatchClick() {
+  const title = String(matchTitleNode?.value || "").trim();
+  const teamA = String(matchTeamANode?.value || "").trim().toUpperCase();
+  const teamB = String(matchTeamBNode?.value || "").trim().toUpperCase();
 
-  if (!title) {
-    setSyncStatus("Enter a title before posting.", true);
+  if (!title || !teamA || !teamB) {
+    setSyncStatus("Title and teams are required.", true);
     return;
   }
 
-  if (!url) {
-    setSyncStatus("Add a valid URL or upload a file before posting.", true);
-    return;
-  }
-
-  const postedClip = normalizeClipEntry({
-    ...createBlankClip(),
-    type: activeClipTypeTab,
+  const match = {
+    id: `match-${Date.now()}`,
+    type: activeMatchTypeTab,
     title,
-    url,
-    player,
-    description,
-    featured
-  });
+    teamA,
+    teamB,
+    scoreA: parseInt(matchScoreANode?.value) || 0,
+    scoreB: parseInt(matchScoreBNode?.value) || 0,
+    casualtiesA: parseInt(matchCasualtiesANode?.value) || 0,
+    casualtiesB: parseInt(matchCasualtiesBNode?.value) || 0,
+    date: matchDateNode?.value || new Date().toISOString().split('T')[0],
+    mediaUrl: matchMediaNode?.value || ""
+  };
 
-  currentClips = [...currentClips, postedClip];
-  renderClipRows();
-  resetClipComposer();
-  renderWebInsights();
-  setSyncStatus(`${activeClipTypeTab === "edit" ? "Edit" : "Clip"} posted locally. Click Save Global Sync to publish.`);
+  currentMatches = [...currentMatches, match];
+  renderMatchRows();
+  resetMatchComposer();
+  setSyncStatus("Match history entry added locally. Click Save Global Sync to publish.");
 }
 
-function setupClipTypeTabs() {
-  if (!clipTypeTabButtonNodes.length) {
+function renderMatchRosters() {
+  const rosterA = document.getElementById("matchTeamARoster");
+  const rosterB = document.getElementById("matchTeamBRoster");
+  if (!rosterA || !rosterB) return;
+
+  const renderRoster = (roster, team, teamLabel) => {
+    roster.innerHTML = team.map(player => `
+      <div class="match-player-row">
+        <span class="match-player-name">${safeText(player.name)}</span>
+        <input type="number" class="match-player-score" value="${player.score || 0}" data-team="${teamLabel}" data-player="${safeText(player.name)}" placeholder="Score">
+        <button class="match-player-remove" data-team="${teamLabel}" data-player="${safeText(player.name)}">&times;</button>
+      </div>
+    `).join("");
+
+    roster.querySelectorAll(".match-player-score").forEach(input => {
+      input.addEventListener("change", (e) => {
+        const p = team.find(pl => pl.name === e.target.dataset.player);
+        if (p) p.score = parseInt(e.target.value) || 0;
+      });
+    });
+
+    roster.querySelectorAll(".match-player-remove").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const playerName = e.target.dataset.player;
+        if (teamLabel === "A") {
+          matchTeamARoster = matchTeamARoster.filter(p => p.name !== playerName);
+        } else {
+          matchTeamBRoster = matchTeamBRoster.filter(p => p.name !== playerName);
+        }
+        renderMatchRosters();
+      });
+    });
+  };
+
+  renderRoster(rosterA, matchTeamARoster, "A");
+  renderRoster(rosterB, matchTeamBRoster, "B");
+}
+
+function setupMatchSearch() {
+  const setupSearch = (inputId, suggestionsId, teamLabel) => {
+    const input = document.getElementById(inputId);
+    const suggestions = document.getElementById(suggestionsId);
+    if (!input || !suggestions) return;
+
+    input.addEventListener("input", (e) => {
+      const val = e.target.value.toLowerCase().trim();
+      if (!val) {
+        suggestions.classList.add("hidden");
+        return;
+      }
+
+      const matches = currentPlayers
+        .filter(p => p.name.toLowerCase().includes(val))
+        .filter(p => !matchTeamARoster.some(r => r.name === p.name))
+        .filter(p => !matchTeamBRoster.some(r => r.name === p.name))
+        .slice(0, 5);
+
+      if (matches.length === 0) {
+        suggestions.classList.add("hidden");
+        return;
+      }
+
+      suggestions.innerHTML = matches.map(p => `
+        <div class="search-suggestion-item" data-name="${safeText(p.name)}">${safeText(p.name)}</div>
+      `).join("");
+      suggestions.classList.remove("hidden");
+
+      suggestions.querySelectorAll(".search-suggestion-item").forEach(item => {
+        item.addEventListener("click", () => {
+          const playerName = item.dataset.name;
+          const playerObj = { name: playerName, score: 0 };
+          if (teamLabel === "A") matchTeamARoster.push(playerObj);
+          else matchTeamBRoster.push(playerObj);
+          
+          input.value = "";
+          suggestions.classList.add("hidden");
+          renderMatchRosters();
+        });
+      });
+    });
+
+    // Close suggestions on blur
+    input.addEventListener("blur", () => {
+      setTimeout(() => suggestions.classList.add("hidden"), 200);
+    });
+  };
+
+  setupSearch("matchTeamASearch", "matchTeamASuggestions", "A");
+  setupSearch("matchTeamBSearch", "matchTeamBSuggestions", "B");
+}
+
+async function onSaveMatchClick() {
+  const token = getStoredToken();
+  if (!token) {
+    setSyncStatus("Not signed in.", true);
     return;
   }
 
-  clipTypeTabButtonNodes.forEach((buttonNode) => {
+  const winner = document.querySelector('input[name="matchWinner"]:checked')?.value;
+  const statusNode = document.getElementById("matchEntryStatus");
+
+  if (matchTeamARoster.length < 10 || matchTeamBRoster.length < 10) {
+    if (statusNode) statusNode.textContent = "Error: Each team needs at least 10 players.";
+    return;
+  }
+
+  if (!winner) {
+    if (statusNode) statusNode.textContent = "Error: Please select a winner (Team A or B).";
+    return;
+  }
+
+  if (statusNode) statusNode.textContent = "Calculating ELO changes and saving...";
+
+  try {
+    const response = await requestJson(MATCH_CALCULATE_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        teamA: matchTeamARoster,
+        teamB: matchTeamBRoster,
+        winner,
+        usePerformanceScaling: true
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(response.data?.error || "Match calculation failed.");
+    }
+
+    if (statusNode) statusNode.textContent = "Match saved! ELO ratings updated.";
+    
+    // Clear rosters
+    matchTeamARoster = [];
+    matchTeamBRoster = [];
+    document.querySelectorAll('input[name="matchWinner"]').forEach(r => r.checked = false);
+    renderMatchRosters();
+
+    // Reload all data to show updated ELOs
+    await loadPanelData();
+  } catch (error) {
+    if (statusNode) statusNode.textContent = "Error: " + error.message;
+  }
+}
+
+function setupMatchTypeTabs() {
+  if (!matchTypeTabButtonNodes.length) {
+    return;
+  }
+
+  matchTypeTabButtonNodes.forEach((buttonNode) => {
     buttonNode.addEventListener("click", () => {
-      setActiveClipTypeTab(buttonNode.dataset.adminClipTypeTab || "clip");
+      setActiveMatchTypeTab(buttonNode.dataset.adminMatchTypeTab || "finished");
     });
   });
 
-  setActiveClipTypeTab(activeClipTypeTab);
+  setActiveMatchTypeTab(activeMatchTypeTab);
 }
 
 loginFormNode.addEventListener("submit", onLoginSubmit);
@@ -2848,8 +2757,8 @@ if (sendNotifyButtonNode) {
 if (addTransferButtonNode) {
   addTransferButtonNode.addEventListener("click", onAddTransferClick);
 }
-if (postClipButtonNode) {
-  postClipButtonNode.addEventListener("click", onPostClipClick);
+if (postMatchButtonNode) {
+  postMatchButtonNode.addEventListener("click", onPostMatchClick);
 }
 if (addSyncedPlayerButtonNode) {
   addSyncedPlayerButtonNode.addEventListener("click", onAddSyncedPlayerClick);
@@ -2869,6 +2778,20 @@ if (weeklyTopTitleNode) {
 if (weeklyTopWeekNode) {
   weeklyTopWeekNode.addEventListener("input", () => renderWeeklyTopTenPreview());
 }
+if (document.getElementById("adminSaveMatchBtn")) {
+  document.getElementById("adminSaveMatchBtn").addEventListener("click", onSaveMatchClick);
+}
+if (document.getElementById("adminClearMatchBtn")) {
+  document.getElementById("adminClearMatchBtn").addEventListener("click", () => {
+    matchTeamARoster = [];
+    matchTeamBRoster = [];
+    renderMatchRosters();
+    const status = document.getElementById("matchEntryStatus");
+    if (status) status.textContent = "Match cleared.";
+  });
+}
+setupMatchSearch();
+renderMatchRosters();
 if (refreshInsightsButtonNode) {
   refreshInsightsButtonNode.addEventListener("click", () => {
     refreshWebInsights({ probeEndpoints: true });
@@ -2895,8 +2818,7 @@ setAddPlayerDmStatus(addPlayerSendDmNode?.checked
   : "DM on add is disabled.");
 renderWebInsights();
 setupAdminTabs();
-setupClipTypeTabs();
-setupClipComposerUpload();
+setupMatchTypeTabs();
 warnDirectAdminAccess();
 
 if (getStoredToken()) {

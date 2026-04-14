@@ -40,7 +40,7 @@ function buildDefaultConfig() {
     order: [],
     extraPlayers: [],
     transfers: [],
-    clips: [],
+    matches: [],
     botSettings: {
       applicationsPanelChannelId: "",
       applicationsChannelId: "",
@@ -117,76 +117,36 @@ function normalizeTransfers(raw) {
     .filter(Boolean);
 }
 
-function normalizeClipUrl(rawUrl) {
-  const value = String(rawUrl || "").trim();
-  if (!value) {
-    return "";
-  }
-
-  if (/^data:(video|image)\/[a-z0-9.+-]+;base64,/i.test(value)) {
-    return value.length <= 3_000_000 ? value : "";
-  }
-
-  const extractedMatch = value.match(/https?:\/\/[^\s<>()]+/i);
-  const extractedRaw = extractedMatch
-    ? extractedMatch[0]
-    : value
-      .replace(/[<>]/g, "")
-      .split(/\s+/)
-      .filter(Boolean)[0] || "";
-
-  const cleaned = extractedRaw.replace(/[),.;!]+$/g, "").trim();
-  if (!cleaned) {
-    return "";
-  }
-
-  const withProtocol = /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`;
-
-  try {
-    const parsed = new URL(withProtocol);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return "";
-    }
-
-    return parsed.toString();
-  } catch {
-    return "";
-  }
-}
-
-function normalizeClipType(rawType) {
-  const type = String(rawType || "clip").trim().toLowerCase();
-  if (type === "edit") {
-    return "edit";
-  }
-
-  return "clip";
-}
-
-function normalizeClips(raw) {
+function normalizeMatches(raw) {
   if (!Array.isArray(raw)) {
     return [];
   }
 
   return raw
-    .slice(0, 200)
+    .slice(0, 300)
     .map((entry, index) => {
       const item = entry && typeof entry === "object" ? entry : {};
       const title = String(item.title || "").trim().slice(0, 120);
-      const url = normalizeClipUrl(item.url);
+      const teamA = String(item.teamA || "").trim().toUpperCase();
+      const teamB = String(item.teamB || "").trim().toUpperCase();
 
-      if (!title || !url) {
+      if (!title || !teamA || !teamB) {
         return null;
       }
 
       return {
-        id: String(item.id || `clip-${Date.now()}-${index}`).trim(),
-        type: normalizeClipType(item.type),
+        id: String(item.id || `match-${Date.now()}-${index}`).trim(),
+        type: String(item.type || "finished").trim().toLowerCase() === "upcoming" ? "upcoming" : "finished",
         title,
-        url,
-        player: String(item.player || "").trim().slice(0, 64),
-        description: String(item.description || "").trim().slice(0, 280),
-        featured: Boolean(item.featured)
+        teamA,
+        teamB,
+        scoreA: Number(item.scoreA) || 0,
+        scoreB: Number(item.scoreB) || 0,
+        casualtiesA: Number(item.casualtiesA) || 0,
+        casualtiesB: Number(item.casualtiesB) || 0,
+        status: String(item.status || "").trim(),
+        date: String(item.date || new Date().toISOString().split('T')[0]).trim(),
+        mediaUrl: String(item.mediaUrl || "").trim()
       };
     })
     .filter(Boolean);
@@ -401,9 +361,7 @@ async function getLeaderboardConfig() {
 
     parsed.extraPlayers = normalizeExtraPlayers(parsed.extraPlayers);
 
-    parsed.transfers = normalizeTransfers(parsed.transfers);
-
-    parsed.clips = normalizeClips(parsed.clips);
+    parsed.matches = normalizeMatches(parsed.matches || parsed.clips);
 
     parsed.botSettings = normalizeBotSettings(parsed.botSettings);
 
@@ -422,7 +380,7 @@ async function saveLeaderboardConfig(config) {
     order: Array.isArray(config?.order) ? config.order.map((value) => String(value || "").trim().toLowerCase()).filter(Boolean) : [],
     extraPlayers: normalizeExtraPlayers(config?.extraPlayers),
     transfers: normalizeTransfers(config?.transfers),
-    clips: normalizeClips(config?.clips),
+    matches: normalizeMatches(config?.matches),
     botSettings: normalizeBotSettings(config?.botSettings)
   };
 

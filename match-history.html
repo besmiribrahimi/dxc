@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ascend Entrenched | Clips</title>
-  <meta name="description" content="Ascend Entrenched best clips">
+  <title>Ascend Entrenched | Match History</title>
+  <meta name="description" content="Ascend Entrenched match history and upcoming battles">
   <meta name="theme-color" content="#A63A2B">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ascend Entrenched">
-  <meta property="og:title" content="Ascend Entrenched | Clips">
-  <meta property="og:description" content="Best clips and highlights from Ascend Entrenched.">
+  <meta property="og:title" content="Ascend Entrenched | Match History">
+  <meta property="og:description" content="Upcoming matches and historical battle results from Ascend Entrenched.">
   <meta property="og:image" content="/assets/brand/logo-mark-512.png">
   <meta property="og:image:width" content="512">
   <meta property="og:image:height" content="512">
   <meta property="og:image:alt" content="Ascend Entrenched logo">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Ascend Entrenched | Clips">
-  <meta name="twitter:description" content="Best clips and highlights from Ascend Entrenched.">
+  <meta name="twitter:title" content="Ascend Entrenched | Match History">
+  <meta name="twitter:description" content="Upcoming matches and historical battle results from Ascend Entrenched.">
   <meta name="twitter:image" content="/assets/brand/logo-mark-512.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,9 +28,9 @@
   <link rel="manifest" href="site.webmanifest">
   <link rel="preload" as="image" href="assets/brand/logo-mark-512.png">
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="clips.css">
+  <link rel="stylesheet" href="match-history.css">
 </head>
-<body class="clips-page">
+<body class="matches-page">
   <div class="stats-overlay-grid" aria-hidden="true"></div>
   <div class="page-glow" aria-hidden="true"></div>
   <canvas id="particleCanvas" aria-hidden="true"></canvas>
@@ -51,32 +51,31 @@
     <a class="site-corner-brand" href="index.html" aria-label="Ascend Entrenched home">
       <img src="assets/brand/logo-mark-512.png" alt="Ascend Entrenched logo" width="56" height="56" decoding="async" fetchpriority="high">
     </a>
-    <h1 class="stats-glitch-text" data-text="Global Media">Global Media</h1>
-    <p>Clips and Edits Showcase</p>
+    <h1 class="stats-glitch-text" data-text="Match History">Match History</h1>
+    <p>Upcoming Battles & Historical Records</p>
     <div class="stats-hero-signal">
       <span class="stats-signal-dot"></span>
-      <span>Live Encrypted Feed</span>
+      <span>Archive Synced</span>
     </div>
     <nav class="site-nav" aria-label="Primary navigation">
       <a class="nav-link" href="index.html">Showcase</a>
       <a class="nav-link" href="leaderboard.html">Leaderboard</a>
       <a class="nav-link" href="statistics.html">Statistics</a>
       <a class="nav-link" href="league.html">League</a>
-      <a class="nav-link active" href="clips.html">Clips</a>
+      <a class="nav-link active" href="match-history.html">Matches</a>
     </nav>
   </header>
 
-  <main class="clips-content">
-    <section class="clips-list-wrap" aria-label="Edits section">
-      <h2>Edits</h2>
-      <p class="clips-warning">Edits might contain +18 symbols.</p>
-      <div id="editsGrid" class="clips-grid"></div>
+  <main class="matches-content">
+    <section class="matches-list-wrap" aria-label="Upcoming matches section">
+      <h2>Upcoming Battles</h2>
+      <div id="upcomingMatchesGrid" class="matches-grid"></div>
     </section>
 
-    <section class="clips-list-wrap" aria-label="Clips section">
-      <h2>Clips</h2>
-      <p id="clipsStatus" class="clips-status">Loading clips...</p>
-      <div id="clipsGrid" class="clips-grid"></div>
+    <section class="matches-list-wrap" aria-label="Finished matches section">
+      <h2>Battle Archive</h2>
+      <p id="matchesStatus" class="clips-status">Loading archive...</p>
+      <div id="finishedMatchesGrid" class="matches-grid"></div>
     </section>
   </main>
 
@@ -85,11 +84,11 @@
       <img src="assets/brand/logo-mark-512.png" alt="" width="26" height="26">
       <span>Ascend Entrenched</span>
     </div>
-    <p>&copy; 2026 Ascend Entrenched Core &bull; Media Archive</p>
+    <p>&copy; 2026 Ascend Entrenched Core &bull; Match Archive</p>
   </footer>
 
   <script src="script.js"></script>
   <script src="particles.js"></script>
-  <script src="clips.js"></script>
+  <script src="match-history.js"></script>
 </body>
 </html>

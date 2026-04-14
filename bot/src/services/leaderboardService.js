@@ -53,22 +53,13 @@ function resolveLeaderboardEndpoint(input) {
   }
 }
 
-function clampLevel(value) {
+function clampElo(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
-    return 1;
+    return 1000;
   }
 
-  return Math.max(1, Math.min(10, Math.round(numeric)));
-}
-
-function clampKd(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return 1.0;
-  }
-
-  return Math.max(0, Math.min(9.9, Number(numeric.toFixed(1))));
+  return Math.max(1000, Math.min(4000, Math.round(numeric)));
 }
 
 function normalizePlayers(rawPlayers) {
@@ -84,8 +75,11 @@ function normalizePlayers(rawPlayers) {
     const stats = rawStats && typeof rawStats === "object" ? rawStats : {};
     normalized[key] = {
       name: String(rawName || "").trim(),
-      level: clampLevel(stats.level),
-      kd: clampKd(stats.kd),
+    normalized[key] = {
+      name: String(rawName || "").trim(),
+      elo: clampElo(stats.elo),
+      wins: Number(stats.wins) || 0,
+      losses: Number(stats.losses) || 0,
       totalMatches: Number.isFinite(Number(stats.totalMatches)) ? Number(stats.totalMatches) : 0,
       status: String(stats.status || "").trim().toLowerCase()
     };
@@ -156,8 +150,14 @@ function rankPlayers(config) {
       const aStats = players[a];
       const bStats = players[b];
 
-      if (bStats.level !== aStats.level) {
-        return bStats.level - aStats.level;
+      if (bStats.elo !== aStats.elo) {
+        return bStats.elo - aStats.elo;
+      }
+
+      const aWr = (aStats.wins + aStats.losses) > 0 ? (aStats.wins / (aStats.wins + aStats.losses)) : 0.5;
+      const bWr = (bStats.wins + bStats.losses) > 0 ? (bStats.wins / (bStats.wins + bStats.losses)) : 0.5;
+      if (bWr !== aWr) {
+        return bWr - aWr;
       }
 
       return a.localeCompare(b);
@@ -169,8 +169,9 @@ function rankPlayers(config) {
         key,
         player: stats.name || key,
         rank,
-        level: stats.level,
-        kd: stats.kd,
+        elo: stats.elo,
+        wins: stats.wins,
+        losses: stats.losses,
         totalMatches: stats.totalMatches,
         status: normalizeStatus(stats.status, rank)
       };

@@ -64,7 +64,7 @@
       <a class="nav-link" href="leaderboard.html">Leaderboard</a>
       <a class="nav-link" href="statistics.html">Statistics</a>
       <a class="nav-link" href="league.html">League</a>
-      <a class="nav-link" href="clips.html">Clips</a>
+      <a class="nav-link" href="match-history.html">Matches</a>
     </nav>
   </header>
 
@@ -80,13 +80,13 @@
           <p id="topPlayerSubtitle">Top performance across recent matches.</p>
 
           <div class="top-player-stats">
-            <div class="top-stat-card">
-              <span>Level</span>
-              <strong id="topPlayerLevel">0</strong>
+            <div id="topPlayerElo" class="top-stat-card">
+              <span>ELO Rating</span>
+              <strong id="topPlayerEloValue">1000</strong>
             </div>
-            <div class="top-stat-card">
-              <span>K/D</span>
-              <strong id="topPlayerKd">0.0</strong>
+            <div id="topPlayerWl" class="top-stat-card">
+              <span>W / L</span>
+              <strong id="topPlayerWlValue">0 / 0</strong>
             </div>
           </div>
         </div>
@@ -128,12 +128,12 @@
         </div>
         <div class="modal-stats">
           <div class="modal-stat-box">
-            <span>Level</span>
-            <strong id="modalLevel">0</strong>
+            <span>ELO Rating</span>
+            <strong id="modalElo">1000</strong>
           </div>
           <div class="modal-stat-box">
-            <span>K/D</span>
-            <strong id="modalKd">0.0</strong>
+            <span>Wins / Losses</span>
+            <strong id="modalWL">0 / 0</strong>
           </div>
         </div>
         <a id="modalDiscord" class="discord-button" href="https://discord.com" target="_blank" rel="noreferrer noopener">Open Player Discord</a>

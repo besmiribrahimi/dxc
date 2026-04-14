@@ -32,36 +32,6 @@ function buildKawaiiLbDecorHtml() {
   </div>`;
 }
 
-function clampLevel(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return 1;
-  }
-
-  return Math.max(1, Math.min(10, Math.round(numeric)));
-}
-
-function getLevelBadgePath(level) {
-  const safeLevel = clampLevel(level);
-  return `levelspng/${safeLevel}.png`;
-}
-
-function getLeaderboardStats(playerName) {
-  const normalized = String(playerName || "").toLowerCase();
-  if (normalized === LEADERBOARD_TOP_PLAYER.toLowerCase()) {
-    return {
-      level: 10,
-      kd: 4.0
-    };
-  }
-
-  const seed = [...String(playerName || "")].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const level = clampLevel((seed % 10) + 1);
-  const kd = Number((((seed % 25) + 14) / 10).toFixed(1));
-
-  return { level, kd };
-}
-
 function normalizeFactionOverride(value) {
   if (value == null) {
     return "";
@@ -294,6 +264,23 @@ function openLeaderboardModal(player) {
     modalClassNode.innerHTML = buildModalClassMarkup(player);
   }
 
+  const modalWL = document.getElementById("modalWL");
+  const modalElo = document.getElementById("modalElo");
+  const modalChange = document.getElementById("modalChange");
+
+  if (modalWL) {
+    modalWL.textContent = `${player.wins || 0} / ${player.losses || 0}`;
+  }
+  if (modalElo) {
+    modalElo.textContent = player.elo || 1000;
+  }
+  if (modalChange) {
+    const change = player.lastEloChange || 0;
+    const sign = change >= 0 ? "+" : "";
+    modalChange.textContent = `${sign}${change}`;
+    modalChange.style.color = change > 0 ? "#10b981" : (change < 0 ? "#ef4444" : "#94a3b8");
+  }
+
   if (leaderboardModalPanelNode) {
     leaderboardModalPanelNode.classList.remove("rank-tier-1", "rank-tier-2", "rank-tier-3", "rank-tier-default");
     leaderboardModalPanelNode.classList.add(getRankTierClass(rank));
@@ -359,9 +346,11 @@ function normalizeConfigPlayers(config) {
       faction: normalizeFactionOverride(stats?.faction),
       class: classList[0] || "Unknown",
       classes: classList,
-      level: clampLevel(stats?.level),
-      kd: Number(clampKd(stats?.kd).toFixed(1)),
-      device: normalizeDeviceValue(stats?.device)
+      device: normalizeDeviceValue(stats?.device),
+      elo: Number(stats?.elo) || 1000,
+      wins: Number(stats?.wins) || 0,
+      losses: Number(stats?.losses) || 0,
+      lastEloChange: Number(stats?.lastEloChange) || 0
     };
   });
 
@@ -420,15 +409,6 @@ function normalizeConfigOrder(config, validKeys) {
   }
 
   return ordered;
-}
-
-function clampKd(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return 1.0;
-  }
-
-  return Math.max(0, Math.min(9.9, numeric));
 }
 
 async function fetchRemoteConfig() {
@@ -505,8 +485,7 @@ function buildTopThreeCard(player, rank, avatarMap) {
         <span class="podium-stat">${countryToFlag(player.country)} ${escapeHtml(player.country)}</span>
         ${classChipsMarkup}
         <span class="podium-stat podium-detail-chip">${deviceIconMarkup}<span>${escapeHtml(deviceLabel)}</span></span>
-        <span class="podium-stat">K/D ${Number(player.kd).toFixed(1)}</span>
-        <span class="podium-stat podium-level"><img class="level-badge" src="${levelBadgeUrl}" alt="Level ${player.level}" loading="lazy">Level ${player.level}</span>
+        <span class="podium-stat podium-elo">ELO ${player.elo || 1000}</span>
       </div>
     </div>
   `;
@@ -520,12 +499,8 @@ function buildTopThreeCard(player, rank, avatarMap) {
   }
 
   const avatarNode = card.querySelector(".podium-avatar");
-  const levelNode = card.querySelector(".level-badge");
   avatarNode.addEventListener("error", () => {
     avatarNode.src = fallbackAvatar;
-  });
-  levelNode.addEventListener("error", () => {
-    levelNode.style.display = "none";
   });
 
   card.addEventListener("click", () => openLeaderboardModal(player));
@@ -576,6 +551,10 @@ function buildLeaderboardRow(player, rank, avatarMap) {
     groupClass: "leader-faction-group"
   });
 
+  const changeValue = player.lastEloChange || 0;
+  const changeSign = changeValue >= 0 ? "+" : "";
+  const changeColor = changeValue > 0 ? "#10b981" : (changeValue < 0 ? "#ef4444" : "#94a3b8");
+
   row.innerHTML = `
     <span class="leader-rank rank-${rank <= 3 ? rank : 0}">#${rank}</span>
     <div class="leader-row-main">
@@ -592,9 +571,9 @@ function buildLeaderboardRow(player, rank, avatarMap) {
       </div>
     </div>
     <span class="leader-faction">${factionMarkup}</span>
-    <span class="leader-country">${countryToFlag(player.country)} ${escapeHtml(player.country)}</span>
-    <strong class="leader-kd">${Number(player.kd).toFixed(1)}</strong>
-    <span class="leader-level"><img class="level-badge" src="${levelBadgeUrl}" alt="Level ${player.level}" loading="lazy"><strong>${player.level}</strong></span>
+    <span class="leader-wl">${player.wins || 0} / ${player.losses || 0}</span>
+    <strong class="leader-elo">${player.elo || 1000}</strong>
+    <span class="leader-change" style="color: ${changeColor}; font-weight: 700;">${changeSign}${changeValue}</span>
   `;
 
   if (kawaiiLb && typeof buildKawaiiLbDecorHtml === "function") {
@@ -606,12 +585,8 @@ function buildLeaderboardRow(player, rank, avatarMap) {
   }
 
   const avatarNode = row.querySelector(".leader-avatar");
-  const levelNode = row.querySelector(".level-badge");
   avatarNode.addEventListener("error", () => {
     avatarNode.src = fallbackAvatar;
-  });
-  levelNode.addEventListener("error", () => {
-    levelNode.style.display = "none";
   });
 
   row.addEventListener("click", () => openLeaderboardModal(player));
@@ -697,7 +672,7 @@ function renderLeaderboard(players, avatarMap, options = {}) {
 
   const modeLabel = hasManualOrder
     ? "Players ranked by Admin custom order."
-    : "Players ranked by Level only (K/D does not affect placement).";
+    : "Players ranked by Highest ELO.";
   leaderboardStatusNode.textContent = `${players.length} ${modeLabel}${syncLabel}`;
 
   previousPlayersState = [...players];
@@ -751,9 +726,10 @@ async function loadAndRenderLeaderboard() {
       const override = syncedPlayers[key];
       player.key = key;
       player.sourceIndex = sourceIndex;
-      player.level = override?.level ?? stats.level;
-      player.wins = player.level;
-      player.kd = override?.kd ?? stats.kd;
+      player.elo = override?.elo ?? 1000;
+      player.wins = override?.wins ?? 0;
+      player.losses = override?.losses ?? 0;
+      player.lastEloChange = override?.lastEloChange ?? 0;
       const classList = resolveClassList(override?.classes ?? override?.class ?? player.playerClasses ?? player.playerClass, player.name);
       player.playerClasses = classList;
       player.playerClass = classList[0] || "Unknown";
@@ -775,10 +751,10 @@ async function loadAndRenderLeaderboard() {
       if (rankA !== rankB) {
         return rankA - rankB;
       }
-      return b.level - a.level || b.kd - a.kd || a.sourceIndex - b.sourceIndex;
+      return b.elo - a.elo || (b.wins - b.losses) - (a.wins - a.losses) || a.sourceIndex - b.sourceIndex;
     });
   } else {
-    players.sort((a, b) => b.level - a.level || b.kd - a.kd || a.sourceIndex - b.sourceIndex);
+    players.sort((a, b) => b.elo - a.elo || (b.wins - b.losses) - (a.wins - a.losses) || a.sourceIndex - b.sourceIndex);
   }
 
   const syncLabel = remoteConfig?.lastSyncTime ? ` (Synced: ${new Date(remoteConfig.lastSyncTime).toLocaleString()})` : "";

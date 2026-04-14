@@ -65,7 +65,7 @@
       <a class="nav-link active" href="leaderboard.html">Leaderboard</a>
       <a class="nav-link" href="statistics.html">Statistics</a>
       <a class="nav-link" href="league.html">League</a>
-      <a class="nav-link" href="clips.html">Clips</a>
+      <a class="nav-link" href="match-history.html">Matches</a>
     </nav>
   </header>
 
@@ -101,9 +101,9 @@
         <span>Rank</span>
         <span>Player</span>
         <span>Faction</span>
-        <span>Country</span>
-        <span>K/D</span>
-        <span>Level</span>
+        <span>W/L</span>
+        <span>ELO</span>
+        <span>Change</span>
       </div>
       <div id="leaderboardRows"></div>
     </section>
@@ -152,12 +152,16 @@
 
           <div class="modal-stats leader-modal-stats">
             <div class="modal-stat-box">
-              <span>Level</span>
-              <strong id="modalLevel">0</strong>
+              <span>Wins / Losses</span>
+              <strong id="modalWL">0 / 0</strong>
             </div>
             <div class="modal-stat-box">
-              <span>K/D</span>
-              <strong id="modalKd">0.0</strong>
+              <span>ELO Rating</span>
+              <strong id="modalElo">1000</strong>
+            </div>
+            <div class="modal-stat-box">
+              <span>Last Match</span>
+              <strong id="modalChange">+0</strong>
             </div>
           </div>
 

@@ -52,7 +52,7 @@
       <a class="nav-link" href="leaderboard.html">Leaderboard</a>
       <a class="nav-link active" href="statistics.html">Statistics</a>
       <a class="nav-link" href="league.html">League</a>
-      <a class="nav-link" href="clips.html">Clips</a>
+      <a class="nav-link" href="match-history.html">Matches</a>
     </nav>
   </header>
 
@@ -89,9 +89,9 @@
         <label>Active Divisions</label>
         <strong id="statsFactionCount">0</strong>
       </article>
-      <article class="stats-metric-card" data-metric="kd">
-        <label>Global K/D Ratio</label>
-        <strong id="statsAvgKd">0.00</strong>
+      <article class="stats-metric-card" data-metric="elo">
+        <label>Average ELO</label>
+        <strong id="statsAvgElo">0</strong>
       </article>
       <article class="stats-metric-card" data-metric="leader">
         <label>Lead Division</label>
@@ -146,12 +146,12 @@
       </div>
       <div class="stats-trio-grid">
         <article class="stats-dist-card">
-          <h4>Efficiency Bands (K/D)</h4>
-          <div id="statsKdBands" class="stats-mini-matrix"></div>
+          <h4>ELO Distribution</h4>
+          <div id="statsEloBands" class="stats-mini-matrix"></div>
         </article>
         <article class="stats-dist-card">
-          <h4>Experience Levels</h4>
-          <div id="statsLevelBands" class="stats-mini-matrix"></div>
+          <h4>Win Rate Bands</h4>
+          <div id="statsWlBands" class="stats-mini-matrix"></div>
         </article>
         <article class="stats-dist-card">
           <h4>Market Share</h4>
@@ -163,7 +163,7 @@
     <section class="stats-algorithm-notice">
       <h3>Influence Methodology</h3>
       <p>
-        Player influence is quantified as: <strong>(Experience Level × 12) + (Efficiency K/D × 18) + Rank Delta</strong>. 
+        Player influence is quantified as: <strong>(ELO Rating × 0.6) + (Win Rate × 200) + Rank Bonus</strong>. 
         Division dominance is the aggregate influence of all active personnel.
       </p>
     </section>

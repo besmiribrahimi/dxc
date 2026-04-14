@@ -1,6 +1,6 @@
 const statsClockNode = document.getElementById("statsClock");
 const statsChampionNode = document.getElementById("statsChampion");
-const statsAvgKdNode = document.getElementById("statsAvgKd");
+const statsAvgEloNode = document.getElementById("statsAvgElo");
 const statsPlayerCountNode = document.getElementById("statsPlayerCount");
 const statsFactionCountNode = document.getElementById("statsFactionCount");
 const statsContestedNode = document.getElementById("statsContested");
@@ -11,8 +11,8 @@ const statsCountryCountNode = document.getElementById("statsCountryCount");
 const statsFactionCircleNode = document.getElementById("statsFactionCircle");
 const statsFactionLegendNode = document.getElementById("statsFactionLegend");
 const statsFactionTotalNode = document.getElementById("statsFactionTotal");
-const statsKdBandsNode = document.getElementById("statsKdBands");
-const statsLevelBandsNode = document.getElementById("statsLevelBands");
+const statsEloBandsNode = document.getElementById("statsEloBands");
+const statsWlBandsNode = document.getElementById("statsWlBands");
 const statsFactionShareNode = document.getElementById("statsFactionShare");
 
 const LEADERBOARD_TOP_PLAYER = "20SovietSO21";
@@ -20,27 +20,6 @@ const LEADERBOARD_CONFIG_ENDPOINT = "/api/leaderboard-config";
 
 let statsClockIntervalId = null;
 let statsLoadPending = false;
-
-function clampLevel(value) {
-  const numeric = Number(value);
-  return Math.max(1, Math.min(10, Number.isFinite(numeric) ? Math.round(numeric) : 1));
-}
-
-function clampKd(value) {
-  const numeric = Number(value);
-  return Math.max(0, Math.min(9.9, Number.isFinite(numeric) ? numeric : 1));
-}
-
-function getLeaderboardStats(playerName) {
-  const normalized = String(playerName || "").toLowerCase();
-  if (normalized === LEADERBOARD_TOP_PLAYER.toLowerCase()) {
-    return { level: 10, kd: 4.0 };
-  }
-  const seed = [...String(playerName || "")].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const level = clampLevel((seed % 10) + 1);
-  const kd = Number((((seed % 25) + 14) / 10).toFixed(1));
-  return { level, kd };
-}
 
 function normalizeConfigPlayers(config) {
   const raw = config?.players;
@@ -50,8 +29,10 @@ function normalizeConfigPlayers(config) {
     const key = String(nameKey || "").trim().toLowerCase();
     if (!key) return;
     output[key] = {
-      level: clampLevel(stats?.level),
-      kd: Number(clampKd(stats?.kd).toFixed(1))
+      elo: Number(stats?.elo) || 1000,
+      wins: Number(stats?.wins) || 0,
+      losses: Number(stats?.losses) || 0,
+      lastEloChange: Number(stats?.lastEloChange) || 0
     };
   });
   return output;
@@ -75,8 +56,9 @@ function normalizeConfigExtraPlayers(config) {
       faction,
       country: String(item.country || "N/A").trim() || "N/A",
       userId: resolvedUserId,
-      level: 1,
-      kd: 1
+      elo: 1000,
+      wins: 0,
+      losses: 0
     };
   }).filter(Boolean);
 }
@@ -90,8 +72,9 @@ async function fetchRemoteConfig() {
   } catch { return null; }
 }
 
-function getPlayerImpact(level, kd, rankIndex) {
-  return (level * 12) + (kd * 18) + Math.max(0, 14 - rankIndex);
+function getPlayerImpact(elo, wins, losses, rankIndex) {
+  const winRate = (wins + losses) > 0 ? (wins / (wins + losses)) : 0.5;
+  return (elo * 0.6) + (winRate * 200) + Math.max(0, 50 - rankIndex * 2);
 }
 
 function updateStatsClock() {
@@ -147,25 +130,27 @@ function buildFactionStats(players) {
     const uniqueTokens = [...new Set(tokens)];
     if (!uniqueTokens.length) return;
 
-    const level = clampLevel(player.level);
-    const kd = clampKd(player.kd);
-    const impact = getPlayerImpact(level, kd, rankIndex);
+    const elo = Number(player.elo) || 1000;
+    const wins = Number(player.wins) || 0;
+    const losses = Number(player.losses) || 0;
+    const impact = getPlayerImpact(elo, wins, losses, rankIndex);
 
     uniqueTokens.forEach((token) => {
       if (!factions.has(token)) {
         factions.set(token, {
-          token, members: 0, score: 0, totalLevel: 0, totalKd: 0,
+          token, members: 0, score: 0, totalElo: 0, totalWins: 0, totalLosses: 0,
           topOperator: null, topImpact: -1
         });
       }
       const row = factions.get(token);
       row.members += 1;
       row.score += impact;
-      row.totalLevel += level;
-      row.totalKd += kd;
+      row.totalElo += elo;
+      row.totalWins += wins;
+      row.totalLosses += losses;
       if (impact > row.topImpact) {
         row.topImpact = impact;
-        row.topOperator = { name: player.name, kd };
+        row.topOperator = { name: player.name, elo };
       }
     });
   });
@@ -175,8 +160,8 @@ function buildFactionStats(players) {
 function renderGeneralMetrics(players, factions) {
   if (statsPlayerCountNode) statsPlayerCountNode.textContent = players.length;
   if (statsFactionCountNode) statsFactionCountNode.textContent = factions.length;
-  const avgKd = players.length ? players.reduce((s, p) => s + clampKd(p.kd), 0) / players.length : 0;
-  if (statsAvgKdNode) statsAvgKdNode.textContent = avgKd.toFixed(2);
+  const avgElo = players.length ? Math.round(players.reduce((s, p) => s + (Number(p.elo) || 1000), 0) / players.length) : 0;
+  if (statsAvgEloNode) statsAvgEloNode.textContent = avgElo;
   if (statsChampionNode) {
     statsChampionNode.textContent = factions.length ? `${factions[0].token} (${Math.round(factions[0].score)})` : "N/A";
   }
@@ -223,32 +208,39 @@ function renderGeoDistribution(players) {
 }
 
 function renderDistribution(players, factions) {
-  // Simple distribution logic
-  const kdBands = [{l:"0-1", v:0}, {l:"1-2", v:0}, {l:"2-3", v:0}, {l:"3+", v:0}];
-  players.forEach(p => {
-    if(p.kd < 1) kdBands[0].v++;
-    else if(p.kd < 2) kdBands[1].v++;
-    else if(p.kd < 3) kdBands[2].v++;
-    else kdBands[3].v++;
-  });
   const renderBar = (l, v, m) => `
     <div style="font-size:0.8rem; margin-bottom:0.5rem;">
       <div style="display:flex; justify-content:space-between; margin-bottom:0.2rem;"><span>${l}</span><span>${v}</span></div>
       <div style="height:4px; background:rgba(0,0,0,0.2);"><div style="height:100%; background:var(--stats-blue); width:${(v/m)*100}%"></div></div>
     </div>
   `;
-  const mKd = Math.max(1, ...kdBands.map(b => b.v));
-  if(statsKdBandsNode) statsKdBandsNode.innerHTML = kdBands.map(b => renderBar(b.l, b.v, mKd)).join("");
-  
-  const lvlBands = [{l:"1-3", v:0}, {l:"4-6", v:0}, {l:"7-8", v:0}, {l:"9-10", v:0}];
+
+  // ELO Distribution Bands
+  const eloBands = [{l:"1000-1200", v:0}, {l:"1200-1500", v:0}, {l:"1500-2000", v:0}, {l:"2000+", v:0}];
   players.forEach(p => {
-    if(p.level <= 3) lvlBands[0].v++;
-    else if(p.level <= 6) lvlBands[1].v++;
-    else if(p.level <= 8) lvlBands[2].v++;
-    else lvlBands[3].v++;
+    const elo = Number(p.elo) || 1000;
+    if(elo < 1200) eloBands[0].v++;
+    else if(elo < 1500) eloBands[1].v++;
+    else if(elo < 2000) eloBands[2].v++;
+    else eloBands[3].v++;
   });
-  const mLvl = Math.max(1, ...lvlBands.map(b => b.v));
-  if(statsLevelBandsNode) statsLevelBandsNode.innerHTML = lvlBands.map(b => renderBar(b.l, b.v, mLvl)).join("");
+  const mElo = Math.max(1, ...eloBands.map(b => b.v));
+  if(statsEloBandsNode) statsEloBandsNode.innerHTML = eloBands.map(b => renderBar(b.l, b.v, mElo)).join("");
+  
+  // Win/Loss Ratio Bands
+  const wlBands = [{l:"< 40%", v:0}, {l:"40-50%", v:0}, {l:"50-60%", v:0}, {l:"60%+", v:0}];
+  players.forEach(p => {
+    const wins = Number(p.wins) || 0;
+    const losses = Number(p.losses) || 0;
+    const total = wins + losses;
+    const winRate = total > 0 ? (wins / total) * 100 : 50;
+    if(winRate < 40) wlBands[0].v++;
+    else if(winRate < 50) wlBands[1].v++;
+    else if(winRate < 60) wlBands[2].v++;
+    else wlBands[3].v++;
+  });
+  const mWl = Math.max(1, ...wlBands.map(b => b.v));
+  if(statsWlBandsNode) statsWlBandsNode.innerHTML = wlBands.map(b => renderBar(b.l, b.v, mWl)).join("");
 
   const fShare = factions.map(f => ({label:f.token, value:f.members}));
   const mF = Math.max(1, ...fShare.map(s => s.value));
@@ -274,10 +266,11 @@ async function gatherAndRender() {
     const players = lines.map(line => {
       const p = typeof window.parsePlayerLine === "function" ? window.parsePlayerLine(line) : null;
       if (!p) return null;
-      const stats = getLeaderboardStats(p.name);
       const override = syncedPlayers[p.name.toLowerCase()];
-      p.level = override?.level ?? stats.level;
-      p.kd = override?.kd ?? stats.kd;
+      p.elo = override?.elo ?? 1000;
+      p.wins = override?.wins ?? 0;
+      p.losses = override?.losses ?? 0;
+      p.lastEloChange = override?.lastEloChange ?? 0;
       return p;
     }).filter(Boolean);
 

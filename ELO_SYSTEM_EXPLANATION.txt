@@ -1,0 +1,32 @@
+ASCEND ENTRENCHED: ELO SYSTEM EXPLANATION
+==========================================
+
+The platform has moved to a new ELO-centric ranking system to better
+represent skill, consistency, and match performance.
+
+HOW IT WORKS:
+-------------
+1. STARTING POINT: Every operator starts with a base ELO of 1000.
+2. MATCH RESULTS: ELO increases when you win matches and decreases when you lose.
+3. QUALITY OF OPPONENT: Beating a high-ELO team gives more points than 
+   beating a low-ELO team.
+4. WIN RATE MATTERS: Your overall Win/Loss ratio now directly impacts your 
+   Global Influence score.
+
+THE "INFLUENCE" FORMULA:
+------------------------
+Your position on the leaderboard is determined by an "Influence Score":
+(ELO × 0.6) + (Win Rate × 200) + Rank Bonus
+
+- ELO (60% weight): Your raw skill ceiling and match history.
+- Win Rate: Rewards consistency and team play.
+- Rank Bonus: Extra weight given to top-performing sector veterans.
+
+WHY THE CHANGE?
+---------------
+The old Level/KD system didn't account for team play or the difficulty 
+of opponents. The ELO system ensures that "Grinding" alone isn't enough; 
+you must win against quality teams to climb the ranks.
+
+Stay sharp, Operator. See you on the battlefield.
+==========================================

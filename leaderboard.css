@@ -461,7 +461,7 @@
 
 .leaderboard-header {
   display: grid;
-  grid-template-columns: 50px 1.5fr 1fr 140px 90px 100px;
+  grid-template-columns: 50px 1.5fr 1fr 100px 100px 100px;
   gap: 1.5rem;
   padding: 0.85rem 1.8rem;
   background: linear-gradient(90deg, rgba(16, 20, 30, 0.4), rgba(59, 130, 246, 0.1), rgba(16, 20, 30, 0.4));
@@ -484,7 +484,7 @@
 
 .leaderboard-row {
   display: grid;
-  grid-template-columns: 50px 1.5fr 1fr 140px 90px 100px;
+  grid-template-columns: 50px 1.5fr 1fr 100px 100px 100px;
   gap: 1.5rem;
   align-items: center;
   padding: 0.8rem 1.8rem;
@@ -616,20 +616,26 @@
   height: 14px;
 }
 
-.leader-country {
-  font-size: 0.9rem;
-  color: #d1dcf0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
+.leader-wl {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-.leader-kd, .leader-level strong {
-  font-size: 1.3rem;
+.leader-elo {
+  font-size: 1.35rem;
   font-weight: 800;
   font-family: 'Rajdhani', sans-serif;
-  color: var(--leaderboard-text-primary);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  color: #eff6ff;
+  text-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+.leader-change {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: right;
 }
 
 .leader-level {

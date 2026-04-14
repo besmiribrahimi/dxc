@@ -6,22 +6,13 @@ const {
   sendSubstitution
 } = require("../_lib/bot-webhook");
 
-function clampLevel(value) {
+function clampElo(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
-    return 1;
+    return 1000;
   }
 
-  return Math.max(1, Math.min(10, Math.round(numeric)));
-}
-
-function clampKd(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return 1.0;
-  }
-
-  return Math.max(0, Math.min(9.9, Number(numeric.toFixed(1))));
+  return Math.max(1000, Math.min(4000, Math.round(numeric)));
 }
 
 function normalizeDeviceValue(value) {
@@ -179,8 +170,10 @@ function normalizePlayers(rawPlayers) {
       faction: normalizeFaction(stats.faction),
       class: classList[0] || "Unknown",
       classes: classList,
-      level: clampLevel(stats.level),
-      kd: clampKd(stats.kd),
+      elo: clampElo(stats.elo),
+      wins: Number(stats.wins) || 0,
+      losses: Number(stats.losses) || 0,
+      lastEloChange: Number(stats.lastEloChange) || 0,
       device: normalizeDeviceValue(stats.device)
     };
   });
@@ -266,79 +259,6 @@ function normalizeTransfers(rawTransfers) {
     .filter(Boolean);
 }
 
-function normalizeClipUrl(rawUrl) {
-  const value = String(rawUrl || "").trim();
-  if (!value) {
-    return "";
-  }
-
-  if (/^data:(video|image)\/[a-z0-9.+-]+;base64,/i.test(value)) {
-    return value.length <= 3_000_000 ? value : "";
-  }
-
-  const extractedMatch = value.match(/https?:\/\/[^\s<>()]+/i);
-  const extractedRaw = extractedMatch
-    ? extractedMatch[0]
-    : value
-      .replace(/[<>]/g, "")
-      .split(/\s+/)
-      .filter(Boolean)[0] || "";
-
-  const cleaned = extractedRaw.replace(/[),.;!]+$/g, "").trim();
-  if (!cleaned) {
-    return "";
-  }
-
-  const withProtocol = /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`;
-
-  try {
-    const url = new URL(withProtocol);
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
-      return "";
-    }
-
-    return url.toString();
-  } catch {
-    return "";
-  }
-}
-
-function normalizeClipType(rawType) {
-  const type = String(rawType || "clip").trim().toLowerCase();
-  if (type === "edit") {
-    return "edit";
-  }
-
-  return "clip";
-}
-
-function normalizeClips(rawClips) {
-  if (!Array.isArray(rawClips)) {
-    return [];
-  }
-
-  return rawClips
-    .slice(0, 200)
-    .map((entry, index) => {
-      const item = entry && typeof entry === "object" ? entry : {};
-      const title = String(item.title || "").trim().slice(0, 120);
-      const url = normalizeClipUrl(item.url);
-
-      if (!title || !url) {
-        return null;
-      }
-
-      return {
-        id: String(item.id || `clip-${Date.now()}-${index}`).trim(),
-        type: normalizeClipType(item.type),
-        title,
-        url,
-        player: String(item.player || "").trim().slice(0, 64),
-        description: String(item.description || "").trim().slice(0, 280),
-        featured: Boolean(item.featured)
-      };
-    })
-    .filter(Boolean);
 }
 
 function normalizeOrder(rawOrder, playerKeys) {
@@ -385,8 +305,9 @@ function getMaxEventsPerSave() {
   return toPositiveInt(process.env.BOT_WEBHOOK_MAX_EVENTS_PER_SAVE, 16);
 }
 
-function calculateScore(level, kd, rank) {
-  return Number(((level * 12) + (kd * 18) + Math.max(0, 14 - rank)).toFixed(1));
+function calculateScore(elo, wins, losses, rank) {
+  const winRate = (wins + losses) > 0 ? (wins / (wins + losses)) : 0.5;
+  return Number(((elo * 0.6) + (winRate * 200) + Math.max(0, 50 - rank * 2)).toFixed(1));
 }
 
 function rankPlayers(config, limit) {
@@ -411,23 +332,26 @@ function rankPlayers(config, limit) {
       const aStats = players[a];
       const bStats = players[b];
 
-      if (bStats.level !== aStats.level) {
-        return bStats.level - aStats.level;
+      if (bStats.elo !== aStats.elo) {
+        return bStats.elo - aStats.elo;
       }
 
       return a.localeCompare(b);
     })
     .slice(0, topLimit)
     .map((key, index) => {
-      const stats = players[key] || { level: 1, kd: 1.0 };
+      const stats = players[key] || { elo: 1000, wins: 0, losses: 0, lastEloChange: 0 };
       const rank = index + 1;
       return {
         key,
         player: key,
         rank,
-        level: stats.level,
-        kd: stats.kd,
-        score: calculateScore(stats.level, stats.kd, rank)
+        elo: stats.elo,
+        wins: stats.wins,
+        losses: stats.losses,
+        lastEloChange: stats.lastEloChange,
+        totalMatches: stats.wins + stats.losses,
+        score: calculateScore(stats.elo, stats.wins, stats.losses, rank)
       };
     });
 }
@@ -472,13 +396,15 @@ function buildLeaderboardDeltaEvents(previousTop, currentTop) {
       return;
     }
 
-    if (entry.level !== previous.level || entry.kd !== previous.kd) {
+    if (entry.elo !== previous.elo) {
+      const eloChange = entry.elo - previous.elo;
+      const sign = eloChange >= 0 ? "+" : "";
       events.push({
         group: "GLOBAL",
         player: entry.player,
         status: "info",
         score: entry.score,
-        matchHighlight: `${entry.player} stayed at #${entry.rank} (Lvl ${previous.level}->${entry.level}, K/D ${previous.kd}->${entry.kd}).`
+        matchHighlight: `${entry.player} stayed at #${entry.rank} (ELO ${previous.elo} → ${entry.elo}, ${sign}${eloChange}).`
       });
     }
   });
@@ -633,7 +559,7 @@ module.exports = async function handler(req, res) {
       order: [],
       extraPlayers: [],
       transfers: [],
-      clips: [],
+      matches: [],
       botSettings: {
         applicationsPanelChannelId: "",
         applicationsChannelId: "",
@@ -648,8 +574,8 @@ module.exports = async function handler(req, res) {
     const extraPlayers = normalizeExtraPlayers(hasExtraPlayersInBody ? body?.extraPlayers : previousConfig?.extraPlayers);
     const hasTransfersInBody = Array.isArray(body?.transfers);
     const transfers = normalizeTransfers(hasTransfersInBody ? body?.transfers : previousConfig?.transfers);
-    const hasClipsInBody = Array.isArray(body?.clips);
-    const clips = normalizeClips(hasClipsInBody ? body?.clips : previousConfig?.clips);
+    const hasMatchesInBody = Array.isArray(body?.matches);
+    const matches = hasMatchesInBody ? body.matches : (previousConfig?.matches || []);
     const existingBotSettings = previousConfig?.botSettings && typeof previousConfig.botSettings === "object"
       ? previousConfig.botSettings
       : {
@@ -664,7 +590,7 @@ module.exports = async function handler(req, res) {
       order,
       extraPlayers,
       transfers,
-      clips,
+      matches,
       botSettings: existingBotSettings
     };
 

@@ -56,14 +56,14 @@
       <a class="nav-link" href="leaderboard.html">Leaderboard</a>
       <a class="nav-link" href="statistics.html">Statistics</a>
       <a class="nav-link" href="league.html">League</a>
-      <a class="nav-link" href="clips.html">Clips</a>
+      <a class="nav-link" href="match-history.html">Match History</a>
     </nav>
   </header>
 
   <main class="admin-content">
     <section id="adminAuthCard" class="admin-card" aria-label="Admin login">
       <h2>Secure Login</h2>
-      <p>Sign in to edit global Faction, Level, and K/D data synced from Vercel KV.</p>
+      <p>Sign in to manage player ELO, factions, and match data synced from Vercel KV.</p>
       <form id="adminLoginForm" class="admin-login-form">
         <label for="adminPassword">Admin Password</label>
         <input id="adminPassword" name="password" type="password" autocomplete="current-password" required>
@@ -90,7 +90,7 @@
             <div class="admin-panel-header">
               <h2>Leaderboard</h2>
             </div>
-            <p>Edit factions, classes, devices, level, K/D and drag order for synced ranking.</p>
+            <p>Edit factions, classes, devices, ELO rankings and drag order for synced ranking.</p>
             <div class="admin-table-wrap">
               <div class="admin-row admin-row-head" role="row">
                 <span>Order</span>
@@ -99,8 +99,9 @@
                 <span>Country</span>
                 <span>Classes (max 3)</span>
                 <span>Device</span>
-                <span>Level</span>
-                <span>K/D</span>
+                <span>ELO</span>
+                <span>Wins</span>
+                <span>Losses</span>
                 <span>Action</span>
               </div>
               <div id="adminRows" class="admin-rows"></div>
@@ -252,54 +253,59 @@
             <p id="adminWebInsightsStatus" class="admin-status">Waiting for insights refresh.</p>
           </section>
 
-          <section class="admin-tab-panel hidden" data-admin-tab-panel="clips" aria-label="Clips manager">
+          <section class="admin-tab-panel hidden" data-admin-tab-panel="matches" aria-label="Match History manager">
             <div class="admin-panel-header">
-              <h2>Clips</h2>
+              <h2>Match History</h2>
               <div class="admin-actions">
-                <button id="adminPostClipBtn" type="button" class="admin-button">Post</button>
+                <button id="adminPostMatchBtn" type="button" class="admin-button">Post Match</button>
               </div>
             </div>
-            <p>Add content for both public sections: Clips and Edits. You can upload small files directly or paste a URL. Save Global Sync to publish updates.</p>
-            <p class="admin-status">Edits might contain +18 symbols.</p>
-
-            <div class="admin-clips-type-tabs" aria-label="Clip content type tabs">
-              <button type="button" class="admin-tab-button admin-clips-type-tab active" data-admin-clip-type-tab="clip">Clips</button>
-              <button type="button" class="admin-tab-button admin-clips-type-tab" data-admin-clip-type-tab="edit">Edits</button>
+            <p>Manage upcoming and finished matches. Enter scores and casualties for the archives.</p>
+            
+            <div class="admin-clips-type-tabs" aria-label="Match status tabs">
+              <button type="button" class="admin-tab-button admin-matches-type-tab active" data-admin-match-type-tab="finished">Finished</button>
+              <button type="button" class="admin-tab-button admin-matches-type-tab" data-admin-match-type-tab="upcoming">Upcoming</button>
             </div>
 
-            <div class="admin-bot-grid admin-clips-compose">
-              <label for="adminClipTitle">Title</label>
-              <input id="adminClipTitle" class="admin-bot-input" type="text" maxlength="120" placeholder="Best clutch in Verdun">
+            <div class="admin-bot-grid admin-matches-compose">
+              <label for="adminMatchTitle">Match Title</label>
+              <input id="adminMatchTitle" class="admin-bot-input" type="text" maxlength="120" placeholder="Battle of the Marne">
 
-              <label for="adminClipPlayer">Player</label>
-              <input id="adminClipPlayer" class="admin-bot-input" type="text" maxlength="64" placeholder="Player name">
+              <label for="adminMatchTeamA">Team A (Faction)</label>
+              <input id="adminMatchTeamA" class="admin-bot-input" type="text" maxlength="64" placeholder="AH / URF">
 
-              <label for="adminClipUrl">URL</label>
-              <input id="adminClipUrl" class="admin-bot-input" type="url" placeholder="https://...">
+              <label for="adminMatchTeamB">Team B (Faction)</label>
+              <input id="adminMatchTeamB" class="admin-bot-input" type="text" maxlength="64" placeholder="IA / TCL">
 
-              <label for="adminClipFile">Upload File (video/image, max 2MB)</label>
-              <input id="adminClipFile" class="admin-bot-input" type="file" accept="video/*,image/*">
+              <label for="adminMatchScoreA">Score Team A</label>
+              <input id="adminMatchScoreA" class="admin-bot-input" type="number" placeholder="0">
 
-              <label for="adminClipDescription">Description</label>
-              <input id="adminClipDescription" class="admin-bot-input" type="text" maxlength="280" placeholder="Short clip summary">
+              <label for="adminMatchScoreB">Score Team B</label>
+              <input id="adminMatchScoreB" class="admin-bot-input" type="number" placeholder="0">
 
-              <label for="adminClipFeatured">Featured</label>
-              <select id="adminClipFeatured" class="admin-bot-input">
-                <option value="false" selected>No</option>
-                <option value="true">Yes</option>
-              </select>
+              <label for="adminMatchCasualtiesA">Casualties Team A</label>
+              <input id="adminMatchCasualtiesA" class="admin-bot-input" type="number" placeholder="0">
+
+              <label for="adminMatchCasualtiesB">Casualties Team B</label>
+              <input id="adminMatchCasualtiesB" class="admin-bot-input" type="number" placeholder="0">
+
+              <label for="adminMatchDate">Date</label>
+              <input id="adminMatchDate" class="admin-bot-input" type="date">
+
+              <label for="adminMatchMedia">Footage URL (Optional)</label>
+              <input id="adminMatchMedia" class="admin-bot-input" type="url" placeholder="https://...">
             </div>
 
-            <div class="admin-transfer-wrap admin-clips-wrap">
+            <div class="admin-transfer-wrap admin-matches-wrap">
               <div class="admin-transfer-row admin-transfer-row-head" role="row">
                 <span>Title</span>
-                <span>Player</span>
-                <span>URL</span>
-                <span>Description</span>
-                <span>Featured</span>
+                <span>Teams</span>
+                <span>Score</span>
+                <span>Casualties</span>
+                <span>Date</span>
                 <span>Action</span>
               </div>
-              <div id="adminClipRows" class="admin-transfer-rows"></div>
+              <div id="adminMatchRows" class="admin-transfer-rows"></div>
             </div>
           </section>
 
@@ -325,16 +331,61 @@
               <div id="adminTransferRows" class="admin-transfer-rows"></div>
             </div>
           </section>
+
+          <section class="admin-tab-panel hidden" data-admin-tab-panel="match-entry" aria-label="ELO Match Entry">
+            <div class="admin-panel-header">
+              <h2>ELO Match Entry</h2>
+              <div class="admin-actions">
+                <button id="adminSaveMatchBtn" type="button" class="admin-button">Save Match</button>
+                <button id="adminClearMatchBtn" type="button" class="admin-button secondary">Clear Match</button>
+              </div>
+            </div>
+            <p>Select players for Team A and Team B. Enter their match scores for performance scaling.</p>
+            
+            <div class="match-entry-container">
+              <div class="match-team-section">
+                <div class="match-team-header">
+                  <h3>Team A</h3>
+                  <div class="team-winner-selector">
+                    <label><input type="radio" name="matchWinner" value="A"> Winner</label>
+                  </div>
+                </div>
+                <div class="match-team-player-search">
+                  <input type="text" id="matchTeamASearch" placeholder="Search player to add..." class="admin-bot-input">
+                  <div id="matchTeamASuggestions" class="search-suggestions hidden"></div>
+                </div>
+                <div id="matchTeamARoster" class="match-roster"></div>
+              </div>
+
+              <div class="match-vs-divider">VS</div>
+
+              <div class="match-team-section">
+                <div class="match-team-header">
+                  <h3>Team B</h3>
+                  <div class="team-winner-selector">
+                    <label><input type="radio" name="matchWinner" value="B"> Winner</label>
+                  </div>
+                </div>
+                <div class="match-team-player-search">
+                  <input type="text" id="matchTeamBSearch" placeholder="Search player to add..." class="admin-bot-input">
+                  <div id="matchTeamBSuggestions" class="search-suggestions hidden"></div>
+                </div>
+                <div id="matchTeamBRoster" class="match-roster"></div>
+              </div>
+            </div>
+            <p id="matchEntryStatus" class="admin-status">Waiting for match data.</p>
+          </section>
         </div>
 
         <aside class="admin-tab-rail" aria-label="Admin sections">
           <h3>Control Tabs</h3>
           <button type="button" class="admin-tab-button active" data-admin-tab-target="leaderboard">Leaderboard</button>
+          <button type="button" class="admin-tab-button" data-admin-tab-target="match-entry">Match Entry</button>
           <button type="button" class="admin-tab-button" data-admin-tab-target="dm-sender">DM Sender</button>
           <button type="button" class="admin-tab-button" data-admin-tab-target="add-player">Add Player</button>
           <button type="button" class="admin-tab-button" data-admin-tab-target="top-ten">Top Ten</button>
           <button type="button" class="admin-tab-button" data-admin-tab-target="insights">Web Insights</button>
-          <button type="button" class="admin-tab-button" data-admin-tab-target="clips">Clips</button>
+          <button type="button" class="admin-tab-button" data-admin-tab-target="matches">Match History</button>
           <button type="button" class="admin-tab-button" data-admin-tab-target="other">Other</button>
         </aside>
       </div>
