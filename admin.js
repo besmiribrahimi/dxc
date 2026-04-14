@@ -2258,6 +2258,7 @@ async function loadPanelData() {
     renderBotSettings(config);
     renderWeeklyTopTenPreview();
     renderWebInsights();
+    updateSuggestionPool(currentPlayers);
 
     const hasManualOrder = Array.isArray(config?.order) && config.order.length > 0;
     const modeText = hasManualOrder
@@ -2559,6 +2560,47 @@ function onAddTransferClick() {
   setSyncStatus("Transfer added locally. Click Save Global Sync to publish.");
 }
 
+function updateSuggestionPool(players) {
+  const pool = document.getElementById("fullPlayerDatalist");
+  if (!pool || !Array.isArray(players)) return;
+  
+  const names = players.map(p => p.name).sort();
+  pool.innerHTML = names.map(name => `<option value="${safeText(name)}">`).join("");
+}
+
+function renderMatchRosters() {
+  const rosterA = document.getElementById("matchTeamARoster");
+  const rosterB = document.getElementById("matchTeamBRoster");
+  if (!rosterA || !rosterB) return;
+
+  const buildSlots = (container, teamLabel) => {
+    let html = "";
+    for (let i = 1; i <= 20; i++) {
+        html += `
+          <div class="match-player-slot">
+            <span class="slot-number">${i}</span>
+            <input type="text" 
+              class="match-slot-input" 
+              data-team="${teamLabel}" 
+              data-index="${i}" 
+              placeholder="Username..." 
+              list="fullPlayerDatalist">
+            <input type="number" 
+              class="match-slot-score" 
+              data-team="${teamLabel}" 
+              data-index="${i}" 
+              placeholder="0"
+              title="Individual Score bonus (Optional)">
+          </div>
+        `;
+    }
+    container.innerHTML = html;
+  };
+
+  buildSlots(rosterA, "A");
+  buildSlots(rosterB, "B");
+}
+
 function onPostMatchClick() {
   const title = String(matchTitleNode?.value || "").trim();
   const teamA = String(matchTeamANode?.value || "").trim().toUpperCase();
@@ -2589,96 +2631,7 @@ function onPostMatchClick() {
   setSyncStatus("Match history entry added locally. Click Save Global Sync to publish.");
 }
 
-function renderMatchRosters() {
-  const rosterA = document.getElementById("matchTeamARoster");
-  const rosterB = document.getElementById("matchTeamBRoster");
-  if (!rosterA || !rosterB) return;
 
-  const renderRoster = (roster, team, teamLabel) => {
-    roster.innerHTML = team.map(player => `
-      <div class="match-player-row">
-        <span class="match-player-name">${safeText(player.name)}</span>
-        <input type="number" class="match-player-score" value="${player.score || 0}" data-team="${teamLabel}" data-player="${safeText(player.name)}" placeholder="Score">
-        <button class="match-player-remove" data-team="${teamLabel}" data-player="${safeText(player.name)}">&times;</button>
-      </div>
-    `).join("");
-
-    roster.querySelectorAll(".match-player-score").forEach(input => {
-      input.addEventListener("change", (e) => {
-        const p = team.find(pl => pl.name === e.target.dataset.player);
-        if (p) p.score = parseInt(e.target.value) || 0;
-      });
-    });
-
-    roster.querySelectorAll(".match-player-remove").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const playerName = e.target.dataset.player;
-        if (teamLabel === "A") {
-          matchTeamARoster = matchTeamARoster.filter(p => p.name !== playerName);
-        } else {
-          matchTeamBRoster = matchTeamBRoster.filter(p => p.name !== playerName);
-        }
-        renderMatchRosters();
-      });
-    });
-  };
-
-  renderRoster(rosterA, matchTeamARoster, "A");
-  renderRoster(rosterB, matchTeamBRoster, "B");
-}
-
-function setupMatchSearch() {
-  const setupSearch = (inputId, suggestionsId, teamLabel) => {
-    const input = document.getElementById(inputId);
-    const suggestions = document.getElementById(suggestionsId);
-    if (!input || !suggestions) return;
-
-    input.addEventListener("input", (e) => {
-      const val = e.target.value.toLowerCase().trim();
-      if (!val) {
-        suggestions.classList.add("hidden");
-        return;
-      }
-
-      const matches = currentPlayers
-        .filter(p => p.name.toLowerCase().includes(val))
-        .filter(p => !matchTeamARoster.some(r => r.name === p.name))
-        .filter(p => !matchTeamBRoster.some(r => r.name === p.name))
-        .slice(0, 5);
-
-      if (matches.length === 0) {
-        suggestions.classList.add("hidden");
-        return;
-      }
-
-      suggestions.innerHTML = matches.map(p => `
-        <div class="search-suggestion-item" data-name="${safeText(p.name)}">${safeText(p.name)}</div>
-      `).join("");
-      suggestions.classList.remove("hidden");
-
-      suggestions.querySelectorAll(".search-suggestion-item").forEach(item => {
-        item.addEventListener("click", () => {
-          const playerName = item.dataset.name;
-          const playerObj = { name: playerName, score: 0 };
-          if (teamLabel === "A") matchTeamARoster.push(playerObj);
-          else matchTeamBRoster.push(playerObj);
-          
-          input.value = "";
-          suggestions.classList.add("hidden");
-          renderMatchRosters();
-        });
-      });
-    });
-
-    // Close suggestions on blur
-    input.addEventListener("blur", () => {
-      setTimeout(() => suggestions.classList.add("hidden"), 200);
-    });
-  };
-
-  setupSearch("matchTeamASearch", "matchTeamASuggestions", "A");
-  setupSearch("matchTeamBSearch", "matchTeamBSuggestions", "B");
-}
 
 async function onSaveMatchClick() {
   const token = getStoredToken();
@@ -2690,7 +2643,27 @@ async function onSaveMatchClick() {
   const winner = document.querySelector('input[name="matchWinner"]:checked')?.value;
   const statusNode = document.getElementById("matchEntryStatus");
 
-  if (matchTeamARoster.length < 10 || matchTeamBRoster.length < 10) {
+  const collectTeamData = (teamLabel) => {
+    const inputs = document.querySelectorAll(`.match-slot-input[data-team="${teamLabel}"]`);
+    const scores = document.querySelectorAll(`.match-slot-score[data-team="${teamLabel}"]`);
+    const team = [];
+    
+    inputs.forEach((input, i) => {
+      const name = String(input.value || "").trim();
+      if (!name) return;
+      
+      team.push({
+        name,
+        score: parseInt(scores[i]?.value) || 0
+      });
+    });
+    return team;
+  };
+
+  const teamA = collectTeamData("A");
+  const teamB = collectTeamData("B");
+
+  if (teamA.length < 10 || teamB.length < 10) {
     if (statusNode) statusNode.textContent = "Error: Each team needs at least 10 players.";
     return;
   }
@@ -2709,8 +2682,8 @@ async function onSaveMatchClick() {
         Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({
-        teamA: matchTeamARoster,
-        teamB: matchTeamBRoster,
+        teamA,
+        teamB,
         winner,
         usePerformanceScaling: true
       })
@@ -2722,11 +2695,9 @@ async function onSaveMatchClick() {
 
     if (statusNode) statusNode.textContent = "Match saved! ELO ratings updated.";
     
-    // Clear rosters
-    matchTeamARoster = [];
-    matchTeamBRoster = [];
+    // Clear slots
+    document.querySelectorAll(".match-slot-input, .match-slot-score").forEach(el => el.value = "");
     document.querySelectorAll('input[name="matchWinner"]').forEach(r => r.checked = false);
-    renderMatchRosters();
 
     // Reload all data to show updated ELOs
     await loadPanelData();
@@ -2785,15 +2756,14 @@ if (document.getElementById("adminSaveMatchBtn")) {
 }
 if (document.getElementById("adminClearMatchBtn")) {
   document.getElementById("adminClearMatchBtn").addEventListener("click", () => {
-    matchTeamARoster = [];
-    matchTeamBRoster = [];
-    renderMatchRosters();
+    document.querySelectorAll(".match-slot-input, .match-slot-score").forEach(el => el.value = "");
     const status = document.getElementById("matchEntryStatus");
     if (status) status.textContent = "Match cleared.";
   });
 }
-setupMatchSearch();
+
 renderMatchRosters();
+
 if (refreshInsightsButtonNode) {
   refreshInsightsButtonNode.addEventListener("click", () => {
     refreshWebInsights({ probeEndpoints: true });
@@ -2828,3 +2798,4 @@ if (getStoredToken()) {
 } else {
   setPanelVisible(false);
 }
+

@@ -350,11 +350,7 @@
                     <label><input type="radio" name="matchWinner" value="A"> Winner</label>
                   </div>
                 </div>
-                <div class="match-team-player-search">
-                  <input type="text" id="matchTeamASearch" placeholder="Search player to add..." class="admin-bot-input">
-                  <div id="matchTeamASuggestions" class="search-suggestions hidden"></div>
-                </div>
-                <div id="matchTeamARoster" class="match-roster"></div>
+                <div id="matchTeamARoster" class="match-roster-grid"></div>
               </div>
 
               <div class="match-vs-divider">VS</div>
@@ -366,13 +362,11 @@
                     <label><input type="radio" name="matchWinner" value="B"> Winner</label>
                   </div>
                 </div>
-                <div class="match-team-player-search">
-                  <input type="text" id="matchTeamBSearch" placeholder="Search player to add..." class="admin-bot-input">
-                  <div id="matchTeamBSuggestions" class="search-suggestions hidden"></div>
-                </div>
-                <div id="matchTeamBRoster" class="match-roster"></div>
+                <div id="matchTeamBRoster" class="match-roster-grid"></div>
               </div>
             </div>
+
+            <datalist id="fullPlayerDatalist"></datalist>
             <p id="matchEntryStatus" class="admin-status">Waiting for match data.</p>
           </section>
         </div>
