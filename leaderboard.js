@@ -720,7 +720,6 @@ async function loadAndRenderLeaderboard() {
 
   const players = playersFromLines
     .map((player, sourceIndex) => {
-      const stats = getLeaderboardStats(player.name);
       const key = player.name.toLowerCase();
       const override = syncedPlayers[key];
       player.key = key;

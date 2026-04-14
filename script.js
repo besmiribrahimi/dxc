@@ -1957,7 +1957,7 @@
   }
 
   function openModal(player) {
-    if (!modal || !modalAvatar || !modalName || !modalFaction || !modalCountry || !modalLevel || !modalKd || !modalDiscord) {
+    if (!modal || !modalAvatar || !modalName || !modalFaction || !modalCountry || !modalElo || !modalWL || !modalDiscord) {
       return;
     }
 
