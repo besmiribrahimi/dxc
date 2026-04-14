@@ -2162,8 +2162,9 @@ function syncCurrentPlayersFromDom() {
       playerClasses: next ? normalizePlayerClassList(next.classes ?? next.class) : player.playerClasses,
       playerClass: next ? normalizePlayerClassValue(next.class) : player.playerClass,
       device: next ? normalizeDeviceValue(next.device) : player.device,
-      level: next ? next.level : player.level,
-      kd: next ? next.kd : player.kd
+      elo: next ? next.elo : player.elo,
+      wins: next ? next.wins : player.wins,
+      losses: next ? next.losses : player.losses
     };
   }).filter(Boolean);
 }
@@ -2182,8 +2183,9 @@ function syncCurrentPlayersFromInputs() {
       playerClasses: normalizePlayerClassList(next.classes ?? next.class),
       playerClass: normalizePlayerClassValue(next.class),
       device: normalizeDeviceValue(next.device),
-      level: next.level,
-      kd: next.kd
+      elo: next.elo,
+      wins: next.wins,
+      losses: next.losses
     };
   });
 }

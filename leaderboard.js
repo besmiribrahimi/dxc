@@ -454,7 +454,6 @@ function buildTopThreeCard(player, rank, avatarMap) {
 
   const avatarUrl = getResolvedAvatar(player, avatarMap);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
-  const levelBadgeUrl = getLevelBadgePath(player.level);
   const classList = sortClassListForDisplay(
     resolveClassList(player.playerClasses ?? player.playerClass, player.name)
   );

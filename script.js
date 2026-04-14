@@ -1228,7 +1228,7 @@
       <article class="faction-pulse-card" style="--intensity:${intensity}%">
         <strong>${flagMarkup}${safeToken}</strong>
         <span>${entry.members} operators</span>
-        <p>Avg Level ${entry.avgLevel.toFixed(1)} • Avg K/D ${entry.avgKd.toFixed(2)}</p>
+        <p>Avg ELO ${entry.avgElo.toFixed(0)}</p>
       </article>
     `;
     }).join("");
@@ -1339,23 +1339,23 @@
     const pulse = computeFactionPulse(list);
     const topFaction = pulse[0] || null;
     const secondFaction = pulse[1] || null;
-    const sortedByKd = list
+    const sortedByElo = list
       .slice()
       .sort((a, b) => {
-        if (Number(b.kd) !== Number(a.kd)) {
-          return Number(b.kd) - Number(a.kd);
+        if (Number(b.elo) !== Number(a.elo)) {
+          return Number(b.elo) - Number(a.elo);
         }
 
-        return Number(b.level) - Number(a.level);
+        return (Number(b.wins) - Number(b.losses)) - (Number(a.wins) - Number(a.losses));
       });
 
-    const topOperator = sortedByKd[0] || null;
-    const secondOperator = sortedByKd[1] || null;
+    const topOperator = sortedByElo[0] || null;
+    const secondOperator = sortedByElo[1] || null;
     const headlineItems = [
       topFaction ? `${topFaction.token} controls the pressure line with ${topFaction.members} active operators.` : "Faction pressure line is contested.",
-      secondFaction ? `${secondFaction.token} is reinforcing sectors with Avg K/D ${secondFaction.avgKd.toFixed(2)}.` : "Secondary faction reinforcements are being reorganized.",
-      topOperator ? `${topOperator.name} is the current standout at K/D ${Number(topOperator.kd).toFixed(1)}.` : "Operator performance data is updating.",
-      secondOperator ? `${secondOperator.name} supports the frontline with Level ${Number(secondOperator.level || 0)} pressure.` : "Support operators are rotating through active fronts.",
+      secondFaction ? `${secondFaction.token} is reinforcing sectors with Avg ELO ${secondFaction.avgElo.toFixed(0)}.` : "Secondary faction reinforcements are being reorganized.",
+      topOperator ? `${topOperator.name} is the current standout at ELO ${Number(topOperator.elo).toFixed(0)}.` : "Operator performance data is updating.",
+      secondOperator ? `${secondOperator.name} supports the frontline with ${Number(secondOperator.wins || 0)} wins.` : "Support operators are rotating through active fronts.",
       `Roster intelligence currently tracks ${list.length} operators across active factions.`
     ];
 
@@ -1363,13 +1363,13 @@
       {
         tag: "Frontline",
         text: topFaction
-          ? `${topFaction.token} has ${topFaction.members} operators active with Avg Level ${topFaction.avgLevel.toFixed(1)}.`
+          ? `${topFaction.token} has ${topFaction.members} operators active with Avg ELO ${topFaction.avgElo.toFixed(0)}.`
           : "No dominant faction detected in current cycle."
       },
       {
         tag: "Intel",
         text: topOperator
-          ? `${topOperator.name} leads with K/D ${Number(topOperator.kd).toFixed(1)} and Level ${Number(topOperator.level || 0)}.`
+          ? `${topOperator.name} leads with ELO ${Number(topOperator.elo).toFixed(0)} and Rank Plus status.`
           : "Top-operator snapshot is unavailable."
       },
       {
@@ -1429,8 +1429,8 @@
         <span>Sort</span>
         <select id="showcaseSort">
           <option value="rank">Leaderboard Rank</option>
-          <option value="level">Highest Level</option>
-          <option value="kd">Highest K/D</option>
+          <option value="elo">Highest ELO</option>
+          <option value="wins">Most Wins</option>
           <option value="name">Name A-Z</option>
         </select>
       </label>
@@ -1453,41 +1453,39 @@
 
       const applyView = () => {
         const currentPlayers = Array.isArray(controls.__showcaseState.players)
-          ? controls.__showcaseState.players
-          : [];
-        const currentAvatarMap = controls.__showcaseState.avatarMap instanceof Map
-          ? controls.__showcaseState.avatarMap
-          : new Map();
-        const baseList = currentPlayers.map((player, index) => ({ ...player, baseRank: index + 1 }));
-        const query = normalizeText(searchNode.value).toLowerCase();
-        const mode = String(sortNode.value || "rank");
+        try {
+          const currentPlayers = Array.isArray(controls.__showcaseState.players)
+            ? controls.__showcaseState.players
+            : [];
+          const currentAvatarMap = controls.__showcaseState.avatarMap instanceof Map
+            ? controls.__showcaseState.avatarMap
+            : new Map();
+          const withIndex = currentPlayers.map((player, index) => ({ ...player, baseRank: index + 1 }));
+          const term = normalizeText(searchNode.value).toLowerCase();
+          const sortMode = String(sortNode.value || "rank");
 
-        const filtered = baseList.filter((player) => {
-          if (!query) {
-            return true;
-          }
+          const filtered = withIndex.filter((p) => {
+            if (!term) return true;
+            return `${p.name} ${p.faction} ${p.country}`.toLowerCase().includes(term);
+          });
 
-          const searchText = `${player.name} ${player.faction} ${player.country}`.toLowerCase();
-          return searchText.includes(query);
-        });
+          filtered.sort((a, b) => {
+            if (sortMode === "elo") {
+              return Number(b.elo) - Number(a.elo);
+            }
+            if (sortMode === "wins") {
+              return Number(b.wins) - Number(a.wins);
+            }
+            if (sortMode === "name") {
+              return String(a.name).localeCompare(String(b.name));
+            }
+            return Number(a.baseRank) - Number(b.baseRank);
+          });
 
-        filtered.sort((a, b) => {
-          if (mode === "kd") {
-            return Number(b.kd) - Number(a.kd);
-          }
-
-          if (mode === "level") {
-            return Number(b.level) - Number(a.level);
-          }
-
-          if (mode === "name") {
-            return String(a.name).localeCompare(String(b.name));
-          }
-
-          return Number(a.baseRank) - Number(b.baseRank);
-        });
-
-        renderPlayers(filtered, currentAvatarMap);
+          renderPlayers(filtered, currentAvatarMap);
+        } catch (e) {
+          console.error("Showcase view update failed:", e);
+        }
       };
 
       controls.__showcaseState.applyView = applyView;
@@ -2187,8 +2185,17 @@
 
     renderPlayers(players, initialAvatarMap);
     ensureShowcaseControls(players, initialAvatarMap);
-    renderFactionNewsFeed(players);
-    renderFactionPulse(players);
+    try {
+      renderFactionNewsFeed(players);
+    } catch (err) {
+      console.warn("News feed failure (safely bypassed):", err);
+    }
+
+    try {
+      renderFactionPulse(players);
+    } catch (err) {
+      console.warn("PulseRadar failure (safely bypassed):", err);
+    }
 
     fetchAvatarUrls(players)
       .then((avatarMap) => {
