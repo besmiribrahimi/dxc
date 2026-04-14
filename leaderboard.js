@@ -530,7 +530,6 @@ function buildLeaderboardRow(player, rank, avatarMap) {
 
   const avatarUrl = getResolvedAvatar(player, avatarMap);
   const fallbackAvatar = getFallbackAvatarUrl(player.name);
-  const levelBadgeUrl = getLevelBadgePath(player.level);
   const classList = sortClassListForDisplay(
     resolveClassList(player.playerClasses ?? player.playerClass, player.name)
   );
@@ -713,8 +712,9 @@ async function loadAndRenderLeaderboard() {
       userId: Number.isFinite(resolvedUserId) ? resolvedUserId : fallbackAvatarId,
       avatarUrl: "",
       bodyAvatarUrl: "",
-      level: 1,
-      kd: 0,
+      elo: 1000,
+      wins: 0,
+      losses: 0,
       device: normalizeDeviceValue(entry.device)
     });
   });

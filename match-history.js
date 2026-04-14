@@ -10,10 +10,64 @@ async function fetchMatchData() {
       throw new Error("Failed to fetch match data");
     }
     const data = await response.json();
-    return data.matches || [];
+    const remoteMatches = data.matches || [];
+    
+    // Merge with upcoming matches from schedule
+    const localUpcoming = [
+      {
+        id: "match-ndv-aef-2026",
+        type: "upcoming",
+        title: "NDV Vs AEF (Champagne)",
+        teamA: "NDV",
+        teamB: "AEF",
+        date: "2026-04-25T19:00:00Z",
+        map: "Champagne",
+        details: "12vs12 extendable 15v15, Host: NDV"
+      },
+      {
+        id: "match-ah-dk-2026",
+        type: "upcoming",
+        title: "AH Jagdkommando VS DK",
+        teamA: "AH",
+        teamB: "DK",
+        date: "2026-05-10T19:00:00Z",
+        map: "Dobro Pole",
+        details: "20v20, Host: DK"
+      },
+      {
+        id: "match-ah-twa-2026",
+        type: "upcoming",
+        title: "AH vs TWA",
+        teamA: "AH",
+        teamB: "TWA",
+        date: "2026-04-18T19:00:00Z",
+        map: "TBD",
+        details: "Saturday 18th April Rally"
+      }
+    ];
+
+    // Combine and remove duplicates by ID if needed
+    const allMatches = [...remoteMatches];
+    localUpcoming.forEach(m => {
+      if (!allMatches.some(am => am.id === m.id)) {
+        allMatches.push(m);
+      }
+    });
+
+    return allMatches;
   } catch (err) {
     console.error("Match fetch error:", err);
-    return [];
+    return [
+      {
+        id: "match-ndv-aef-2026",
+        type: "upcoming",
+        title: "NDV Vs AEF (Champagne)",
+        teamA: "NDV",
+        teamB: "AEF",
+        date: "2026-04-25T19:00:00Z",
+        map: "Champagne"
+      }
+    ];
   }
 }
 

@@ -1700,10 +1700,6 @@
         faction: faction === "N/A" ? "" : faction,
         class: classList[0] || "Unknown",
         classes: classList,
-      output[key] = {
-        faction: faction === "N/A" ? "" : faction,
-        class: classList[0] || "Unknown",
-        classes: classList,
         elo: clampSyncedElo(stats?.elo),
         wins: Number(stats?.wins) || 0,
         losses: Number(stats?.losses) || 0,
@@ -1989,8 +1985,8 @@
       groupClass: "modal-faction-group"
     });
     modalCountry.textContent = `${countryToFlag(player.country)} ${player.country}`;
-    modalLevel.textContent = String(player.level);
-    modalKd.textContent = Number(player.kd).toFixed(1);
+    modalElo.textContent = String(player.elo || 1000);
+    modalWL.textContent = `${player.wins || 0} / ${player.losses || 0}`;
     if (/^\d{8,}$/.test(String(player.discordId || ""))) {
       modalDiscord.href = `https://discord.com/users/${player.discordId}`;
       modalDiscord.textContent = "Open Player Discord";
@@ -2007,7 +2003,7 @@
   }
 
   function renderTopPlayerCard(player) {
-    if (!topPlayerCard || !topPlayerNameNode || !topPlayerSubtitleNode || !topPlayerLevelNode || !topPlayerKdNode || !topCountryBadgeNode || !topPlayerAvatarNode || !topFactionBadgeNode) {
+    if (!topPlayerCard || !topPlayerNameNode || !topPlayerSubtitleNode || !topPlayerEloNode || !topPlayerWlNode || !topCountryBadgeNode || !topPlayerAvatarNode || !topFactionBadgeNode) {
       return;
     }
 
@@ -2015,8 +2011,8 @@
 
     topPlayerNameNode.textContent = player.name;
     topPlayerSubtitleNode.textContent = TOP_PLAYER_OVERRIDES.subtitle;
-    topPlayerLevelNode.textContent = String(player.level);
-    topPlayerKdNode.textContent = Number(player.kd).toFixed(1);
+    topPlayerEloNode.textContent = String(player.elo || 1000);
+    topPlayerWlNode.textContent = `${player.wins || 0} / ${player.losses || 0}`;
     topCountryBadgeNode.textContent = `${countryToFlag(player.country)} ${player.country}`;
     const factionPrimaryToken = splitFactionTokens(player.faction)[0];
     const safeFactionToken = escapeHtml(factionPrimaryToken || "N/A");
@@ -2158,8 +2154,9 @@
         userId: entry.userId,
         avatarUrl: "",
         bodyAvatarUrl: "",
-        level: 1,
-        kd: 0,
+        elo: 1000,
+        wins: 0,
+        losses: 0,
         device: entry.device
       });
     });
@@ -2169,8 +2166,9 @@
       const override = syncedPlayers[key];
       const isTop = player.name.toLowerCase() === TOP_PLAYER_NAME.toLowerCase();
       const stats = getPlayerStats(player.name, isTop);
-      player.level = override?.level ?? stats.level;
-      player.kd = override?.kd ?? stats.kd;
+      player.elo = override?.elo ?? stats.elo;
+      player.wins = override?.wins ?? stats.wins;
+      player.losses = override?.losses ?? stats.losses;
       const classList = normalizeSyncedClassList(override?.classes ?? override?.class ?? player.playerClasses ?? player.playerClass);
       player.playerClasses = classList;
       player.playerClass = classList[0] || normalizeSyncedClass(player.playerClass);
