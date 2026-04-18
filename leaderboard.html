@@ -86,27 +86,55 @@
       <a class="leaderboard-button" href="statistics.html">Open Global Statistics</a>
     </div>
 
-    <!-- Section Header -->
-    <div class="lb-section-header">
-      <div class="lb-section-line" aria-hidden="true"></div>
-      <h2 class="lb-section-title">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        Rankings
-      </h2>
-      <div class="lb-section-line" aria-hidden="true"></div>
+    <!-- Tab Navigation -->
+    <div class="lb-tabs" role="tablist" aria-label="Leaderboard view">
+      <button class="lb-tab active" id="tabElo" role="tab" aria-selected="true" aria-controls="panelElo" type="button">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        ELO Rankings
+      </button>
+      <button class="lb-tab" id="tabCommunity" role="tab" aria-selected="false" aria-controls="panelCommunity" type="button">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Community Top 10
+      </button>
     </div>
 
-    <section class="leaderboard-panel" aria-label="Full leaderboard ranking">
-      <div class="leaderboard-header">
-        <span>Rank</span>
-        <span>Player</span>
-        <span>Faction</span>
-        <span>W/L</span>
-        <span>ELO</span>
-        <span>Change</span>
+    <!-- ELO Rankings Panel -->
+    <div id="panelElo" class="lb-panel active" role="tabpanel" aria-labelledby="tabElo">
+      <div class="lb-section-header">
+        <div class="lb-section-line" aria-hidden="true"></div>
+        <h2 class="lb-section-title">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Rankings
+        </h2>
+        <div class="lb-section-line" aria-hidden="true"></div>
       </div>
-      <div id="leaderboardRows"></div>
-    </section>
+
+      <section class="leaderboard-panel" aria-label="Full leaderboard ranking">
+        <div class="leaderboard-header">
+          <span>Rank</span>
+          <span>Player</span>
+          <span>Faction</span>
+          <span>W/L</span>
+          <span>ELO</span>
+          <span>Change</span>
+        </div>
+        <div id="leaderboardRows"></div>
+      </section>
+    </div>
+
+    <!-- Community Top 10 Panel -->
+    <div id="panelCommunity" class="lb-panel" role="tabpanel" aria-labelledby="tabCommunity">
+      <div class="lb-section-header">
+        <div class="lb-section-line" aria-hidden="true"></div>
+        <h2 class="lb-section-title">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Community Top 10
+        </h2>
+        <div class="lb-section-line" aria-hidden="true"></div>
+      </div>
+      <p class="community-subtitle">Top 10 players chosen by the Ascend Entrenched community.</p>
+      <div id="communityTopGrid" class="community-top-grid"></div>
+    </div>
   </main>
 
   <button id="rankStructureToggle" class="rank-structure-toggle" type="button" aria-expanded="false" aria-controls="rankStructurePanel">

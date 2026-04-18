@@ -8,6 +8,11 @@ const leaderboardModalPanelNode = document.querySelector("#playerModal .leaderbo
 const rankStructureToggleNode = document.getElementById("rankStructureToggle");
 const rankStructurePanelNode = document.getElementById("rankStructurePanel");
 const rankStructureCloseNode = document.getElementById("rankStructureClose");
+const communityTopGridNode = document.getElementById("communityTopGrid");
+
+// Global cache for tab switching
+let cachedPlayers = [];
+let cachedAvatarMap = new Map();
 
 let previousPlayersState = [];
 const LEADERBOARD_TOP_PLAYER = "20SovietSO21";
@@ -560,7 +565,7 @@ function buildLeaderboardRow(player, rank, avatarMap) {
         <img class="leader-avatar" src="${avatarUrl}" alt="${escapeHtml(player.name)} Roblox avatar" loading="lazy" referrerpolicy="no-referrer">
         <span>
           <strong class="leader-name">${escapeHtml(player.name)}</strong>
-          <small class="leader-discord">Discord ${escapeHtml(player.discordId)}</small>
+          <small class="leader-discord">${escapeHtml(player.discordId || 'N/A')}</small>
         </span>
       </span>
       <div class="leader-row-meta">
@@ -758,12 +763,18 @@ async function loadAndRenderLeaderboard() {
   const syncLabel = remoteConfig?.lastSyncTime ? ` (Synced: ${new Date(remoteConfig.lastSyncTime).toLocaleString()})` : "";
   const options = { syncLabel, hasManualOrder };
 
+  // Cache for community tab
+  cachedPlayers = players;
+
   // Render immediately so page is interactive while avatar fetch continues in background.
   renderLeaderboard(players, new Map(), options);
+  renderCommunityTop10(players, new Map());
 
   fetchAvatarUrls(players)
     .then((avatarMap) => {
+      cachedAvatarMap = avatarMap;
       renderLeaderboard(players, avatarMap, options);
+      renderCommunityTop10(players, avatarMap);
     })
     .catch(() => { });
 }
@@ -822,9 +833,131 @@ function setupRankStructurePopup() {
   }
 }
 
+// ── Community Top 10 Card Builder ──
+
+function buildCommunityCard(player, rank, avatarMap) {
+  const card = document.createElement("article");
+  card.className = "community-card";
+  card.setAttribute("data-rank", String(rank));
+  card.style.setProperty("--card-index", String(rank - 1));
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-label", `Open Player ${player.name}`);
+
+  const avatarUrl = getResolvedAvatar(player, avatarMap);
+  const fallbackAvatar = getFallbackAvatarUrl(player.name);
+
+  const factionMarkup = buildFactionChipHtml(player.faction, {
+    chipClass: "community-card-faction",
+    maxItems: 1,
+    includeGroupWrapper: false
+  });
+
+  card.innerHTML = `
+    <span class="community-card-rank">#${rank}</span>
+    <img class="community-card-avatar" src="${avatarUrl}" alt="${escapeHtml(player.name)} avatar" loading="lazy" referrerpolicy="no-referrer">
+    <h3 class="community-card-name">${escapeHtml(player.name)}</h3>
+    ${factionMarkup}
+    <div class="community-card-stats">
+      <div class="community-card-stat">
+        <span class="community-card-stat-label">ELO</span>
+        <strong class="community-card-stat-value elo-value">${player.elo || 1000}</strong>
+      </div>
+      <div class="community-card-stat-sep"></div>
+      <div class="community-card-stat">
+        <span class="community-card-stat-label">W / L</span>
+        <strong class="community-card-stat-value">${player.wins || 0} / ${player.losses || 0}</strong>
+      </div>
+      <div class="community-card-stat-sep"></div>
+      <div class="community-card-stat">
+        <span class="community-card-stat-label">Change</span>
+        <strong class="community-card-stat-value" style="color: ${(player.lastEloChange || 0) > 0 ? '#10b981' : (player.lastEloChange || 0) < 0 ? '#ef4444' : '#94a3b8'}">${(player.lastEloChange || 0) >= 0 ? '+' : ''}${player.lastEloChange || 0}</strong>
+      </div>
+    </div>
+  `;
+
+  const avatarNode = card.querySelector(".community-card-avatar");
+  if (avatarNode) {
+    avatarNode.addEventListener("error", () => { avatarNode.src = fallbackAvatar; });
+  }
+
+  card.addEventListener("click", () => openLeaderboardModal(player));
+  card.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openLeaderboardModal(player);
+    }
+  });
+
+  return card;
+}
+
+function renderCommunityTop10(players, avatarMap) {
+  if (!communityTopGridNode) {
+    return;
+  }
+
+  communityTopGridNode.innerHTML = "";
+
+  const top10 = players.slice(0, 10);
+
+  if (!top10.length) {
+    communityTopGridNode.innerHTML = '<p class="community-card-empty">No community top 10 data available yet.</p>';
+    return;
+  }
+
+  top10.forEach((player, index) => {
+    const rank = index + 1;
+    const card = buildCommunityCard(player, rank, avatarMap);
+    communityTopGridNode.appendChild(card);
+  });
+}
+
+// ── Tab Switching ──
+
+function setupTabs() {
+  const tabElo = document.getElementById("tabElo");
+  const tabCommunity = document.getElementById("tabCommunity");
+  const panelElo = document.getElementById("panelElo");
+  const panelCommunity = document.getElementById("panelCommunity");
+
+  if (!tabElo || !tabCommunity || !panelElo || !panelCommunity) {
+    return;
+  }
+
+  function switchTab(activeTab, activePanel) {
+    // Update tab states
+    [tabElo, tabCommunity].forEach((tab) => {
+      tab.classList.remove("active");
+      tab.setAttribute("aria-selected", "false");
+    });
+    activeTab.classList.add("active");
+    activeTab.setAttribute("aria-selected", "true");
+
+    // Update panel states - use only CSS classes, NOT hidden attribute
+    [panelElo, panelCommunity].forEach((panel) => {
+      panel.classList.remove("active");
+    });
+    activePanel.classList.add("active");
+
+    // Re-trigger community animation on switch
+    if (activePanel === panelCommunity) {
+      panelCommunity.querySelectorAll(".community-card").forEach((card) => {
+        card.style.animation = "none";
+        card.offsetHeight; // force reflow
+        card.style.animation = "";
+      });
+    }
+  }
+
+  tabElo.addEventListener("click", () => switchTab(tabElo, panelElo));
+  tabCommunity.addEventListener("click", () => switchTab(tabCommunity, panelCommunity));
+}
+
 function initLeaderboardPage() {
   setupSearch();
   setupRankStructurePopup();
+  setupTabs();
   loadAndRenderLeaderboard();
 }
 
