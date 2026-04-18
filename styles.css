@@ -949,19 +949,24 @@ body::after {
 }
 
 .modal-stats {
+  margin-top: 0.8rem;
   display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.7rem;
 }
 
 .modal-stat-box {
   border: 1px solid rgba(147, 197, 253, 0.22);
   border-radius: 12px;
-  background:
-    linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(10, 18, 32, 0.9));
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(10, 18, 32, 0.9));
   padding: 0.65rem 0.8rem;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
 }
 
@@ -990,16 +995,16 @@ body::after {
 .modal-stat-box span {
   display: block;
   color: var(--text-soft);
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  margin-bottom: 0.15rem;
 }
 
 .modal-stat-box strong {
   display: block;
   font-size: 1.52rem;
   line-height: 1;
-  margin-top: 0.13rem;
   font-family: "Rajdhani", sans-serif;
 }
 
@@ -4676,7 +4681,12 @@ body.war-room-page::after {
   }
 
   .modal-stats {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  .modal-stat-box {
+    min-height: 58px;
   }
 
   .modal-close {
