@@ -884,11 +884,8 @@
 
 .leader-modal-class-row {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0.38rem;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
   padding-bottom: 0.08rem;
 }
 
