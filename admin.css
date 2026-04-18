@@ -448,3 +448,353 @@
     padding: 0.5rem;
   }
 }
+
+/* ===== Toast Notification System ===== */
+.admin-toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 420px;
+  pointer-events: none;
+}
+
+.admin-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.72rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  font-family: "Exo 2", sans-serif;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  animation: toast-slide-in 300ms ease forwards;
+  transition: opacity 250ms ease, transform 250ms ease;
+}
+
+.admin-toast.toast-exit {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.admin-toast.toast-success {
+  border-color: rgba(34, 197, 94, 0.5);
+}
+
+.admin-toast.toast-success .admin-toast-icon {
+  color: #22c55e;
+}
+
+.admin-toast.toast-error {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.admin-toast.toast-error .admin-toast-icon {
+  color: #ef4444;
+}
+
+.admin-toast.toast-warning {
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.admin-toast.toast-warning .admin-toast-icon {
+  color: #fbbf24;
+}
+
+.admin-toast.toast-info .admin-toast-icon {
+  color: #3b82f6;
+}
+
+.admin-toast-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.admin-toast-body {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.admin-toast-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.admin-toast-close:hover {
+  color: #f1f5f9;
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ===== Search Bar ===== */
+.admin-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.admin-search-bar input {
+  flex: 1;
+  max-width: 480px;
+  min-height: 38px;
+  border-radius: 8px;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  background: rgba(2, 6, 23, 0.55);
+  color: #e2e8f0;
+  font-family: "Exo 2", sans-serif;
+  font-size: 0.84rem;
+  padding: 0.35rem 0.72rem;
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.admin-search-bar input:focus {
+  border-color: rgba(147, 197, 253, 0.75);
+}
+
+.admin-search-bar input::placeholder {
+  color: #64748b;
+}
+
+.admin-search-count {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  font-family: "Exo 2", sans-serif;
+  white-space: nowrap;
+}
+
+/* ===== Tab Badge Counts ===== */
+.admin-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.35);
+  color: #bfdbfe;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0 5px;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.admin-tab-button.active .admin-tab-badge {
+  background: rgba(147, 197, 253, 0.4);
+  color: #eff6ff;
+}
+
+/* ===== Quick ELO Buttons ===== */
+.admin-elo-cell {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.admin-elo-quick-btn {
+  min-width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid rgba(147, 197, 253, 0.25);
+  background: rgba(30, 64, 175, 0.2);
+  color: #bfdbfe;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.admin-elo-quick-btn:hover {
+  background: rgba(59, 130, 246, 0.35);
+  border-color: rgba(147, 197, 253, 0.5);
+}
+
+/* ===== ELO Preview Container ===== */
+.elo-preview-container {
+  margin-top: 1rem;
+  border: 1px solid rgba(147, 197, 253, 0.25);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.35);
+  padding: 1rem;
+}
+
+.elo-preview-container h3 {
+  margin: 0 0 0.65rem;
+  font-family: "Rajdhani", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #dbeafe;
+  font-size: 0.95rem;
+}
+
+.elo-preview-teams {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.elo-preview-team {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.elo-preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.22rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-family: "Exo 2", sans-serif;
+  background: rgba(30, 41, 59, 0.2);
+}
+
+.elo-preview-row .elo-preview-name {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.elo-preview-row .elo-preview-change {
+  font-weight: 700;
+  min-width: 60px;
+  text-align: right;
+}
+
+.elo-preview-change.elo-gain {
+  color: #22c55e;
+}
+
+.elo-preview-change.elo-loss {
+  color: #ef4444;
+}
+
+.elo-preview-row .elo-preview-detail {
+  color: #94a3b8;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 900px) {
+  .elo-preview-teams {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== Match Entry Meta Row ===== */
+.match-entry-meta-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.7rem;
+}
+
+.match-entry-meta-row > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.match-entry-meta-row label {
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c4d6ed;
+  font-family: "Rajdhani", sans-serif;
+}
+
+@media (max-width: 600px) {
+  .match-entry-meta-row {
+    flex-direction: column;
+  }
+}
+
+/* ===== Match Team Info Bar ===== */
+.match-team-info {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.match-team-count {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-family: "Exo 2", sans-serif;
+  font-weight: 600;
+}
+
+.match-team-avg {
+  font-size: 0.72rem;
+  color: #fbbf24;
+  font-family: "Exo 2", sans-serif;
+  font-weight: 700;
+}
+
+/* ===== Validation States ===== */
+.match-slot-input.slot-invalid {
+  border-bottom-color: rgba(239, 68, 68, 0.6);
+  color: #fca5a5;
+}
+
+.match-slot-input.slot-valid {
+  border-bottom-color: rgba(34, 197, 94, 0.4);
+}
+
+/* ===== Keyboard Shortcut Hint ===== */
+.admin-shortcut-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.64rem;
+  color: #64748b;
+  margin-left: auto;
+  font-family: "Exo 2", sans-serif;
+}
+
+.admin-shortcut-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.5);
+  font-size: 0.62rem;
+  font-family: monospace;
+  color: #94a3b8;
+}
+
+/* ===== Relative Time Display ===== */
+.admin-sync-time-ago {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-left: 0.4rem;
+}

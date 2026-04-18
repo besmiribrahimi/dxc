@@ -31,6 +31,7 @@
   <link rel="stylesheet" href="admin.css">
 </head>
 <body>
+  <div id="adminToastContainer" class="admin-toast-container" aria-live="polite"></div>
   <div class="page-glow" aria-hidden="true"></div>
   <a
     class="official-discord-fab"
@@ -89,8 +90,16 @@
           <section class="admin-tab-panel" data-admin-tab-panel="leaderboard" aria-label="Leaderboard editor">
             <div class="admin-panel-header">
               <h2>Leaderboard</h2>
+              <div class="admin-actions">
+                <button id="adminExportRosterBtn" type="button" class="admin-button secondary">Export Roster JSON</button>
+                <button id="adminBulkEloResetBtn" type="button" class="admin-button danger">Reset All ELO</button>
+              </div>
             </div>
             <p>Edit factions, classes, devices, ELO rankings and drag order for synced ranking.</p>
+            <div class="admin-search-bar">
+              <input id="adminLeaderboardSearch" type="text" placeholder="Search players by name, faction, or country..." autocomplete="off">
+              <span id="adminSearchCount" class="admin-search-count"></span>
+            </div>
             <div class="admin-table-wrap">
               <div class="admin-row admin-row-head" role="row">
                 <span>Order</span>
@@ -336,16 +345,32 @@
             <div class="admin-panel-header">
               <h2>ELO Match Entry</h2>
               <div class="admin-actions">
+                <button id="adminPreviewEloBtn" type="button" class="admin-button secondary">Preview ELO Changes</button>
                 <button id="adminSaveMatchBtn" type="button" class="admin-button">Save Match</button>
                 <button id="adminClearMatchBtn" type="button" class="admin-button secondary">Clear Match</button>
               </div>
             </div>
             <p>Select players for Team A and Team B. Enter their match scores for performance scaling.</p>
             
+            <div class="match-entry-meta-row">
+              <div>
+                <label for="adminMatchFactionA">Team A Faction</label>
+                <input id="adminMatchFactionA" class="admin-bot-input" type="text" maxlength="36" placeholder="AH / URF">
+              </div>
+              <div>
+                <label for="adminMatchFactionB">Team B Faction</label>
+                <input id="adminMatchFactionB" class="admin-bot-input" type="text" maxlength="36" placeholder="IA / TCL">
+              </div>
+            </div>
+
             <div class="match-entry-container">
               <div class="match-team-section">
                 <div class="match-team-header">
                   <h3>Team A</h3>
+                  <div class="match-team-info">
+                    <span id="matchTeamACount" class="match-team-count">0 players</span>
+                    <span id="matchTeamAAvgElo" class="match-team-avg">Avg ELO: —</span>
+                  </div>
                   <div class="team-winner-selector">
                     <label><input type="radio" name="matchWinner" value="A"> Winner</label>
                   </div>
@@ -358,11 +383,23 @@
               <div class="match-team-section">
                 <div class="match-team-header">
                   <h3>Team B</h3>
+                  <div class="match-team-info">
+                    <span id="matchTeamBCount" class="match-team-count">0 players</span>
+                    <span id="matchTeamBAvgElo" class="match-team-avg">Avg ELO: —</span>
+                  </div>
                   <div class="team-winner-selector">
                     <label><input type="radio" name="matchWinner" value="B"> Winner</label>
                   </div>
                 </div>
                 <div id="matchTeamBRoster" class="match-roster-grid"></div>
+              </div>
+            </div>
+
+            <div id="eloPreviewContainer" class="elo-preview-container hidden">
+              <h3>ELO Change Preview</h3>
+              <div class="elo-preview-teams">
+                <div id="eloPreviewTeamA" class="elo-preview-team"></div>
+                <div id="eloPreviewTeamB" class="elo-preview-team"></div>
               </div>
             </div>
 

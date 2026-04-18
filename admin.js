@@ -95,12 +95,14 @@ let currentExtraPlayers = [];
 let currentRosterLines = [];
 let currentTransfers = [];
 let currentMatches = [];
+let currentClips = [];
 let activeMatchTypeTab = "finished";
 let draggingPlayerKey = "";
 let draggingInitialized = false;
 let editingSyncedPlayerId = "";
 let cachedEndpointInsights = [];
 let insightsRefreshInFlight = false;
+let previousConfigSnapshot = null;
 const dynamicAvatarUrlMap = new Map();
 const pendingAvatarUserIds = new Set();
 
@@ -108,6 +110,28 @@ const pendingAvatarUserIds = new Set();
 let matchTeamARoster = [];
 let matchTeamBRoster = [];
 const MATCH_CALCULATE_ENDPOINT = "/api/admin/match-calculate";
+
+// Clip stubs (legacy clips system migrated to matches)
+function normalizeClips(raw) { return Array.isArray(raw) ? raw : []; }
+function collectClipValues() { return currentClips; }
+function renderClipRows() {}
+
+// New DOM node references
+const toastContainerNode = document.getElementById("adminToastContainer");
+const leaderboardSearchNode = document.getElementById("adminLeaderboardSearch");
+const searchCountNode = document.getElementById("adminSearchCount");
+const exportRosterButtonNode = document.getElementById("adminExportRosterBtn");
+const bulkEloResetButtonNode = document.getElementById("adminBulkEloResetBtn");
+const previewEloButtonNode = document.getElementById("adminPreviewEloBtn");
+const eloPreviewContainerNode = document.getElementById("eloPreviewContainer");
+const eloPreviewTeamANode = document.getElementById("eloPreviewTeamA");
+const eloPreviewTeamBNode = document.getElementById("eloPreviewTeamB");
+const matchFactionANode = document.getElementById("adminMatchFactionA");
+const matchFactionBNode = document.getElementById("adminMatchFactionB");
+const matchTeamACountNode = document.getElementById("matchTeamACount");
+const matchTeamBCountNode = document.getElementById("matchTeamBCount");
+const matchTeamAAvgEloNode = document.getElementById("matchTeamAAvgElo");
+const matchTeamBAvgEloNode = document.getElementById("matchTeamBAvgElo");
 
 function warnDirectAdminAccess() {
   const pathname = String(window.location.pathname || "").toLowerCase();
@@ -1767,7 +1791,11 @@ function renderRows(players) {
         </select>
       </span>
       <span>
-        <input class="admin-elo-input" data-player-key="${safeText(player.key)}" type="number" value="${player.elo || 1000}">
+        <div class="admin-elo-cell">
+          <button type="button" class="admin-elo-quick-btn admin-elo-minus" title="-25 ELO">-</button>
+          <input class="admin-elo-input" data-player-key="${safeText(player.key)}" type="number" value="${player.elo || 1000}">
+          <button type="button" class="admin-elo-quick-btn admin-elo-plus" title="+25 ELO">+</button>
+        </div>
       </span>
       <span>
         <input class="admin-wins-input" data-player-key="${safeText(player.key)}" type="number" value="${player.wins || 0}">
@@ -1858,10 +1886,30 @@ function renderRows(players) {
       removeSyncedPlayerFromState((item) => String(item?.name || "").trim().toLowerCase() === removeKey);
     });
 
+    // Quick ELO +/- buttons
+    const eloInputNode = row.querySelector(".admin-elo-input");
+    const eloMinusNode = row.querySelector(".admin-elo-minus");
+    const eloPlusNode = row.querySelector(".admin-elo-plus");
+    eloMinusNode?.addEventListener("click", () => {
+      if (eloInputNode) {
+        const current = Number(eloInputNode.value) || 1000;
+        eloInputNode.value = String(clampElo(current - 25));
+        setSyncStatus(`${player.name}: ELO -25 → ${eloInputNode.value}. Save to publish.`);
+      }
+    });
+    eloPlusNode?.addEventListener("click", () => {
+      if (eloInputNode) {
+        const current = Number(eloInputNode.value) || 1000;
+        eloInputNode.value = String(clampElo(current + 25));
+        setSyncStatus(`${player.name}: ELO +25 → ${eloInputNode.value}. Save to publish.`);
+      }
+    });
+
     rowsNode.append(row);
   });
 
   initDragAndDrop();
+  applyLeaderboardSearch();
 }
 
 function buildTransferStatusOptions(selectedStatus) {
@@ -2206,6 +2254,9 @@ function collectRowValues() {
       return;
     }
 
+    const factionNode = row.querySelector(".admin-faction-input");
+    const classNodes = Array.from(row.querySelectorAll(".admin-class-select"));
+    const deviceNode = row.querySelector(".admin-device-select");
     const eloNode = row.querySelector(".admin-elo-input");
     const winsNode = row.querySelector(".admin-wins-input");
     const lossesNode = row.querySelector(".admin-losses-input");
@@ -2249,6 +2300,9 @@ async function loadPanelData() {
     currentConfig = config;
     currentExtraPlayers = normalizeExtraPlayers(config?.extraPlayers);
     const mergedRosterPlayers = buildMergedRosterPlayers(currentRosterLines, currentExtraPlayers);
+    currentPlayers = mergePlayersWithConfig(mergedRosterPlayers, config, currentExtraPlayers);
+    currentTransfers = normalizeTransfers(config?.transfers);
+    currentClips = normalizeClips(config?.clips);
     currentMatches = config?.matches || (Array.isArray(config?.clips) ? config.clips.map(c => ({ id: c.id, title: c.title, teamA: c.player || 'COMMUNITY', teamB: 'N/A', type: 'finished', date: new Date().toISOString().split('T')[0] })) : []);
     renderRows(currentPlayers);
     renderTransferRows(currentTransfers);
@@ -2259,14 +2313,18 @@ async function loadPanelData() {
     renderWeeklyTopTenPreview();
     renderWebInsights();
     updateSuggestionPool(currentPlayers);
+    updateTabBadges();
 
     const hasManualOrder = Array.isArray(config?.order) && config.order.length > 0;
     const modeText = hasManualOrder
       ? "Mode: custom admin order"
       : "Mode: ELO ranked";
+    const relativeTime = getRelativeTimeString(config.updatedAt);
+    const relativeLabel = relativeTime ? ` (${relativeTime})` : "";
 
-    setSyncStatus(`Loaded ${currentPlayers.length} Players (${currentExtraPlayers.length} admin-synced). ${modeText}. Drag with the :: handle to reorder. Last global sync: ${formatSyncTime(config.updatedAt)}.`);
+    setSyncStatus(`Loaded ${currentPlayers.length} Players (${currentExtraPlayers.length} admin-synced). ${modeText}. Drag with :: to reorder. Last sync: ${formatSyncTime(config.updatedAt)}${relativeLabel}. Shortcuts: Ctrl+S save, Ctrl+R reload.`);
     setBotOpsStatus("DM sender ready.");
+    showToast(`Loaded ${currentPlayers.length} players.`, "success");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load panel data";
 
@@ -2274,10 +2332,12 @@ async function loadPanelData() {
       storeToken("");
       setPanelVisible(false);
       setLoginStatus("Session expired. Please sign in again.", true);
+      showToast("Session expired. Please sign in again.", "error");
       return;
     }
 
     setSyncStatus(message, true);
+    showToast(message, "error");
   }
 }
 
@@ -2307,11 +2367,27 @@ async function onSaveClick() {
   const token = getStoredToken();
   if (!token) {
     setSyncStatus("Not signed in.", true);
+    showToast("Not signed in.", "error");
     setPanelVisible(false);
     return;
   }
 
+  // Save confirmation
+  const changeCount = currentPlayers.length;
+  const extraCount = currentExtraPlayers.length;
+  const transferCount = currentTransfers.length;
+  const confirmMsg = `Save Global Sync?\n\n• ${changeCount} players (${extraCount} admin-synced)\n• ${transferCount} transfers\n• ${currentMatches.length} matches\n\nThis will overwrite the current live data.`;
+  if (!window.confirm(confirmMsg)) {
+    setSyncStatus("Save cancelled.");
+    showToast("Save cancelled.", "info");
+    return;
+  }
+
   setSyncStatus("Saving global sync...");
+  showToast("Saving global sync...", "info");
+
+  // Snapshot for undo
+  previousConfigSnapshot = JSON.parse(JSON.stringify(currentConfig));
 
   try {
     syncCurrentPlayersFromDom();
@@ -2324,7 +2400,8 @@ async function onSaveClick() {
       order,
       extraPlayers: currentExtraPlayers,
       transfers: currentTransfers,
-      clips: currentClips
+      clips: currentClips,
+      matches: currentMatches
     });
     const saved = saveResult.config;
     currentConfig = saved;
@@ -2340,6 +2417,7 @@ async function onSaveClick() {
     renderAdminNewsFeed(currentPlayers);
     renderWeeklyTopTenPreview();
     renderWebInsights();
+    updateTabBadges();
 
     const botDispatch = saveResult.botDispatch;
     const botSuffix = botDispatch
@@ -2347,8 +2425,11 @@ async function onSaveClick() {
       : "";
 
     setSyncStatus(`Global sync saved. Mode: custom admin order. Updated: ${formatSyncTime(saved.updatedAt)}.${botSuffix}`);
+    showToast(`Global sync saved successfully!${botSuffix}`, "success");
   } catch (error) {
-    setSyncStatus(error instanceof Error ? error.message : "Save failed", true);
+    const msg = error instanceof Error ? error.message : "Save failed";
+    setSyncStatus(msg, true);
+    showToast(msg, "error");
   }
 }
 
@@ -2676,6 +2757,9 @@ async function onSaveMatchClick() {
   if (statusNode) statusNode.textContent = "Calculating ELO changes and saving...";
 
   try {
+    const teamAFaction = String(matchFactionANode?.value || "").trim() || "Team A";
+    const teamBFaction = String(matchFactionBNode?.value || "").trim() || "Team B";
+
     const response = await requestJson(MATCH_CALCULATE_ENDPOINT, {
       method: "POST",
       headers: {
@@ -2685,7 +2769,9 @@ async function onSaveMatchClick() {
         teamA,
         teamB,
         winner,
-        usePerformanceScaling: true
+        usePerformanceScaling: true,
+        teamAFaction,
+        teamBFaction
       })
     });
 
@@ -2694,15 +2780,29 @@ async function onSaveMatchClick() {
     }
 
     if (statusNode) statusNode.textContent = "Match saved! ELO ratings updated.";
+    showToast("Match saved! ELO ratings updated successfully.", "success");
+    
+    // Show ELO changes summary
+    if (response.data?.eloChanges) {
+      const changes = response.data.eloChanges;
+      const entries = Object.entries(changes);
+      const gains = entries.filter(([, v]) => v > 0).length;
+      const losses = entries.filter(([, v]) => v < 0).length;
+      showToast(`ELO updated for ${entries.length} players: ${gains} gained, ${losses} lost.`, "info");
+    }
     
     // Clear slots
     document.querySelectorAll(".match-slot-input, .match-slot-score").forEach(el => el.value = "");
     document.querySelectorAll('input[name="matchWinner"]').forEach(r => r.checked = false);
+    if (matchFactionANode) matchFactionANode.value = "";
+    if (matchFactionBNode) matchFactionBNode.value = "";
+    if (eloPreviewContainerNode) eloPreviewContainerNode.classList.add("hidden");
 
     // Reload all data to show updated ELOs
     await loadPanelData();
   } catch (error) {
     if (statusNode) statusNode.textContent = "Error: " + error.message;
+    showToast("Match save failed: " + error.message, "error");
   }
 }
 
@@ -2720,6 +2820,406 @@ function setupMatchTypeTabs() {
   setActiveMatchTypeTab(activeMatchTypeTab);
 }
 
+// ==========================================================================
+// NEW FUNCTIONALITY: Toast Notifications
+// ==========================================================================
+function showToast(message, type = "info", durationMs = 4500) {
+  if (!toastContainerNode) return;
+
+  const iconMap = {
+    success: "✅",
+    error: "❌",
+    warning: "⚠️",
+    info: "ℹ️"
+  };
+
+  const toast = document.createElement("div");
+  toast.className = `admin-toast toast-${type}`;
+  toast.innerHTML = `
+    <span class="admin-toast-icon">${iconMap[type] || iconMap.info}</span>
+    <span class="admin-toast-body">${safeText(message)}</span>
+    <button type="button" class="admin-toast-close" aria-label="Dismiss">&times;</button>
+  `;
+
+  const dismiss = () => {
+    toast.classList.add("toast-exit");
+    setTimeout(() => toast.remove(), 300);
+  };
+
+  toast.querySelector(".admin-toast-close")?.addEventListener("click", dismiss);
+  toastContainerNode.append(toast);
+
+  // Auto-dismiss
+  setTimeout(dismiss, durationMs);
+
+  // Limit visible toasts
+  const allToasts = toastContainerNode.querySelectorAll(".admin-toast");
+  if (allToasts.length > 5) {
+    allToasts[0]?.remove();
+  }
+}
+
+// ==========================================================================
+// NEW FUNCTIONALITY: Leaderboard Search/Filter
+// ==========================================================================
+function applyLeaderboardSearch() {
+  if (!leaderboardSearchNode || !rowsNode) return;
+
+  const query = String(leaderboardSearchNode.value || "").trim().toLowerCase();
+  const rows = rowsNode.querySelectorAll(".admin-row[data-player-key]");
+  let visibleCount = 0;
+  let totalCount = rows.length;
+
+  rows.forEach((row) => {
+    if (!query) {
+      row.style.display = "";
+      visibleCount++;
+      return;
+    }
+
+    const playerKey = String(row.dataset.playerKey || "");
+    const factionInput = row.querySelector(".admin-faction-input");
+    const factionValue = String(factionInput?.value || "").toLowerCase();
+    const countryCell = row.querySelector(".admin-country");
+    const countryValue = String(countryCell?.textContent || "").toLowerCase();
+    const playerCell = row.querySelector(".admin-player-cell strong");
+    const nameValue = String(playerCell?.textContent || "").toLowerCase();
+
+    const matches = nameValue.includes(query) ||
+      playerKey.includes(query) ||
+      factionValue.includes(query) ||
+      countryValue.includes(query);
+
+    row.style.display = matches ? "" : "none";
+    if (matches) visibleCount++;
+  });
+
+  if (searchCountNode) {
+    if (query) {
+      searchCountNode.textContent = `${visibleCount} / ${totalCount} players`;
+    } else {
+      searchCountNode.textContent = `${totalCount} players`;
+    }
+  }
+}
+
+// ==========================================================================
+// NEW FUNCTIONALITY: Tab Badge Counts
+// ==========================================================================
+function updateTabBadges() {
+  const counts = {
+    leaderboard: currentPlayers.length,
+    "match-entry": 0,
+    "dm-sender": 0,
+    "add-player": currentExtraPlayers.length,
+    "top-ten": Math.min(currentPlayers.length, 10),
+    insights: 0,
+    matches: currentMatches.length,
+    other: currentTransfers.length
+  };
+
+  adminTabButtonNodes.forEach((btn) => {
+    const target = String(btn.dataset.adminTabTarget || "").trim().toLowerCase();
+    const count = counts[target];
+
+    // Remove existing badge
+    const existingBadge = btn.querySelector(".admin-tab-badge");
+    if (existingBadge) existingBadge.remove();
+
+    if (count !== undefined && count > 0) {
+      const badge = document.createElement("span");
+      badge.className = "admin-tab-badge";
+      badge.textContent = String(count);
+      btn.append(badge);
+    }
+  });
+}
+
+// ==========================================================================
+// NEW FUNCTIONALITY: Export Roster JSON
+// ==========================================================================
+function onExportRosterClick() {
+  if (!currentPlayers.length) {
+    showToast("No players loaded to export.", "warning");
+    return;
+  }
+
+  const exportData = currentPlayers.map((player, index) => ({
+    rank: index + 1,
+    name: player.name,
+    faction: normalizeFactionValue(player.faction),
+    country: player.country || "N/A",
+    classes: normalizePlayerClassList(player.playerClasses ?? player.playerClass),
+    device: normalizeDeviceValue(player.device),
+    elo: player.elo || 1000,
+    wins: player.wins || 0,
+    losses: player.losses || 0,
+    isAdminSynced: Boolean(player.isExtra)
+  }));
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const fileName = `ascend-roster-${timestamp}.json`;
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+
+  showToast(`Exported ${exportData.length} players to ${fileName}`, "success");
+}
+
+// ==========================================================================
+// NEW FUNCTIONALITY: Bulk ELO Reset
+// ==========================================================================
+function onBulkEloResetClick() {
+  if (!currentPlayers.length) {
+    showToast("No players loaded.", "warning");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `⚠️ RESET ALL ELO\n\nThis will set ALL ${currentPlayers.length} players to 1000 ELO and reset their W/L to 0/0.\n\nThis is a LOCAL change — you must still click Save Global Sync to publish.\n\nAre you sure?`
+  );
+
+  if (!confirmed) {
+    showToast("Bulk ELO reset cancelled.", "info");
+    return;
+  }
+
+  // Update input values in DOM
+  rowsNode.querySelectorAll(".admin-row[data-player-key]").forEach((row) => {
+    const eloInput = row.querySelector(".admin-elo-input");
+    const winsInput = row.querySelector(".admin-wins-input");
+    const lossesInput = row.querySelector(".admin-losses-input");
+    if (eloInput) eloInput.value = "1000";
+    if (winsInput) winsInput.value = "0";
+    if (lossesInput) lossesInput.value = "0";
+  });
+
+  setSyncStatus(`All ${currentPlayers.length} players reset to ELO 1000. Click Save Global Sync to publish.`);
+  showToast(`Reset ${currentPlayers.length} players to ELO 1000, W/L 0/0.`, "warning");
+}
+
+// ==========================================================================
+// NEW FUNCTIONALITY: ELO Change Preview
+// ==========================================================================
+function calculateEloPreview() {
+  const winner = document.querySelector('input[name="matchWinner"]:checked')?.value;
+  const statusNode = document.getElementById("matchEntryStatus");
+
+  const collectTeamData = (teamLabel) => {
+    const inputs = document.querySelectorAll(`.match-slot-input[data-team="${teamLabel}"]`);
+    const scores = document.querySelectorAll(`.match-slot-score[data-team="${teamLabel}"]`);
+    const team = [];
+    inputs.forEach((input, i) => {
+      const name = String(input.value || "").trim();
+      if (!name) return;
+      team.push({ name, score: parseInt(scores[i]?.value) || 0 });
+    });
+    return team;
+  };
+
+  const teamA = collectTeamData("A");
+  const teamB = collectTeamData("B");
+
+  if (teamA.length < 2 || teamB.length < 2) {
+    showToast("Need at least 2 players per team for preview.", "warning");
+    return;
+  }
+
+  if (!winner) {
+    showToast("Select a winner (Team A or B) first.", "warning");
+    return;
+  }
+
+  // Client-side ELO preview calculation
+  const getPlayerElo = (name) => {
+    const key = name.toLowerCase();
+    const override = currentConfig?.players?.[key];
+    return Number(override?.elo) || 1000;
+  };
+
+  const teamA_avg = teamA.reduce((sum, p) => sum + getPlayerElo(p.name), 0) / teamA.length;
+  const teamB_avg = teamB.reduce((sum, p) => sum + getPlayerElo(p.name), 0) / teamB.length;
+  const expectedA = 1 / (1 + Math.pow(10, (teamB_avg - teamA_avg) / 400));
+  const expectedB = 1 - expectedA;
+  const resultA = winner === "A" ? 1 : 0;
+  const resultB = winner === "B" ? 1 : 0;
+
+  const buildTeamPreview = (team, expected, result, containerNode, label) => {
+    if (!containerNode) return;
+    const maxScore = Math.max(...team.map(p => p.score || 0), 1);
+
+    let html = `<h4 style="margin:0 0 0.4rem;font-family:'Rajdhani',sans-serif;text-transform:uppercase;color:#dbeafe;font-size:0.82rem;">${label}</h4>`;
+
+    team.forEach(p => {
+      const currentElo = getPlayerElo(p.name);
+      const performanceFactor = (p.score || 0) / maxScore;
+      const k = 32 + (performanceFactor * 18);
+      const change = Math.round(k * (result - expected));
+      const clampedChange = Math.max(-50, Math.min(50, change));
+      const newElo = Math.max(1000, Math.min(4000, currentElo + clampedChange));
+      const changeClass = clampedChange >= 0 ? "elo-gain" : "elo-loss";
+      const changePrefix = clampedChange >= 0 ? "+" : "";
+
+      html += `
+        <div class="elo-preview-row">
+          <span class="elo-preview-name">${safeText(p.name)}</span>
+          <span class="elo-preview-detail">${currentElo} → ${newElo}</span>
+          <span class="elo-preview-change ${changeClass}">${changePrefix}${clampedChange}</span>
+        </div>
+      `;
+    });
+
+    containerNode.innerHTML = html;
+  };
+
+  buildTeamPreview(teamA, expectedA, resultA, eloPreviewTeamANode, `Team A (Avg: ${Math.round(teamA_avg)})`);
+  buildTeamPreview(teamB, expectedB, resultB, eloPreviewTeamBNode, `Team B (Avg: ${Math.round(teamB_avg)})`);
+
+  if (eloPreviewContainerNode) {
+    eloPreviewContainerNode.classList.remove("hidden");
+  }
+
+  showToast("ELO preview calculated. Review changes before saving.", "info");
+}
+
+// ==========================================================================
+// NEW FUNCTIONALITY: Match Entry Validation & Live Stats
+// ==========================================================================
+function updateMatchTeamStats() {
+  const updateTeam = (teamLabel, countNode, avgNode) => {
+    const inputs = document.querySelectorAll(`.match-slot-input[data-team="${teamLabel}"]`);
+    let filledCount = 0;
+    let totalElo = 0;
+    let validCount = 0;
+
+    inputs.forEach((input) => {
+      const name = String(input.value || "").trim();
+      if (!name) {
+        input.classList.remove("slot-valid", "slot-invalid");
+        return;
+      }
+
+      filledCount++;
+      const player = findCurrentPlayerByName(name);
+      if (player) {
+        input.classList.add("slot-valid");
+        input.classList.remove("slot-invalid");
+        totalElo += Number(player.elo) || 1000;
+        validCount++;
+      } else {
+        input.classList.add("slot-invalid");
+        input.classList.remove("slot-valid");
+        totalElo += 1000; // default for unknown
+      }
+    });
+
+    if (countNode) {
+      countNode.textContent = `${filledCount} player${filledCount !== 1 ? "s" : ""}`;
+      countNode.style.color = filledCount >= 10 ? "#22c55e" : "#94a3b8";
+    }
+    if (avgNode) {
+      avgNode.textContent = filledCount > 0
+        ? `Avg ELO: ${Math.round(totalElo / filledCount)}`
+        : "Avg ELO: —";
+    }
+  };
+
+  updateTeam("A", matchTeamACountNode, matchTeamAAvgEloNode);
+  updateTeam("B", matchTeamBCountNode, matchTeamBAvgEloNode);
+}
+
+// ==========================================================================
+// NEW FUNCTIONALITY: Relative Time Display
+// ==========================================================================
+function getRelativeTimeString(isoValue) {
+  if (!isoValue) return "";
+  const date = new Date(isoValue);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  if (diffMs < 0) return "just now";
+
+  const seconds = Math.floor(diffMs / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+// ==========================================================================
+// NEW FUNCTIONALITY: Keyboard Shortcuts
+// ==========================================================================
+function setupKeyboardShortcuts() {
+  document.addEventListener("keydown", (event) => {
+    // Only when admin panel is visible
+    if (panelNode?.classList.contains("hidden")) return;
+
+    const isCtrl = event.ctrlKey || event.metaKey;
+
+    // Ctrl+S — Save
+    if (isCtrl && event.key === "s") {
+      event.preventDefault();
+      onSaveClick();
+      return;
+    }
+
+    // Ctrl+R — Reload
+    if (isCtrl && event.key === "r") {
+      event.preventDefault();
+      loadPanelData();
+      showToast("Reloading panel data...", "info");
+      return;
+    }
+
+    // Escape — Clear search, cancel editing
+    if (event.key === "Escape") {
+      if (leaderboardSearchNode && leaderboardSearchNode === document.activeElement) {
+        leaderboardSearchNode.value = "";
+        applyLeaderboardSearch();
+        leaderboardSearchNode.blur();
+        return;
+      }
+
+      if (editingSyncedPlayerId) {
+        onClearSyncedPlayerInputsClick();
+        return;
+      }
+    }
+  });
+}
+
+// ==========================================================================
+// ENHANCED: renderMatchRosters with live validation
+// ==========================================================================
+const _originalRenderMatchRosters = renderMatchRosters;
+renderMatchRosters = function() {
+  _originalRenderMatchRosters();
+
+  // Attach live validation listeners to all slot inputs
+  document.querySelectorAll(".match-slot-input").forEach((input) => {
+    input.addEventListener("input", () => {
+      updateMatchTeamStats();
+    });
+    input.addEventListener("change", () => {
+      updateMatchTeamStats();
+    });
+  });
+};
+
+// ==========================================================================
+// EVENT LISTENER SETUP
+// ==========================================================================
 loginFormNode.addEventListener("submit", onLoginSubmit);
 reloadButtonNode.addEventListener("click", loadPanelData);
 saveButtonNode.addEventListener("click", onSaveClick);
@@ -2757,8 +3257,40 @@ if (document.getElementById("adminSaveMatchBtn")) {
 if (document.getElementById("adminClearMatchBtn")) {
   document.getElementById("adminClearMatchBtn").addEventListener("click", () => {
     document.querySelectorAll(".match-slot-input, .match-slot-score").forEach(el => el.value = "");
+    document.querySelectorAll(".match-slot-input").forEach(el => el.classList.remove("slot-valid", "slot-invalid"));
+    document.querySelectorAll('input[name="matchWinner"]').forEach(r => r.checked = false);
+    if (matchFactionANode) matchFactionANode.value = "";
+    if (matchFactionBNode) matchFactionBNode.value = "";
+    if (eloPreviewContainerNode) eloPreviewContainerNode.classList.add("hidden");
+    updateMatchTeamStats();
     const status = document.getElementById("matchEntryStatus");
     if (status) status.textContent = "Match cleared.";
+    showToast("Match entry cleared.", "info");
+  });
+}
+
+// New button listeners
+if (exportRosterButtonNode) {
+  exportRosterButtonNode.addEventListener("click", onExportRosterClick);
+}
+if (bulkEloResetButtonNode) {
+  bulkEloResetButtonNode.addEventListener("click", onBulkEloResetClick);
+}
+if (previewEloButtonNode) {
+  previewEloButtonNode.addEventListener("click", calculateEloPreview);
+}
+
+// Search listener
+if (leaderboardSearchNode) {
+  leaderboardSearchNode.addEventListener("input", () => {
+    applyLeaderboardSearch();
+  });
+  leaderboardSearchNode.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      leaderboardSearchNode.value = "";
+      applyLeaderboardSearch();
+      leaderboardSearchNode.blur();
+    }
   });
 }
 
@@ -2784,6 +3316,7 @@ window.addEventListener("online", () => refreshWebInsights({ probeEndpoints: fal
 window.addEventListener("offline", () => refreshWebInsights({ probeEndpoints: false }));
 window.addEventListener("resize", () => renderWebInsights());
 
+// Initialize everything
 initializeAddPlayerDmTemplate();
 setAddPlayerDmStatus(addPlayerSendDmNode?.checked
   ? "DM on add is enabled."
@@ -2791,6 +3324,7 @@ setAddPlayerDmStatus(addPlayerSendDmNode?.checked
 renderWebInsights();
 setupAdminTabs();
 setupMatchTypeTabs();
+setupKeyboardShortcuts();
 warnDirectAdminAccess();
 
 if (getStoredToken()) {
@@ -2798,4 +3332,3 @@ if (getStoredToken()) {
 } else {
   setPanelVisible(false);
 }
-
