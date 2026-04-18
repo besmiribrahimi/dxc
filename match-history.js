@@ -10,7 +10,7 @@ async function fetchMatchData() {
       throw new Error("Failed to fetch match data");
     }
     const data = await response.json();
-    const remoteMatches = data.matches || [];
+    const remoteMatches = data?.config?.matches || data?.matches || [];
     
     // Merge with upcoming matches from schedule
     const localUpcoming = [
@@ -107,7 +107,7 @@ function renderMatchCard(match) {
       <div class="match-stats">
         <div class="match-stat">
           <label>Casualties</label>
-          <span>${match.casualtiesA.toLocaleString()} vs ${match.casualtiesB.toLocaleString()}</span>
+          <span>${(match.casualtiesA || 0).toLocaleString()} vs ${(match.casualtiesB || 0).toLocaleString()}</span>
         </div>
       </div>
     ` : ''}

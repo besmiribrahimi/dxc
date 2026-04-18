@@ -19,6 +19,7 @@ module.exports = async function handler(req, res) {
         order: [],
         extraPlayers: [],
         transfers: [],
+        matches: [],
         clips: []
       },
       warning: error instanceof Error ? error.message : "KV not available"
