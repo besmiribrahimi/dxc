@@ -30,8 +30,8 @@ module.exports = async function handler(req, res) {
       return sendJson(res, 400, { ok: false, error: "Missing required fields: teamA, teamB, winner" });
     }
 
-    if (teamA.length < 10 || teamB.length < 10) {
-      return sendJson(res, 400, { ok: false, error: "Minimum 10 players per team required." });
+    if (teamA.length < 1 || teamB.length < 1) {
+      return sendJson(res, 400, { ok: false, error: "Minimum 1 player per team required." });
     }
 
     const config = await getLeaderboardConfig();
