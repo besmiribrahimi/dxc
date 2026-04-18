@@ -1026,20 +1026,35 @@
 }
 
 .leader-modal-stats {
-  margin-top: 0.16rem;
+  margin-top: 0.8rem;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.6rem;
 }
 
 .leader-modal-stats .modal-stat-box {
   border: 1px solid rgba(110, 145, 208, 0.24);
   background: rgba(15, 29, 54, 0.7);
-  min-height: 66px;
+  min-height: 70px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.5rem;
 }
 
 .leader-modal-stats .modal-stat-box strong {
-  font-size: 2rem;
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.leader-modal-stats .modal-stat-box span {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9cb2d8;
+  margin-bottom: 0.2rem;
 }
 
 .leaderboard-modal-panel.rank-tier-1 .leader-modal-avatar,
@@ -1149,6 +1164,15 @@
   .leader-modal-layout {
     grid-template-columns: 1fr;
     gap: 0.78rem;
+  }
+
+  .leader-modal-stats {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .leader-modal-stats .modal-stat-box {
+    min-height: 60px;
   }
 
   .leader-modal-left {
