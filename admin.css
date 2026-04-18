@@ -798,3 +798,94 @@
   color: #64748b;
   margin-left: 0.4rem;
 }
+
+/* ===== Community Top 10 Admin ===== */
+.admin-community-add-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  max-width: 520px;
+}
+
+.admin-community-add-row .admin-bot-input {
+  flex: 1;
+}
+
+.admin-community-top-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.admin-community-top-row {
+  display: grid;
+  grid-template-columns: 40px 1.2fr 0.7fr 80px 90px;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(147, 197, 253, 0.18);
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.32);
+  cursor: grab;
+  transition: border-color 200ms ease, background 200ms ease, transform 200ms ease;
+}
+
+.admin-community-top-row:hover {
+  border-color: rgba(147, 197, 253, 0.4);
+  background: rgba(30, 64, 175, 0.12);
+}
+
+.admin-community-top-row.dragging {
+  opacity: 0.5;
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: scale(0.98);
+}
+
+.admin-community-top-rank {
+  font-family: "Rajdhani", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fbbf24;
+  text-align: center;
+}
+
+.admin-community-top-name {
+  font-weight: 700;
+  color: #e2e8f0;
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-community-top-faction {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.admin-community-top-elo {
+  font-family: "Rajdhani", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #60a5fa;
+  text-align: center;
+}
+
+.admin-community-top-remove {
+  min-height: 28px;
+  font-size: 0.64rem;
+  padding: 0.08rem 0.4rem;
+}
+
+@media (max-width: 600px) {
+  .admin-community-top-row {
+    grid-template-columns: 32px 1fr 60px;
+  }
+
+  .admin-community-top-faction,
+  .admin-community-top-elo {
+    display: none;
+  }
+}

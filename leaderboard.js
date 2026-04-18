@@ -13,6 +13,9 @@ const communityTopGridNode = document.getElementById("communityTopGrid");
 // Global cache for tab switching
 let cachedPlayers = [];
 let cachedAvatarMap = new Map();
+let cachedCommunityTop10Keys = [];
+
+const GAME_INFO_ENDPOINT = "/api/game-info";
 
 let previousPlayersState = [];
 const LEADERBOARD_TOP_PLAYER = "20SovietSO21";
@@ -765,16 +768,17 @@ async function loadAndRenderLeaderboard() {
 
   // Cache for community tab
   cachedPlayers = players;
+  cachedCommunityTop10Keys = Array.isArray(remoteConfig?.communityTop10) ? remoteConfig.communityTop10 : [];
 
   // Render immediately so page is interactive while avatar fetch continues in background.
   renderLeaderboard(players, new Map(), options);
-  renderCommunityTop10(players, new Map());
+  renderCommunityTop10(players, new Map(), cachedCommunityTop10Keys);
 
   fetchAvatarUrls(players)
     .then((avatarMap) => {
       cachedAvatarMap = avatarMap;
       renderLeaderboard(players, avatarMap, options);
-      renderCommunityTop10(players, avatarMap);
+      renderCommunityTop10(players, avatarMap, cachedCommunityTop10Keys);
     })
     .catch(() => { });
 }
@@ -892,17 +896,27 @@ function buildCommunityCard(player, rank, avatarMap) {
   return card;
 }
 
-function renderCommunityTop10(players, avatarMap) {
+function renderCommunityTop10(players, avatarMap, communityKeys) {
   if (!communityTopGridNode) {
     return;
   }
 
   communityTopGridNode.innerHTML = "";
 
-  const top10 = players.slice(0, 10);
+  // Use admin-configured community keys if available, otherwise fall back to top 10 by ELO
+  let top10;
+  if (Array.isArray(communityKeys) && communityKeys.length > 0) {
+    const playerMap = new Map(players.map((p) => [p.key || p.name.toLowerCase(), p]));
+    top10 = communityKeys
+      .map((key) => playerMap.get(String(key).toLowerCase()))
+      .filter(Boolean)
+      .slice(0, 10);
+  } else {
+    top10 = players.slice(0, 10);
+  }
 
   if (!top10.length) {
-    communityTopGridNode.innerHTML = '<p class="community-card-empty">No community top 10 data available yet.</p>';
+    communityTopGridNode.innerHTML = '<p class="community-card-empty">No community top 10 data available yet. Admin can configure this from the admin panel.</p>';
     return;
   }
 
@@ -954,11 +968,48 @@ function setupTabs() {
   tabCommunity.addEventListener("click", () => switchTab(tabCommunity, panelCommunity));
 }
 
+// ── Game Info Widget ──
+
+function formatCompactNumber(num) {
+  if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1).replace(/\.0$/, "") + "B";
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  return String(num);
+}
+
+async function fetchAndRenderGameInfo() {
+  const intelBar = document.getElementById("lbGameIntel");
+  const playingNode = document.getElementById("lbIntelPlaying");
+  const visitsNode = document.getElementById("lbIntelVisits");
+  const favoritesNode = document.getElementById("lbIntelFavorites");
+
+  if (!intelBar || !playingNode || !visitsNode || !favoritesNode) {
+    return;
+  }
+
+  try {
+    const response = await fetch(GAME_INFO_ENDPOINT);
+    if (!response.ok) throw new Error("API error");
+    const data = await response.json();
+
+    if (data.ok && data.stats) {
+      playingNode.textContent = formatCompactNumber(data.stats.playing || 0);
+      visitsNode.textContent = formatCompactNumber(data.stats.visits || 0);
+      favoritesNode.textContent = formatCompactNumber(data.stats.favorites || 0);
+      intelBar.classList.add("is-visible");
+    }
+  } catch {
+    // Silently hide if API fails
+    intelBar.style.display = "none";
+  }
+}
+
 function initLeaderboardPage() {
   setupSearch();
   setupRankStructurePopup();
   setupTabs();
   loadAndRenderLeaderboard();
+  fetchAndRenderGameInfo();
 }
 
 initLeaderboardPage();

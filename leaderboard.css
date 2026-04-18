@@ -1,5 +1,12 @@
 /* leaderboard.css */
 
+/* ── Game Intel Widget ── */
+.lb-game-intel {
+  margin-top: 0.6rem;
+  z-index: 2;
+  position: relative;
+}
+
 :root {
   --leaderboard-bg: #0a0c10;
   --leaderboard-card-bg: #10141c;

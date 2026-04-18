@@ -286,6 +286,24 @@ function normalizeOrder(rawOrder, playerKeys) {
   return ordered;
 }
 
+function normalizeCommunityTop10(rawList) {
+  if (!Array.isArray(rawList)) {
+    return [];
+  }
+
+  const seen = new Set();
+  return rawList
+    .slice(0, 10)
+    .map((entry) => String(entry || "").trim().toLowerCase())
+    .filter((key) => {
+      if (!key || seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
 function toPositiveInt(rawValue, fallback) {
   const parsed = Number.parseInt(String(rawValue || ""), 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -581,6 +599,8 @@ module.exports = async function handler(req, res) {
         applicationsChannelId: "",
         notificationUserIds: []
       };
+    const hasCommunityTop10InBody = Array.isArray(body?.communityTop10);
+    const communityTop10 = normalizeCommunityTop10(hasCommunityTop10InBody ? body.communityTop10 : previousConfig?.communityTop10);
     const nextConfig = {
       version: 1,
       updatedAt: new Date().toISOString(),
@@ -589,6 +609,7 @@ module.exports = async function handler(req, res) {
       extraPlayers,
       transfers,
       matches,
+      communityTop10,
       botSettings: existingBotSettings
     };
 

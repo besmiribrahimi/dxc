@@ -96,6 +96,7 @@ let currentRosterLines = [];
 let currentTransfers = [];
 let currentMatches = [];
 let currentClips = [];
+let currentCommunityTop10 = [];
 let activeMatchTypeTab = "finished";
 let draggingPlayerKey = "";
 let draggingInitialized = false;
@@ -2304,6 +2305,7 @@ async function loadPanelData() {
     currentTransfers = normalizeTransfers(config?.transfers);
     currentClips = normalizeClips(config?.clips);
     currentMatches = config?.matches || (Array.isArray(config?.clips) ? config.clips.map(c => ({ id: c.id, title: c.title, teamA: c.player || 'COMMUNITY', teamB: 'N/A', type: 'finished', date: new Date().toISOString().split('T')[0] })) : []);
+    currentCommunityTop10 = Array.isArray(config?.communityTop10) ? config.communityTop10 : [];
     renderRows(currentPlayers);
     renderTransferRows(currentTransfers);
     renderSyncedPlayerRows(currentExtraPlayers);
@@ -2312,6 +2314,7 @@ async function loadPanelData() {
     renderBotSettings(config);
     renderWeeklyTopTenPreview();
     renderWebInsights();
+    renderCommunityTop10List();
     updateSuggestionPool(currentPlayers);
     updateTabBadges();
 
@@ -2401,7 +2404,8 @@ async function onSaveClick() {
       extraPlayers: currentExtraPlayers,
       transfers: currentTransfers,
       clips: currentClips,
-      matches: currentMatches
+      matches: currentMatches,
+      communityTop10: currentCommunityTop10
     });
     const saved = saveResult.config;
     currentConfig = saved;
@@ -2417,6 +2421,7 @@ async function onSaveClick() {
     renderAdminNewsFeed(currentPlayers);
     renderWeeklyTopTenPreview();
     renderWebInsights();
+    renderCommunityTop10List();
     updateTabBadges();
 
     const botDispatch = saveResult.botDispatch;
@@ -3315,6 +3320,146 @@ if (addPlayerSendDmNode) {
 window.addEventListener("online", () => refreshWebInsights({ probeEndpoints: false }));
 window.addEventListener("offline", () => refreshWebInsights({ probeEndpoints: false }));
 window.addEventListener("resize", () => renderWebInsights());
+
+// ── Community Top 10 Admin ──
+
+function setCommunityTopStatus(message, isError) {
+  const node = document.getElementById("adminCommunityTopStatus");
+  if (node) {
+    node.textContent = message;
+    node.classList.toggle("admin-status-error", Boolean(isError));
+  }
+}
+
+function renderCommunityTop10List() {
+  const listNode = document.getElementById("adminCommunityTopList");
+  if (!listNode) return;
+
+  listNode.innerHTML = "";
+
+  if (!currentCommunityTop10.length) {
+    listNode.innerHTML = '<p class="admin-transfer-empty">No community top 10 configured. Add players above.</p>';
+    setCommunityTopStatus(`Community Top 10: 0/10 players configured.`);
+    return;
+  }
+
+  currentCommunityTop10.forEach((key, index) => {
+    const player = currentPlayers.find(p => p.key === key || String(p.name || "").toLowerCase() === key);
+    const displayName = player ? player.name : key;
+    const faction = player ? (player.faction || "N/A") : "Unknown";
+    const elo = player ? (player.elo || 1000) : "—";
+
+    const row = document.createElement("div");
+    row.className = "admin-community-top-row";
+    row.dataset.communityKey = key;
+    row.draggable = true;
+    row.innerHTML = `
+      <span class="admin-community-top-rank">#${index + 1}</span>
+      <span class="admin-community-top-name">${safeText(displayName)}</span>
+      <span class="admin-community-top-faction">${safeText(faction)}</span>
+      <span class="admin-community-top-elo">${elo}</span>
+      <button type="button" class="admin-button danger admin-community-top-remove">Remove</button>
+    `;
+
+    row.querySelector(".admin-community-top-remove")?.addEventListener("click", () => {
+      currentCommunityTop10 = currentCommunityTop10.filter((_, i) => i !== index);
+      renderCommunityTop10List();
+      setSyncStatus("Community Top 10 updated locally. Click Save Global Sync to publish.");
+    });
+
+    // Drag handlers for reordering
+    row.addEventListener("dragstart", (e) => {
+      row.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    });
+    row.addEventListener("dragend", () => {
+      row.classList.remove("dragging");
+      // Collect new order from DOM
+      const newOrder = Array.from(listNode.querySelectorAll(".admin-community-top-row"))
+        .map(r => r.dataset.communityKey)
+        .filter(Boolean);
+      currentCommunityTop10 = newOrder;
+      renderCommunityTop10List();
+    });
+
+    listNode.appendChild(row);
+  });
+
+  // Dragover for list container
+  listNode.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    const dragging = listNode.querySelector(".dragging");
+    if (!dragging) return;
+    const siblings = [...listNode.querySelectorAll(".admin-community-top-row:not(.dragging)")];
+    const next = siblings.find(sibling => {
+      const rect = sibling.getBoundingClientRect();
+      return e.clientY < rect.top + rect.height / 2;
+    });
+    if (next) {
+      listNode.insertBefore(dragging, next);
+    } else {
+      listNode.appendChild(dragging);
+    }
+  });
+
+  setCommunityTopStatus(`Community Top 10: ${currentCommunityTop10.length}/10 players configured.`);
+}
+
+function onCommunityTopAddClick() {
+  const inputNode = document.getElementById("adminCommunityTopInput");
+  const name = String(inputNode?.value || "").trim();
+  if (!name) {
+    setCommunityTopStatus("Enter a player name to add.", true);
+    return;
+  }
+
+  const key = name.toLowerCase();
+
+  if (currentCommunityTop10.length >= 10) {
+    setCommunityTopStatus("Community Top 10 is full (10/10). Remove a player first.", true);
+    return;
+  }
+
+  if (currentCommunityTop10.includes(key)) {
+    setCommunityTopStatus(`${name} is already in the Community Top 10.`, true);
+    return;
+  }
+
+  const playerExists = currentPlayers.some(p => p.key === key || String(p.name || "").toLowerCase() === key);
+  if (!playerExists) {
+    setCommunityTopStatus(`Player "${name}" not found in the roster. Add them first.`, true);
+    return;
+  }
+
+  currentCommunityTop10 = [...currentCommunityTop10, key];
+  if (inputNode) inputNode.value = "";
+  renderCommunityTop10List();
+  setSyncStatus("Community Top 10 updated locally. Click Save Global Sync to publish.");
+}
+
+function onCommunityTopClearClick() {
+  if (!currentCommunityTop10.length) return;
+  if (!window.confirm("Clear all Community Top 10 entries?")) return;
+  currentCommunityTop10 = [];
+  renderCommunityTop10List();
+  setSyncStatus("Community Top 10 cleared locally. Click Save Global Sync to publish.");
+}
+
+// Community Top 10 event wiring
+const communityTopAddBtn = document.getElementById("adminCommunityTopAddBtn");
+const communityTopClearBtn = document.getElementById("adminCommunityTopClearBtn");
+const communityTopInput = document.getElementById("adminCommunityTopInput");
+
+if (communityTopAddBtn) communityTopAddBtn.addEventListener("click", onCommunityTopAddClick);
+if (communityTopClearBtn) communityTopClearBtn.addEventListener("click", onCommunityTopClearClick);
+if (communityTopInput) {
+  communityTopInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onCommunityTopAddClick();
+    }
+  });
+}
 
 // Initialize everything
 initializeAddPlayerDmTemplate();
