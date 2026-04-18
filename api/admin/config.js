@@ -259,8 +259,6 @@ function normalizeTransfers(rawTransfers) {
     .filter(Boolean);
 }
 
-}
-
 function normalizeOrder(rawOrder, playerKeys) {
   const keys = Array.isArray(playerKeys) ? playerKeys : [];
   const valid = new Set(keys);
