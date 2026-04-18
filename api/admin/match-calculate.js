@@ -70,7 +70,7 @@ module.exports = async function handler(req, res) {
       const change = Math.round(k * (resultA - expectedA));
       
       const clampedChange = Math.max(-50, Math.min(50, change));
-      stats.elo = Math.max(1000, Math.min(4000, stats.elo + clampedChange));
+      stats.elo = Math.max(0, Math.min(4000, stats.elo + clampedChange));
       stats.lastEloChange = clampedChange;
       if (resultA === 1) stats.wins++; else stats.losses++;
       
@@ -86,7 +86,7 @@ module.exports = async function handler(req, res) {
       const change = Math.round(k * (resultB - expectedB));
       
       const clampedChange = Math.max(-50, Math.min(50, change));
-      stats.elo = Math.max(1000, Math.min(4000, stats.elo + clampedChange));
+      stats.elo = Math.max(0, Math.min(4000, stats.elo + clampedChange));
       stats.lastEloChange = clampedChange;
       if (resultB === 1) stats.wins++; else stats.losses++;
       

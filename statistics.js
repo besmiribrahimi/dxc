@@ -29,10 +29,10 @@ function normalizeConfigPlayers(config) {
     const key = String(nameKey || "").trim().toLowerCase();
     if (!key) return;
     output[key] = {
-      elo: Number(stats?.elo) || 1000,
-      wins: Number(stats?.wins) || 0,
-      losses: Number(stats?.losses) || 0,
-      lastEloChange: Number(stats?.lastEloChange) || 0
+      elo: Number(stats?.elo ?? 1000),
+      wins: Number(stats?.wins || 0),
+      losses: Number(stats?.losses || 0),
+      lastEloChange: Number(stats?.lastEloChange || 0)
     };
   });
   return output;
@@ -215,11 +215,11 @@ function renderDistribution(players, factions) {
     </div>
   `;
 
-  // ELO Distribution Bands
-  const eloBands = [{l:"1000-1200", v:0}, {l:"1200-1500", v:0}, {l:"1500-2000", v:0}, {l:"2000+", v:0}];
+  // ELO Distribution Bands (Updated to include Low ELO range)
+  const eloBands = [{l:"< 1000", v:0}, {l:"1000-1500", v:0}, {l:"1500-2000", v:0}, {l:"2000+", v:0}];
   players.forEach(p => {
-    const elo = Number(p.elo) || 1000;
-    if(elo < 1200) eloBands[0].v++;
+    const elo = Number(p.elo ?? 1000);
+    if(elo < 1000) eloBands[0].v++;
     else if(elo < 1500) eloBands[1].v++;
     else if(elo < 2000) eloBands[2].v++;
     else eloBands[3].v++;

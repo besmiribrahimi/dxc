@@ -375,7 +375,7 @@ function clampElo(value) {
     return 1000;
   }
 
-  return Math.max(1000, Math.min(4000, Math.round(numeric)));
+  return Math.max(0, Math.min(4000, Math.round(numeric)));
 }
 
 function normalizeFactionValue(faction) {
@@ -1805,6 +1805,12 @@ function normalizeOrderKeys(rawOrder, validKeys) {
 function renderRows(players) {
   rowsNode.innerHTML = "";
 
+  // Sort players by ELO descending before rendering admin rows
+  players.sort((a, b) => {
+    if (b.elo !== a.elo) return b.elo - a.elo;
+    return (b.wins - b.losses) - (a.wins - a.losses) || a.name.localeCompare(b.name);
+  });
+
   const maxRank = Math.max(1, players.length);
 
   players.forEach((player, index) => {
@@ -1818,11 +1824,9 @@ function renderRows(players) {
     const fallback = getFallbackAvatarUrl(player.name);
     const country = `${countryToFlag(player.country)} ${player.country}`;
 
-    row.innerHTML = `
       <span class="admin-order-cell">
         <span class="admin-rank-pill">#${index + 1}</span>
-        <input class="admin-rank-input" type="number" min="1" max="${maxRank}" value="${index + 1}" aria-label="Set rank for ${safeText(player.name)}">
-        <span class="admin-drag-handle" draggable="true" aria-hidden="true" title="Drag to reorder">::</span>
+        <input class="admin-rank-input" type="number" value="${index + 1}" aria-label="Current rank" readonly disabled>
       </span>
       <span class="admin-player-cell">
         <img class="admin-avatar" src="${avatarUrl}" alt="${safeText(player.name)} avatar" loading="lazy" referrerpolicy="no-referrer">
@@ -1870,67 +1874,12 @@ function renderRows(players) {
     });
     hydrateAvatarNode(avatarNode, player);
 
-    const applyRankInputOrder = () => {
-      if (!rankInputNode) {
-        return;
-      }
-
-      const requestedRank = Number.parseInt(String(rankInputNode.value || ""), 10);
-      const targetRank = Number.isFinite(requestedRank)
-        ? Math.max(1, Math.min(maxRank, requestedRank))
-        : index + 1;
-
-      rankInputNode.value = String(targetRank);
-
-      syncCurrentPlayersFromDom();
-      const currentIndex = currentPlayers.findIndex((entry) => entry.key === player.key);
-      if (currentIndex < 0) {
-        return;
-      }
-
-      const destinationIndex = targetRank - 1;
-      if (destinationIndex === currentIndex) {
-        return;
-      }
-
-      const [moved] = currentPlayers.splice(currentIndex, 1);
-      currentPlayers.splice(destinationIndex, 0, moved);
-      renderRows(currentPlayers);
-      renderWeeklyTopTenPreview();
-      setSyncStatus("Rank updated locally. Click Save Global Sync to publish.");
-    };
-
+    // Manual rank update logic removed - ELO now determines ranking automatically
+    /*
     rankInputNode?.addEventListener("change", applyRankInputOrder);
-    rankInputNode?.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter") {
-        return;
-      }
-
-      event.preventDefault();
-      applyRankInputOrder();
-    });
-
-    dragHandleNode.addEventListener("dragstart", (event) => {
-      draggingPlayerKey = player.key;
-      row.classList.add("dragging");
-      if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", player.key);
-      }
-    });
-
-    dragHandleNode.addEventListener("dragend", () => {
-      draggingPlayerKey = "";
-      row.classList.remove("dragging");
-      rowsNode.querySelectorAll(".admin-row.drag-over").forEach((node) => {
-        node.classList.remove("drag-over");
-      });
-
-      syncCurrentPlayersFromDom();
-      renderRows(currentPlayers);
-      renderWeeklyTopTenPreview();
-      setSyncStatus("Order updated locally. Click Save Global Sync to publish.");
-    });
+    ...
+    dragHandleNode.addEventListener("dragend", () => { ... });
+    */
 
     const removeButtonNode = row.querySelector(".admin-row-remove-btn");
     removeButtonNode?.addEventListener("click", () => {
@@ -1945,14 +1894,14 @@ function renderRows(players) {
     eloMinusNode?.addEventListener("click", () => {
       if (eloInputNode) {
         const current = Number(eloInputNode.value) || 1000;
-        eloInputNode.value = String(clampElo(current - 25));
+        eloInputNode.value = String(Math.max(0, current - 25));
         setSyncStatus(`${player.name}: ELO -25 → ${eloInputNode.value}. Save to publish.`);
       }
     });
     eloPlusNode?.addEventListener("click", () => {
       if (eloInputNode) {
         const current = Number(eloInputNode.value) || 1000;
-        eloInputNode.value = String(clampElo(current + 25));
+        eloInputNode.value = String(Math.min(4000, current + 25));
         setSyncStatus(`${player.name}: ELO +25 → ${eloInputNode.value}. Save to publish.`);
       }
     });
@@ -2448,12 +2397,13 @@ async function onSaveClick() {
   try {
     syncCurrentPlayersFromDom();
     const players = collectRowValues();
-    const order = collectRowOrder();
+    // Manual order collection removed - ELO determines rank automatically
+    // const order = collectRowOrder();
     currentTransfers = collectTransferValues();
     currentClips = collectClipValues();
     const saveResult = await saveAdminConfig(token, {
       players,
-      order,
+      order: [], // Ignore manual order
       extraPlayers: currentExtraPlayers,
       transfers: currentTransfers,
       clips: currentClips,

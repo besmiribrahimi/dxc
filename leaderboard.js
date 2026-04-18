@@ -355,10 +355,10 @@ function normalizeConfigPlayers(config) {
       class: classList[0] || "Unknown",
       classes: classList,
       device: normalizeDeviceValue(stats?.device),
-      elo: Number(stats?.elo) || 1000,
-      wins: Number(stats?.wins) || 0,
-      losses: Number(stats?.losses) || 0,
-      lastEloChange: Number(stats?.lastEloChange) || 0
+      elo: Number(stats?.elo ?? 1000),
+      wins: Number(stats?.wins || 0),
+      losses: Number(stats?.losses || 0),
+      lastEloChange: Number(stats?.lastEloChange || 0)
     };
   });
 
@@ -746,22 +746,19 @@ async function loadAndRenderLeaderboard() {
       return player;
     });
 
-  const configuredOrder = normalizeConfigOrder(remoteConfig, players.map((player) => player.key));
-  const orderMap = new Map(configuredOrder.map((key, index) => [key, index]));
-  const hasManualOrder = configuredOrder.length > 0;
+  // Ranking logic: Automatic by ELO
+  players.sort((a, b) => {
+    // Primary: ELO Descending
+    if (b.elo !== a.elo) return b.elo - a.elo;
+    // Secondary: Win difference Descending
+    const aDiff = a.wins - a.losses;
+    const bDiff = b.wins - b.losses;
+    if (bDiff !== aDiff) return bDiff - aDiff;
+    // Tertiary: Name Ascending
+    return a.player.localeCompare(b.player);
+  });
 
-  if (hasManualOrder) {
-    players.sort((a, b) => {
-      const rankA = orderMap.has(a.key) ? orderMap.get(a.key) : Infinity;
-      const rankB = orderMap.has(b.key) ? orderMap.get(b.key) : Infinity;
-      if (rankA !== rankB) {
-        return rankA - rankB;
-      }
-      return b.elo - a.elo || (b.wins - b.losses) - (a.wins - a.losses) || a.sourceIndex - b.sourceIndex;
-    });
-  } else {
-    players.sort((a, b) => b.elo - a.elo || (b.wins - b.losses) - (a.wins - a.losses) || a.sourceIndex - b.sourceIndex);
-  }
+  const hasManualOrder = false; // Always use automatic ELO order now
 
   const syncLabel = remoteConfig?.lastSyncTime ? ` (Synced: ${new Date(remoteConfig.lastSyncTime).toLocaleString()})` : "";
   const options = { syncLabel, hasManualOrder };

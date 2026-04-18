@@ -12,7 +12,7 @@ function clampElo(value) {
     return 1000;
   }
 
-  return Math.max(1000, Math.min(4000, Math.round(numeric)));
+  return Math.max(0, Math.min(4000, Math.round(numeric)));
 }
 
 function normalizeDeviceValue(value) {
@@ -328,46 +328,42 @@ function calculateScore(elo, wins, losses, rank) {
 
 function rankPlayers(config, limit) {
   const topLimit = Math.max(1, Number(limit) || 1);
-  const players = normalizePlayers(config?.players);
-  const keys = Object.keys(players);
+  const playersMap = normalizePlayers(config?.players);
+  const keys = Object.keys(playersMap);
   if (!keys.length) {
     return [];
   }
 
-  const order = normalizeOrder(config?.order, keys);
-  const orderMap = new Map(order.map((key, index) => [key, index]));
-
   return keys
-    .sort((a, b) => {
-      const aOrder = orderMap.has(a) ? orderMap.get(a) : Number.MAX_SAFE_INTEGER;
-      const bOrder = orderMap.has(b) ? orderMap.get(b) : Number.MAX_SAFE_INTEGER;
-      if (aOrder !== bOrder) {
-        return aOrder - bOrder;
-      }
-
-      const aStats = players[a];
-      const bStats = players[b];
-
-      if (bStats.elo !== aStats.elo) {
-        return bStats.elo - aStats.elo;
-      }
-
-      return a.localeCompare(b);
-    })
-    .slice(0, topLimit)
-    .map((key, index) => {
-      const stats = players[key] || { elo: 1000, wins: 0, losses: 0, lastEloChange: 0 };
-      const rank = index + 1;
+    .map(key => {
+      const stats = playersMap[key] || { elo: 1000, wins: 0, losses: 0, lastEloChange: 0 };
       return {
         key,
         player: key,
-        rank,
         elo: stats.elo,
         wins: stats.wins,
         losses: stats.losses,
         lastEloChange: stats.lastEloChange,
-        totalMatches: stats.wins + stats.losses,
-        score: calculateScore(stats.elo, stats.wins, stats.losses, rank)
+        totalMatches: stats.wins + stats.losses
+      };
+    })
+    .sort((a, b) => {
+      // Primary: ELO Descending
+      if (b.elo !== a.elo) return b.elo - a.elo;
+      // Secondary: Win difference Descending
+      const aDiff = a.wins - a.losses;
+      const bDiff = b.wins - b.losses;
+      if (bDiff !== aDiff) return bDiff - aDiff;
+      // Tertiary: Name Ascending
+      return a.player.localeCompare(b.player);
+    })
+    .slice(0, topLimit)
+    .map((entry, index) => {
+      const rank = index + 1;
+      return {
+        ...entry,
+        rank,
+        score: calculateScore(entry.elo, entry.wins, entry.losses, rank)
       };
     });
 }
