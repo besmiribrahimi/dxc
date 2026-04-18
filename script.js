@@ -76,6 +76,7 @@
   const modalCountry = document.getElementById("modalCountry");
   const modalElo = document.getElementById("modalElo");
   const modalWL = document.getElementById("modalWL");
+  const modalChange = document.getElementById("modalChange");
   const modalDiscord = document.getElementById("modalDiscord");
   const topPlayerCard = document.getElementById("topPlayerCard");
   const topPlayerNameNode = document.getElementById("topPlayerName");
@@ -1985,6 +1986,10 @@
     modalCountry.textContent = `${countryToFlag(player.country)} ${player.country}`;
     modalElo.textContent = String(player.elo || 1000);
     modalWL.textContent = `${player.wins || 0} / ${player.losses || 0}`;
+    if (modalChange) {
+      const change = player.lastEloChange ?? player.eloChange ?? 0;
+      modalChange.textContent = (change >= 0 ? "+" : "") + change;
+    }
     if (/^\d{8,}$/.test(String(player.discordId || ""))) {
       modalDiscord.href = `https://discord.com/users/${player.discordId}`;
       modalDiscord.textContent = "Open Player Discord";
