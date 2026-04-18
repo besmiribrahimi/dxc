@@ -141,6 +141,72 @@
   padding: 0.58rem;
 }
 
+/* ===== Match Composer (Upgraded 2-Col Layout) ===== */
+.admin-match-composer {
+  margin: 0.4rem 0 0.6rem;
+  border: 1px solid rgba(147, 197, 253, 0.2);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.22);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.admin-match-composer-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.admin-match-composer-row-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.admin-match-composer-row-4 {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
+.admin-match-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.admin-match-field label {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c4d6ed;
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 600;
+}
+
+/* Match rows grid with Map column */
+.admin-match-row-head,
+.admin-matches-wrap .admin-transfer-row {
+  grid-template-columns: minmax(150px, 1.2fr) minmax(100px, 0.8fr) minmax(90px, 0.7fr) minmax(70px, 0.5fr) minmax(90px, 0.6fr) minmax(80px, 0.6fr) minmax(160px, 0.8fr);
+}
+
+.admin-match-edit-btn {
+  min-height: 28px;
+  font-size: 0.64rem;
+  padding: 0.08rem 0.4rem;
+}
+
+@media (max-width: 900px) {
+  .admin-match-composer-row,
+  .admin-match-composer-row-3,
+  .admin-match-composer-row-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-match-row-head,
+  .admin-matches-wrap .admin-transfer-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .admin-clip-link {
   color: #bfdbfe;
   text-decoration: none;

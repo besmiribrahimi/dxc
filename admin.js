@@ -872,7 +872,10 @@ function setActiveMatchTypeTab(nextType) {
   renderMatchRows();
 }
 
+let editingMatchId = "";
+
 function resetMatchComposer() {
+  editingMatchId = "";
   if (matchTitleNode) matchTitleNode.value = "";
   if (matchTeamANode) matchTeamANode.value = "";
   if (matchTeamBNode) matchTeamBNode.value = "";
@@ -882,6 +885,43 @@ function resetMatchComposer() {
   if (matchCasualtiesBNode) matchCasualtiesBNode.value = "";
   if (matchDateNode) matchDateNode.value = new Date().toISOString().split('T')[0];
   if (matchMediaNode) matchMediaNode.value = "";
+  const mapNode = document.getElementById("adminMatchMap");
+  const rallyNode = document.getElementById("adminMatchRally");
+  const regionNode = document.getElementById("adminMatchRegion");
+  const rulesNode = document.getElementById("adminMatchRules");
+  if (mapNode) mapNode.value = "";
+  if (rallyNode) rallyNode.value = "";
+  if (regionNode) regionNode.value = "";
+  if (rulesNode) rulesNode.value = "";
+  const formStatus = document.getElementById("adminMatchFormStatus");
+  if (formStatus) formStatus.textContent = "Ready to post matches.";
+  const postBtn = document.getElementById("adminPostMatchBtn");
+  if (postBtn) postBtn.textContent = "Post Match";
+}
+
+function populateMatchComposer(match) {
+  editingMatchId = match.id || "";
+  if (matchTitleNode) matchTitleNode.value = match.title || "";
+  if (matchTeamANode) matchTeamANode.value = match.teamA || "";
+  if (matchTeamBNode) matchTeamBNode.value = match.teamB || "";
+  if (matchScoreANode) matchScoreANode.value = match.scoreA ?? "";
+  if (matchScoreBNode) matchScoreBNode.value = match.scoreB ?? "";
+  if (matchCasualtiesANode) matchCasualtiesANode.value = match.casualtiesA ?? "";
+  if (matchCasualtiesBNode) matchCasualtiesBNode.value = match.casualtiesB ?? "";
+  if (matchDateNode) matchDateNode.value = match.date || "";
+  if (matchMediaNode) matchMediaNode.value = match.mediaUrl || "";
+  const mapNode = document.getElementById("adminMatchMap");
+  const rallyNode = document.getElementById("adminMatchRally");
+  const regionNode = document.getElementById("adminMatchRegion");
+  const rulesNode = document.getElementById("adminMatchRules");
+  if (mapNode) mapNode.value = match.map || "";
+  if (rallyNode) rallyNode.value = match.rally || "";
+  if (regionNode) regionNode.value = match.region || "";
+  if (rulesNode) rulesNode.value = match.rules || "";
+  const postBtn = document.getElementById("adminPostMatchBtn");
+  if (postBtn) postBtn.textContent = "Update Match";
+  const formStatus = document.getElementById("adminMatchFormStatus");
+  if (formStatus) formStatus.textContent = `Editing: ${match.title}. Click Update Match to apply.`;
 }
 
 function renderMatchRows() {
@@ -901,21 +941,32 @@ function renderMatchRows() {
   filtered.forEach((match) => {
     const row = document.createElement("article");
     row.className = "admin-transfer-row";
+    const isFinished = match.type === "finished";
     row.innerHTML = `
-      <span>${safeText(match.title)}</span>
-      <span style="font-size:0.8rem">${safeText(match.teamA)} vs ${safeText(match.teamB)}</span>
-      <span>${match.type === 'finished' ? `${match.scoreA} - ${match.scoreB}` : 'TBD'}</span>
-      <span style="font-size:0.75rem">${match.casualtiesA || 0} / ${match.casualtiesB || 0}</span>
-      <span>${match.date}</span>
+      <span title="${safeText(match.title)}">${safeText(match.title)}</span>
+      <span style="font-size:0.78rem;font-weight:600">${safeText(match.teamA)} vs ${safeText(match.teamB)}</span>
+      <span style="font-size:0.76rem;color:#94a3b8">${safeText(match.map || '—')}</span>
+      <span style="font-weight:700">${isFinished ? `${match.scoreA || 0} – ${match.scoreB || 0}` : 'TBD'}</span>
+      <span style="font-size:0.74rem">${(match.casualtiesA || 0).toLocaleString()} / ${(match.casualtiesB || 0).toLocaleString()}</span>
+      <span style="font-size:0.74rem">${match.date || '—'}</span>
       <span class="admin-synced-actions">
-        <button type="button" class="admin-button danger admin-match-delete">Remove</button>
+        <button type="button" class="admin-button secondary admin-match-edit-btn admin-match-edit">Edit</button>
+        <button type="button" class="admin-button danger admin-match-edit-btn admin-match-delete">Remove</button>
       </span>
     `;
 
+    row.querySelector(".admin-match-edit")?.addEventListener("click", () => {
+      setActiveMatchTypeTab(match.type);
+      populateMatchComposer(match);
+      matchTitleNode?.focus();
+    });
+
     row.querySelector(".admin-match-delete")?.addEventListener("click", () => {
       currentMatches = currentMatches.filter(m => m.id !== match.id);
+      if (editingMatchId === match.id) resetMatchComposer();
       renderMatchRows();
       setSyncStatus("Match removed locally. Click Save Global Sync to publish.");
+      showToast("Match removed.", "info");
     });
 
     matchRowsNode.append(row);
@@ -2694,11 +2745,17 @@ function onPostMatchClick() {
 
   if (!title || !teamA || !teamB) {
     setSyncStatus("Title and teams are required.", true);
+    showToast("Title and teams are required.", "error");
     return;
   }
 
-  const match = {
-    id: `match-${Date.now()}`,
+  const mapNode = document.getElementById("adminMatchMap");
+  const rallyNode = document.getElementById("adminMatchRally");
+  const regionNode = document.getElementById("adminMatchRegion");
+  const rulesNode = document.getElementById("adminMatchRules");
+
+  const matchData = {
+    id: editingMatchId || `match-${Date.now()}`,
     type: activeMatchTypeTab,
     title,
     teamA,
@@ -2708,13 +2765,27 @@ function onPostMatchClick() {
     casualtiesA: parseInt(matchCasualtiesANode?.value) || 0,
     casualtiesB: parseInt(matchCasualtiesBNode?.value) || 0,
     date: matchDateNode?.value || new Date().toISOString().split('T')[0],
-    mediaUrl: matchMediaNode?.value || ""
+    mediaUrl: normalizeMatchMediaUrl(matchMediaNode?.value),
+    map: String(mapNode?.value || "").trim(),
+    rally: String(rallyNode?.value || "").trim(),
+    region: String(regionNode?.value || "").trim(),
+    rules: String(rulesNode?.value || "").trim()
   };
 
-  currentMatches = [...currentMatches, match];
+  if (editingMatchId) {
+    // Update existing match
+    currentMatches = currentMatches.map(m => m.id === editingMatchId ? matchData : m);
+    showToast(`Match "${title}" updated.`, "success");
+    setSyncStatus("Match updated locally. Click Save Global Sync to publish.");
+  } else {
+    // Add new match
+    currentMatches = [...currentMatches, matchData];
+    showToast(`Match "${title}" added.`, "success");
+    setSyncStatus("Match history entry added locally. Click Save Global Sync to publish.");
+  }
+
   renderMatchRows();
   resetMatchComposer();
-  setSyncStatus("Match history entry added locally. Click Save Global Sync to publish.");
 }
 
 
@@ -3237,6 +3308,13 @@ if (addTransferButtonNode) {
 }
 if (postMatchButtonNode) {
   postMatchButtonNode.addEventListener("click", onPostMatchClick);
+}
+const clearMatchFormBtn = document.getElementById("adminClearMatchFormBtn");
+if (clearMatchFormBtn) {
+  clearMatchFormBtn.addEventListener("click", () => {
+    resetMatchComposer();
+    showToast("Match form cleared.", "info");
+  });
 }
 if (addSyncedPlayerButtonNode) {
   addSyncedPlayerButtonNode.addEventListener("click", onAddSyncedPlayerClick);

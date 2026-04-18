@@ -52,7 +52,7 @@
       <img src="assets/brand/logo-mark-512.png" alt="Ascend Entrenched logo" width="56" height="56" decoding="async" fetchpriority="high">
     </a>
     <h1 class="stats-glitch-text" data-text="Match History">Match History</h1>
-    <p>Upcoming Battles & Historical Records</p>
+    <p>Upcoming Battles &amp; Historical Records</p>
     <div class="stats-hero-signal">
       <span class="stats-signal-dot"></span>
       <span>Archive Synced</span>
@@ -67,14 +67,31 @@
   </header>
 
   <main class="matches-content">
-    <section class="matches-list-wrap" aria-label="Upcoming matches section">
+    <!-- Stats Summary -->
+    <section id="matchStatsSummary" class="match-stats-summary" aria-label="Match statistics summary"></section>
+
+    <!-- Hero Spotlight — Next upcoming match -->
+    <section id="matchHeroSpotlight" aria-label="Next upcoming match spotlight"></section>
+
+    <!-- Filter Tabs -->
+    <div class="matches-filter-bar" id="matchFilterBar" role="tablist" aria-label="Filter matches">
+      <button type="button" class="matches-filter-tab active" data-filter="upcoming" role="tab" aria-selected="true" id="matchFilterUpcoming">
+        Upcoming <span class="matches-filter-count" id="matchCountUpcoming">0</span>
+      </button>
+      <button type="button" class="matches-filter-tab" data-filter="finished" role="tab" aria-selected="false" id="matchFilterFinished">
+        Battle Archive <span class="matches-filter-count" id="matchCountFinished">0</span>
+      </button>
+    </div>
+
+    <!-- Match Grids -->
+    <section id="matchesUpcomingSection" class="matches-list-wrap" aria-label="Upcoming matches section">
       <h2>Upcoming Battles</h2>
       <div id="upcomingMatchesGrid" class="matches-grid"></div>
     </section>
 
-    <section class="matches-list-wrap" aria-label="Finished matches section">
+    <section id="matchesFinishedSection" class="matches-list-wrap" style="display:none;" aria-label="Finished matches section">
       <h2>Battle Archive</h2>
-      <p id="matchesStatus" class="clips-status">Loading archive...</p>
+      <p id="matchesStatus" class="clips-status" style="display:none;">Loading archive...</p>
       <div id="finishedMatchesGrid" class="matches-grid"></div>
     </section>
   </main>

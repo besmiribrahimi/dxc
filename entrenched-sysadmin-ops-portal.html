@@ -267,52 +267,96 @@
               <h2>Match History</h2>
               <div class="admin-actions">
                 <button id="adminPostMatchBtn" type="button" class="admin-button">Post Match</button>
+                <button id="adminClearMatchFormBtn" type="button" class="admin-button secondary">Clear Form</button>
               </div>
             </div>
-            <p>Manage upcoming and finished matches. Enter scores and casualties for the archives.</p>
+            <p>Manage upcoming and finished matches. Enter team details, scores, map, and rally info for the archives.</p>
             
             <div class="admin-clips-type-tabs" aria-label="Match status tabs">
               <button type="button" class="admin-tab-button admin-matches-type-tab active" data-admin-match-type-tab="finished">Finished</button>
               <button type="button" class="admin-tab-button admin-matches-type-tab" data-admin-match-type-tab="upcoming">Upcoming</button>
             </div>
 
-            <div class="admin-bot-grid admin-matches-compose">
-              <label for="adminMatchTitle">Match Title</label>
-              <input id="adminMatchTitle" class="admin-bot-input" type="text" maxlength="120" placeholder="Battle of the Marne">
+            <div class="admin-match-composer">
+              <div class="admin-match-composer-row">
+                <div class="admin-match-field">
+                  <label for="adminMatchTitle">Match Title</label>
+                  <input id="adminMatchTitle" class="admin-bot-input" type="text" maxlength="120" placeholder="Battle of the Marne">
+                </div>
+                <div class="admin-match-field">
+                  <label for="adminMatchDate">Date</label>
+                  <input id="adminMatchDate" class="admin-bot-input" type="date">
+                </div>
+              </div>
 
-              <label for="adminMatchTeamA">Team A (Faction)</label>
-              <input id="adminMatchTeamA" class="admin-bot-input" type="text" maxlength="64" placeholder="AH / URF">
+              <div class="admin-match-composer-row">
+                <div class="admin-match-field">
+                  <label for="adminMatchTeamA">Team A (Faction)</label>
+                  <input id="adminMatchTeamA" class="admin-bot-input" type="text" maxlength="64" placeholder="AH / URF">
+                </div>
+                <div class="admin-match-field">
+                  <label for="adminMatchTeamB">Team B (Faction)</label>
+                  <input id="adminMatchTeamB" class="admin-bot-input" type="text" maxlength="64" placeholder="IA / TCL">
+                </div>
+              </div>
 
-              <label for="adminMatchTeamB">Team B (Faction)</label>
-              <input id="adminMatchTeamB" class="admin-bot-input" type="text" maxlength="64" placeholder="IA / TCL">
+              <div class="admin-match-composer-row admin-match-composer-row-4">
+                <div class="admin-match-field">
+                  <label for="adminMatchScoreA">Score A</label>
+                  <input id="adminMatchScoreA" class="admin-bot-input" type="number" placeholder="0">
+                </div>
+                <div class="admin-match-field">
+                  <label for="adminMatchScoreB">Score B</label>
+                  <input id="adminMatchScoreB" class="admin-bot-input" type="number" placeholder="0">
+                </div>
+                <div class="admin-match-field">
+                  <label for="adminMatchCasualtiesA">Casualties A</label>
+                  <input id="adminMatchCasualtiesA" class="admin-bot-input" type="number" placeholder="0">
+                </div>
+                <div class="admin-match-field">
+                  <label for="adminMatchCasualtiesB">Casualties B</label>
+                  <input id="adminMatchCasualtiesB" class="admin-bot-input" type="number" placeholder="0">
+                </div>
+              </div>
 
-              <label for="adminMatchScoreA">Score Team A</label>
-              <input id="adminMatchScoreA" class="admin-bot-input" type="number" placeholder="0">
+              <div class="admin-match-composer-row admin-match-composer-row-3">
+                <div class="admin-match-field">
+                  <label for="adminMatchMap">Map</label>
+                  <input id="adminMatchMap" class="admin-bot-input" type="text" maxlength="80" placeholder="Champagne / Dobro Pole">
+                </div>
+                <div class="admin-match-field">
+                  <label for="adminMatchRally">Rally Size</label>
+                  <input id="adminMatchRally" class="admin-bot-input" type="text" maxlength="40" placeholder="12v12 ext. 15v15">
+                </div>
+                <div class="admin-match-field">
+                  <label for="adminMatchRegion">Region / Host</label>
+                  <input id="adminMatchRegion" class="admin-bot-input" type="text" maxlength="60" placeholder="EU (London)">
+                </div>
+              </div>
 
-              <label for="adminMatchScoreB">Score Team B</label>
-              <input id="adminMatchScoreB" class="admin-bot-input" type="number" placeholder="0">
-
-              <label for="adminMatchCasualtiesA">Casualties Team A</label>
-              <input id="adminMatchCasualtiesA" class="admin-bot-input" type="number" placeholder="0">
-
-              <label for="adminMatchCasualtiesB">Casualties Team B</label>
-              <input id="adminMatchCasualtiesB" class="admin-bot-input" type="number" placeholder="0">
-
-              <label for="adminMatchDate">Date</label>
-              <input id="adminMatchDate" class="admin-bot-input" type="date">
-
-              <label for="adminMatchMedia">Footage URL (Optional)</label>
-              <input id="adminMatchMedia" class="admin-bot-input" type="url" placeholder="https://...">
+              <div class="admin-match-composer-row">
+                <div class="admin-match-field">
+                  <label for="adminMatchRules">Rules (Optional)</label>
+                  <input id="adminMatchRules" class="admin-bot-input" type="text" maxlength="240" placeholder="Standard (no canyons, tunnels, armor, mercs...)">
+                </div>
+                <div class="admin-match-field">
+                  <label for="adminMatchMedia">Footage URL (Optional)</label>
+                  <input id="adminMatchMedia" class="admin-bot-input" type="url" placeholder="https://...">
+                </div>
+              </div>
             </div>
 
+            <p id="adminMatchFormStatus" class="admin-status">Ready to post matches.</p>
+
             <div class="admin-transfer-wrap admin-matches-wrap">
-              <div class="admin-transfer-row admin-transfer-row-head" role="row">
+              <div class="admin-transfer-row admin-transfer-row-head admin-match-row-head" role="row">
                 <span>Title</span>
                 <span>Teams</span>
+                <span>Map</span>
                 <span>Score</span>
                 <span>Casualties</span>
                 <span>Date</span>
-                <span>Action</span>
+                <span>Actions</span>
               </div>
               <div id="adminMatchRows" class="admin-transfer-rows"></div>
             </div>
