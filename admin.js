@@ -2426,7 +2426,8 @@ async function onSaveClick() {
     return;
   }
 
-  // Save confirmation
+  // Save confirmation - REMOVED per user request to speed up workflow
+  /*
   const changeCount = currentPlayers.length;
   const extraCount = currentExtraPlayers.length;
   const transferCount = currentTransfers.length;
@@ -2436,6 +2437,7 @@ async function onSaveClick() {
     showToast("Save cancelled.", "info");
     return;
   }
+  */
 
   setSyncStatus("Saving global sync...");
   showToast("Saving global sync...", "info");
