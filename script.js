@@ -1,6 +1,32 @@
 (function () {
   "use strict";
 
+  // ── Maintenance Mode Injection ──
+  (function injectMaintenance() {
+    const overlay = document.createElement("div");
+    overlay.className = "maintenance-overlay";
+    overlay.innerHTML = `
+      <div class="maintenance-content">
+        <div class="maintenance-banner">
+          <h1>TEMPORARY OUT OF WORK</h1>
+        </div>
+        <p class="maintenance-message">
+          The Ascend Entrenched platform is currently undergoing essential maintenance. 
+          Operations are temporarily suspended to ensure system stability.
+        </p>
+        <p class="maintenance-sub">System Status: Maintenance Mode Active</p>
+      </div>
+    `;
+    
+    // Block interactions
+    overlay.addEventListener("click", (e) => e.stopPropagation());
+    overlay.addEventListener("keydown", (e) => e.stopPropagation());
+
+    document.documentElement.appendChild(overlay);
+    document.body.style.overflow = "hidden";
+    document.body.style.pointerEvents = "none";
+  })();
+
   let fallbackPlayerLines = [];
   let avatarIdMap = new Map();
   let staticAvatarUrlMap = new Map();
