@@ -2712,7 +2712,7 @@ function renderMatchRosters() {
 
   const buildSlots = (container, teamLabel) => {
     let html = "";
-    for (let i = 1; i <= 20; i++) {
+    for (let i = 1; i <= 40; i++) {
         html += `
           <div class="match-player-slot">
             <span class="slot-number">${i}</span>
@@ -2820,8 +2820,8 @@ async function onSaveMatchClick() {
   const teamA = collectTeamData("A");
   const teamB = collectTeamData("B");
 
-  if (teamA.length < 10 || teamB.length < 10) {
-    if (statusNode) statusNode.textContent = "Error: Each team needs at least 10 players.";
+  if (teamA.length < 1 || teamB.length < 1) {
+    if (statusNode) statusNode.textContent = "Error: Each team needs at least 1 player.";
     return;
   }
 
@@ -3103,8 +3103,8 @@ function calculateEloPreview() {
   const teamA = collectTeamData("A");
   const teamB = collectTeamData("B");
 
-  if (teamA.length < 2 || teamB.length < 2) {
-    showToast("Need at least 2 players per team for preview.", "warning");
+  if (teamA.length < 1 || teamB.length < 1) {
+    showToast("Need at least 1 player per team for preview.", "warning");
     return;
   }
 
