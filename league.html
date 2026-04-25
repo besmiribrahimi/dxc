@@ -53,7 +53,7 @@
           <img src="ET.gif" alt="The Entrenched Times Logo">
         </div>
         <div class="disclaimer-copy">
-          <h3><svg style="width:20px;height:20px;vertical-align:middle;margin-right:8px;" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L1 21h22L12 2zm0 3.45L19.53 19H4.47L12 5.45zM11 16h2v2h-2v-2zm0-7h2v5h-2V9z"/></svg> Partnership Intel</h3>
+          <h3><svg style="width:20px;height:20px;vertical-align:middle;margin-right:8px;" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L1 21h22L12 2zm0 3.45L19.53 19H4.47L12 5.45zM11 16h2v2h-2v-2zm0-7h2v5h-2V9z"/></svg>Partnership Intel</h3>
           <p>
             This project is <strong>not an Ascend associate</strong> but exclusively the work of 
             <span class="highlight-et">The Entrenched Times</span>. Ascend is promoting this circuit with 
@@ -64,364 +64,56 @@
           <a href="https://discord.gg/JK3DJH2s" class="stats-btn alert" target="_blank">Join The ET Discord</a>
         </div>
       </div>
-    <!-- Official Battles Schedule -->
+    </section>
+
+    <!-- League Table Legend -->
+    <section class="league-legend">
+      <div class="legend-inner">
+        <div class="legend-item">
+          <span class="legend-swatch legend-promo"></span>
+          <span>Promotion Zone</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch legend-safe"></span>
+          <span>Safe Zone</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch legend-releg"></span>
+          <span>Relegation Zone</span>
+        </div>
+        <div class="legend-sep"></div>
+        <div class="legend-item">
+          <span class="legend-form-dot form-w"></span>
+          <span>Win</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-form-dot form-d"></span>
+          <span>Draw</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-form-dot form-l"></span>
+          <span>Loss</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dynamic Divisions Container -->
+    <div id="leagueDivisionsContainer"></div>
+
+    <!-- Schedule Section -->
     <section class="league-schedule">
       <div class="schedule-header">
         <div class="div-badge">Match Schedule</div>
         <h2>Official Battles</h2>
         <p>Live schedule for the upcoming weekly engagements. Times are subject to field confirmation.</p>
       </div>
-
-      <div class="schedule-grid">
-        <!-- Saturday 18th April -->
-        <article class="schedule-day">
-          <div class="day-info">
-            <h3 class="day-title">Saturday 18th April</h3>
-            <span class="match-count">2 Battles Scheduled</span>
-          </div>
-          <div class="matchup-list">
-            <div class="battle-matchup">
-              <div class="matchup-inner">
-                <div class="side home">
-                  <div class="side-glow"></div>
-                  <img src="faction_flags/AH.png" alt="AH">
-                  <strong>Austria-Hungary</strong>
-                </div>
-                <div class="vs-zone">
-                  <div class="vs-aura"></div>
-                  <div class="vs-badge">VS</div>
-                </div>
-                <div class="side away">
-                  <div class="side-glow"></div>
-                  <img src="faction_flags/TWA.png" alt="TWA">
-                  <strong>The White Army</strong>
-                </div>
-              </div>
-              <div class="match-footer">
-                <span class="status-tag tbc">Status: To Be Confirmed</span>
-                <span class="match-type">EPL Official Engagement</span>
-              </div>
-            </div>
-
-            <div class="battle-matchup">
-              <div class="matchup-inner">
-                <div class="side home">
-                  <div class="side-glow"></div>
-                  <img src="faction_flags/SR.png" alt="SR">
-                  <strong>United Sermetyan Federation</strong>
-                </div>
-                <div class="vs-zone">
-                  <div class="vs-aura"></div>
-                  <div class="vs-badge">VS</div>
-                </div>
-                <div class="side away">
-                  <div class="side-glow"></div>
-                  <img src="faction_flags/URF.png" alt="URF">
-                  <strong>United Robloxian Federation</strong>
-                </div>
-              </div>
-              <div class="match-footer">
-                <span class="status-tag tbc">Status: To Be Confirmed</span>
-                <span class="match-type">EPL Official Engagement</span>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Saturday 25th April -->
-        <article class="schedule-day">
-          <div class="day-info">
-            <h3 class="day-title">Saturday 25th April</h3>
-            <span class="match-count">2 Battles Scheduled</span>
-          </div>
-          <div class="matchup-list">
-            <div class="battle-matchup">
-              <div class="matchup-inner">
-                <div class="side home">
-                  <div class="side-glow"></div>
-                  <img src="faction_flags/DK.png" alt="DK">
-                  <strong>83rd Death Korps</strong>
-                </div>
-                <div class="vs-zone">
-                  <div class="vs-aura"></div>
-                  <div class="vs-badge">VS</div>
-                </div>
-                <div class="side away">
-                  <div class="side-glow"></div>
-                  <img src="faction_flags/IA.png" alt="IA">
-                  <strong>Imperio Alemán</strong>
-                </div>
-              </div>
-              <div class="match-footer">
-                <span class="status-tag tbc">TBC (25th or 26th)</span>
-                <span class="match-type">EPL Official Engagement</span>
-              </div>
-            </div>
-
-            <div class="battle-matchup">
-              <div class="matchup-inner">
-                <div class="side home">
-                  <div class="side-glow"></div>
-                  <img src="faction_flags/NDV.png" alt="NDV">
-                  <strong>Nordoslav</strong>
-                </div>
-                <div class="vs-zone">
-                  <div class="vs-aura"></div>
-                  <div class="vs-badge">VS</div>
-                </div>
-                <div class="side away">
-                  <div class="side-glow"></div>
-                  <img src="faction_flags/AEF.png" alt="AEF">
-                  <strong>American Expeditionary Force</strong>
-                </div>
-              </div>
-              <div class="match-footer">
-                <span class="status-tag live">Confirmed Engagement</span>
-                <span class="match-type">EPL Official Engagement</span>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Saturday 2nd May -->
-        <article class="schedule-day">
-          <div class="day-info">
-            <h3 class="day-title">Saturday 2nd May</h3>
-            <span class="match-count">1 Battle Scheduled</span>
-          </div>
-          <div class="matchup-list">
-            <div class="battle-matchup">
-              <div class="matchup-inner">
-                <div class="side home">
-                  <div class="side-glow"></div>
-                  <img src="faction_flags/DK.png" alt="DK">
-                  <strong>83rd Death Korps</strong>
-                </div>
-                <div class="vs-zone">
-                  <div class="vs-aura"></div>
-                  <div class="vs-badge">VS</div>
-                </div>
-                <div class="side away">
-                  <div class="side-glow"></div>
-                  <img src="faction_flags/TSC.png" alt="TSC">
-                  <strong>The Sovereign Calamity</strong>
-                </div>
-              </div>
-              <div class="match-footer">
-                <span class="status-tag tbc">Status: To Be Confirmed</span>
-                <span class="match-type">EPL Official Engagement</span>
-              </div>
-            </div>
-          </div>
-        </article>
+      <div id="leagueScheduleGrid" class="schedule-grid">
+        <div class="league-loading">
+          <div class="league-loading-spinner"></div>
+          <span>Loading schedule data...</span>
+        </div>
       </div>
     </section>
-
-    <!-- Division 1 -->
-    <section class="league-division" id="div1">
-      <div class="division-header">
-        <div class="div-badge">Division I</div>
-        <h2>Division 1</h2>
-      </div>
-      <div class="groups-grid">
-        <article class="league-group promo-glow">
-          <h3>Group A</h3>
-          <div class="faction-list">
-            <div class="league-faction-row zone-promo" data-faction="DK">
-              <img src="faction_flags/DK.png" alt="DK">
-              <div class="faction-meta">
-                <strong>DK</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-            <div class="league-faction-row" data-faction="IA">
-              <img src="faction_flags/IA.png" alt="IA">
-              <div class="faction-meta">
-                <strong>IA</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-            <div class="league-faction-row zone-releg" data-faction="TSC">
-              <img src="faction_flags/TSC.png" alt="TSC">
-              <div class="faction-meta">
-                <strong>TSC</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-          </div>
-        </article>
-        <article class="league-group promo-glow">
-          <h3>Group B</h3>
-          <div class="faction-list">
-            <div class="league-faction-row zone-promo" data-faction="AH">
-              <img src="faction_flags/AH.png" alt="AH">
-              <div class="faction-meta">
-                <strong>AH</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-            <div class="league-faction-row" data-faction="CZSK">
-              <img src="faction_flags/CZSK.png" alt="CZSK">
-              <div class="faction-meta">
-                <strong>CZSK</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-            <div class="league-faction-row zone-releg" data-faction="TWA">
-              <img src="faction_flags/TWA.png" alt="TWA">
-              <div class="faction-meta">
-                <strong>TWA</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <!-- Division 2 -->
-    <section class="league-division" id="div2">
-      <div class="division-header">
-        <div class="div-badge secondary">Division II</div>
-        <h2>Division 2</h2>
-      </div>
-      <div class="groups-grid">
-        <article class="league-group">
-          <h3>Group A</h3>
-          <div class="faction-list">
-            <div class="league-faction-row zone-promo" data-faction="NDV">
-              <img src="faction_flags/NDV.png" alt="NDV">
-              <div class="faction-meta">
-                <strong>NDV</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-            <div class="league-faction-row" data-faction="AEF">
-              <img src="faction_flags/AEF.png" alt="AEF">
-              <div class="faction-meta">
-                <strong>AEF</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-            <div class="league-faction-row zone-releg" data-faction="AOT">
-              <div class="faction-flag-placeholder">AOT</div>
-              <div class="faction-meta">
-                <strong>AOT</strong>
-                <span>Candidate</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-          </div>
-        </article>
-        <article class="league-group">
-          <h3>Group B</h3>
-          <div class="faction-list">
-            <div class="league-faction-row zone-promo" data-faction="RKA">
-              <div class="faction-flag-placeholder">RKA</div>
-              <div class="faction-meta">
-                <strong>RKA</strong>
-                <span>Candidate</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-            <div class="league-faction-row" data-faction="TAE">
-              <img src="faction_flags/TAE.png" alt="TAE">
-              <div class="faction-meta">
-                <strong>TAE</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-            <div class="league-faction-row zone-releg" data-faction="SL">
-              <div class="faction-flag-placeholder">SL</div>
-              <div class="faction-meta">
-                <strong>SL</strong>
-                <span>Candidate</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <!-- Division 3 -->
-    <section class="league-division" id="div3">
-      <div class="division-header">
-        <div class="div-badge muted">Division III</div>
-        <h2>Division 3</h2>
-      </div>
-      <div class="groups-grid">
-        <article class="league-group releg-glow">
-          <h3>Group A</h3>
-          <div class="faction-list">
-            <div class="league-faction-row zone-promo" data-faction="SEMETYAN">
-              <img src="faction_flags/SR.png" alt="SEMETYAN">
-              <div class="faction-meta">
-                <strong>SEMETYAN</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-            <div class="league-faction-row" data-faction="RRF">
-              <img src="faction_flags/RRF.png" alt="RRF">
-              <div class="faction-meta">
-                <strong>RRF</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-            <div class="league-faction-row zone-releg" data-faction="URF">
-              <img src="faction_flags/URF.png" alt="URF">
-              <div class="faction-meta">
-                <strong>URF</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-          </div>
-        </article>
-        <article class="league-group releg-glow">
-          <h3>Group B</h3>
-          <div class="faction-list">
-            <div class="league-faction-row zone-promo" data-faction="DSA">
-              <img src="faction_flags/DSA.png" alt="DSA">
-              <div class="faction-meta">
-                <strong>DSA</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-            <div class="league-faction-row" data-faction="INS">
-              <img src="faction_flags/INS.png" alt="INS">
-              <div class="faction-meta">
-                <strong>INS</strong>
-                <span>Verified Division</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-            <div class="league-faction-row zone-releg" data-faction="CIA">
-              <div class="faction-flag-placeholder">CIA</div>
-              <div class="faction-meta">
-                <strong>CIA</strong>
-                <span>Candidate</span>
-              </div>
-              <div class="league-record">0 - 0 - 0</div>
-            </div>
-          </div>
-        </article>
-      </div>
-    </section>
-
-
 
     <!-- Rules & Specs -->
     <section class="league-rules-section">
@@ -443,6 +135,14 @@
           <div class="rule-item">
             <strong>The Grand Final</strong>
             <p>Top factions from Division 1 face off in a seasonal climax to crown the EPL Champion.</p>
+          </div>
+          <div class="rule-item">
+            <strong>Points System</strong>
+            <p>Win = 3 Points. Draw = 1 Point. Loss = 0 Points. Ties broken by Score Difference, then Scores For.</p>
+          </div>
+          <div class="rule-item">
+            <strong>Form Tracker</strong>
+            <p>Last 5 match results tracked per faction. Green = Win, Yellow = Draw, Red = Loss.</p>
           </div>
         </div>
       </div>

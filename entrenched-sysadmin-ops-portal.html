@@ -468,6 +468,123 @@
             <datalist id="fullPlayerDatalist"></datalist>
             <p id="matchEntryStatus" class="admin-status">Waiting for match data.</p>
           </section>
+
+          <section class="admin-tab-panel hidden" data-admin-tab-panel="league" aria-label="League management">
+            <div class="admin-panel-header">
+              <h2>League Manager</h2>
+              <div class="admin-actions">
+                <button id="adminLeagueResetBtn" type="button" class="admin-button danger">Reset All Standings</button>
+              </div>
+            </div>
+            <p>Record league match results, manage the schedule, and track faction standings. Changes are saved with Global Sync.</p>
+
+            <div class="admin-league-section">
+              <h3>Record League Match Result</h3>
+              <div class="admin-league-match-form">
+                <div class="admin-match-composer-row">
+                  <div class="admin-match-field">
+                    <label for="adminLeagueDivision">Division</label>
+                    <select id="adminLeagueDivision" class="admin-bot-input">
+                      <option value="div1">Division 1</option>
+                      <option value="div2">Division 2</option>
+                      <option value="div3">Division 3</option>
+                    </select>
+                  </div>
+                  <div class="admin-match-field">
+                    <label for="adminLeagueGroup">Group</label>
+                    <select id="adminLeagueGroup" class="admin-bot-input">
+                      <option value="a">Group A</option>
+                      <option value="b">Group B</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="admin-match-composer-row">
+                  <div class="admin-match-field">
+                    <label for="adminLeagueTeamA">Team A (Faction Code)</label>
+                    <input id="adminLeagueTeamA" class="admin-bot-input" type="text" maxlength="20" placeholder="DK">
+                  </div>
+                  <div class="admin-match-field">
+                    <label for="adminLeagueTeamB">Team B (Faction Code)</label>
+                    <input id="adminLeagueTeamB" class="admin-bot-input" type="text" maxlength="20" placeholder="IA">
+                  </div>
+                </div>
+                <div class="admin-match-composer-row admin-match-composer-row-3">
+                  <div class="admin-match-field">
+                    <label for="adminLeagueScoreA">Score A</label>
+                    <input id="adminLeagueScoreA" class="admin-bot-input" type="number" min="0" placeholder="0">
+                  </div>
+                  <div class="admin-match-field">
+                    <label for="adminLeagueScoreB">Score B</label>
+                    <input id="adminLeagueScoreB" class="admin-bot-input" type="number" min="0" placeholder="0">
+                  </div>
+                  <div class="admin-match-field">
+                    <label for="adminLeagueMatchDate">Date</label>
+                    <input id="adminLeagueMatchDate" class="admin-bot-input" type="date">
+                  </div>
+                </div>
+                <div class="admin-actions" style="margin-top:0.5rem;">
+                  <button id="adminLeagueRecordResultBtn" type="button" class="admin-button">Record Result</button>
+                  <button id="adminLeagueClearFormBtn" type="button" class="admin-button secondary">Clear</button>
+                </div>
+              </div>
+              <p id="adminLeagueResultStatus" class="admin-status">Ready to record results.</p>
+            </div>
+
+            <div class="admin-league-section">
+              <h3>Schedule Manager</h3>
+              <div class="admin-league-match-form">
+                <div class="admin-match-composer-row">
+                  <div class="admin-match-field">
+                    <label for="adminScheduleTeamA">Team A</label>
+                    <input id="adminScheduleTeamA" class="admin-bot-input" type="text" maxlength="20" placeholder="DK">
+                  </div>
+                  <div class="admin-match-field">
+                    <label for="adminScheduleTeamB">Team B</label>
+                    <input id="adminScheduleTeamB" class="admin-bot-input" type="text" maxlength="20" placeholder="IA">
+                  </div>
+                </div>
+                <div class="admin-match-composer-row admin-match-composer-row-3">
+                  <div class="admin-match-field">
+                    <label for="adminScheduleDate">Date</label>
+                    <input id="adminScheduleDate" class="admin-bot-input" type="date">
+                  </div>
+                  <div class="admin-match-field">
+                    <label for="adminScheduleStatus">Status</label>
+                    <select id="adminScheduleStatus" class="admin-bot-input">
+                      <option value="tbc">TBC</option>
+                      <option value="confirmed">Confirmed</option>
+                    </select>
+                  </div>
+                  <div class="admin-match-field">
+                    <label for="adminScheduleDivision">Division</label>
+                    <select id="adminScheduleDivision" class="admin-bot-input">
+                      <option value="div1">Div 1</option>
+                      <option value="div2">Div 2</option>
+                      <option value="div3">Div 3</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="admin-actions" style="margin-top:0.5rem;">
+                  <button id="adminScheduleAddBtn" type="button" class="admin-button secondary">Add to Schedule</button>
+                </div>
+              </div>
+              <div class="admin-transfer-wrap" style="margin-top:1rem;">
+                <div class="admin-transfer-row admin-transfer-row-head" role="row">
+                  <span>Date</span>
+                  <span>Team A</span>
+                  <span>Team B</span>
+                  <span>Status</span>
+                  <span>Action</span>
+                </div>
+                <div id="adminLeagueScheduleRows" class="admin-transfer-rows"></div>
+              </div>
+            </div>
+
+            <div class="admin-league-section">
+              <h3>Current Standings Preview</h3>
+              <div id="adminLeagueStandingsPreview" class="admin-league-standings-preview"></div>
+            </div>
+          </section>
         </div>
 
         <aside class="admin-tab-rail" aria-label="Admin sections">
@@ -480,6 +597,7 @@
           <button type="button" class="admin-tab-button" data-admin-tab-target="top-ten">Top Ten</button>
           <button type="button" class="admin-tab-button" data-admin-tab-target="insights">Web Insights</button>
           <button type="button" class="admin-tab-button" data-admin-tab-target="matches">Match History</button>
+          <button type="button" class="admin-tab-button" data-admin-tab-target="league">League</button>
           <button type="button" class="admin-tab-button" data-admin-tab-target="other">Other</button>
         </aside>
       </div>

@@ -97,6 +97,9 @@ let currentTransfers = [];
 let currentMatches = [];
 let currentClips = [];
 let currentCommunityTop10 = [];
+let currentLeagueStandings = {};
+let currentLeagueSchedule = [];
+let currentLeagueStructure = {};
 let activeMatchTypeTab = "finished";
 let draggingPlayerKey = "";
 let draggingInitialized = false;
@@ -2306,6 +2309,9 @@ async function loadPanelData() {
     currentClips = normalizeClips(config?.clips);
     currentMatches = config?.matches || (Array.isArray(config?.clips) ? config.clips.map(c => ({ id: c.id, title: c.title, teamA: c.player || 'COMMUNITY', teamB: 'N/A', type: 'finished', date: new Date().toISOString().split('T')[0] })) : []);
     currentCommunityTop10 = Array.isArray(config?.communityTop10) ? config.communityTop10 : [];
+    currentLeagueStandings = config?.leagueStandings && typeof config.leagueStandings === "object" ? config.leagueStandings : {};
+    currentLeagueSchedule = Array.isArray(config?.leagueSchedule) ? config.leagueSchedule : [];
+    currentLeagueStructure = config?.leagueStructure && typeof config.leagueStructure === "object" ? config.leagueStructure : {};
     renderRows(currentPlayers);
     renderTransferRows(currentTransfers);
     renderSyncedPlayerRows(currentExtraPlayers);
@@ -2315,6 +2321,7 @@ async function loadPanelData() {
     renderWeeklyTopTenPreview();
     renderWebInsights();
     renderCommunityTop10List();
+    renderLeagueAdmin();
     updateSuggestionPool(currentPlayers);
     updateTabBadges();
 
@@ -2408,7 +2415,10 @@ async function onSaveClick() {
       transfers: currentTransfers,
       clips: currentClips,
       matches: currentMatches,
-      communityTop10: currentCommunityTop10
+      communityTop10: currentCommunityTop10,
+      leagueStandings: currentLeagueStandings,
+      leagueSchedule: currentLeagueSchedule,
+      leagueStructure: currentLeagueStructure
     });
     const saved = saveResult.config;
     currentConfig = saved;
@@ -2425,6 +2435,7 @@ async function onSaveClick() {
     renderWeeklyTopTenPreview();
     renderWebInsights();
     renderCommunityTop10List();
+    renderLeagueAdmin();
     updateTabBadges();
 
     const botDispatch = saveResult.botDispatch;
@@ -3474,6 +3485,231 @@ function onCommunityTopClearClick() {
   renderCommunityTop10List();
   setSyncStatus("Community Top 10 cleared locally. Click Save Global Sync to publish.");
 }
+
+// ── League Manager Logic ──
+
+function renderLeagueAdmin() {
+  renderLeagueScheduleRows();
+  renderLeagueStandingsPreview();
+}
+
+function renderLeagueScheduleRows() {
+  const container = document.getElementById("adminLeagueScheduleRows");
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (!currentLeagueSchedule.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-transfer-empty";
+    empty.textContent = "No league matches scheduled yet.";
+    container.append(empty);
+    return;
+  }
+
+  currentLeagueSchedule.forEach((match, index) => {
+    const row = document.createElement("article");
+    row.className = "admin-transfer-row";
+    row.innerHTML = `
+      <span>${safeText(match.date || "TBD")}</span>
+      <span>${safeText(match.teamA)}</span>
+      <span>${safeText(match.teamB)}</span>
+      <span>${safeText(match.status)}</span>
+      <span><button type="button" class="admin-button danger admin-league-schedule-delete" data-index="${index}">Remove</button></span>
+    `;
+    row.querySelector(".admin-league-schedule-delete")?.addEventListener("click", () => {
+      currentLeagueSchedule.splice(index, 1);
+      renderLeagueScheduleRows();
+      setSyncStatus("Schedule entry removed. Click Save Global Sync to publish.");
+    });
+    container.appendChild(row);
+  });
+}
+
+function renderLeagueStandingsPreview() {
+  const container = document.getElementById("adminLeagueStandingsPreview");
+  if (!container) return;
+
+  const structure = Object.keys(currentLeagueStructure).length ? currentLeagueStructure : getDefaultLeagueStructure();
+  let html = "";
+
+  ["div1", "div2", "div3"].forEach(divKey => {
+    const div = structure[divKey];
+    if (!div) return;
+
+    html += `<h4 style="margin:1rem 0 0.5rem;color:#93c5fd;font-family:'Rajdhani',sans-serif;text-transform:uppercase;letter-spacing:0.05em;">${safeText(div.label)}</h4>`;
+
+    Object.entries(div.groups || {}).sort(([a],[b]) => a.localeCompare(b)).forEach(([gKey, gData]) => {
+      const standingsKey = `${divKey}-${gKey}`;
+      const groupStandings = currentLeagueStandings[standingsKey]?.factions || {};
+
+      html += `<p style="font-size:0.75rem;color:#6b7f9c;margin:0.5rem 0 0.3rem;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">${safeText(gData.label)}</p>`;
+      html += `<table style="width:100%;border-collapse:collapse;font-size:0.8rem;margin-bottom:1rem;"><thead><tr style="color:#6b7f9c;text-transform:uppercase;font-size:0.65rem;letter-spacing:0.08em;">`;
+      html += `<th style="text-align:left;padding:0.3rem;">Faction</th><th>W</th><th>D</th><th>L</th><th>SF</th><th>SA</th><th>SD</th><th style="color:#93c5fd;">Pts</th></tr></thead><tbody>`;
+
+      const rows = (gData.factions || []).map(fc => {
+        const s = groupStandings[fc] || { w:0, d:0, l:0, sf:0, sa:0 };
+        return { code: fc, w: s.w, d: s.d, l: s.l, sf: s.sf, sa: s.sa, gd: s.sf - s.sa, pts: s.w * 3 + s.d };
+      }).sort((a,b) => b.pts !== a.pts ? b.pts - a.pts : b.gd !== a.gd ? b.gd - a.gd : b.sf - a.sf);
+
+      rows.forEach(r => {
+        const gdStr = r.gd > 0 ? `+${r.gd}` : String(r.gd);
+        html += `<tr style="border-bottom:1px solid rgba(132,160,255,0.08);">`;
+        html += `<td style="padding:0.3rem;color:#e4e8f0;font-weight:600;">${safeText(r.code)}</td>`;
+        html += `<td style="text-align:center;color:#10b981;">${r.w}</td>`;
+        html += `<td style="text-align:center;color:#f59e0b;">${r.d}</td>`;
+        html += `<td style="text-align:center;color:#ef4444;">${r.l}</td>`;
+        html += `<td style="text-align:center;">${r.sf}</td>`;
+        html += `<td style="text-align:center;">${r.sa}</td>`;
+        html += `<td style="text-align:center;color:${r.gd > 0 ? '#10b981' : r.gd < 0 ? '#ef4444' : '#94a3b8'};font-weight:700;">${gdStr}</td>`;
+        html += `<td style="text-align:center;color:#fff;font-weight:800;">${r.pts}</td></tr>`;
+      });
+
+      html += `</tbody></table>`;
+    });
+  });
+
+  container.innerHTML = html || '<p style="color:#6b7f9c;">No standings data loaded.</p>';
+}
+
+function getDefaultLeagueStructure() {
+  return {
+    "div1": { label: "Division 1", badge: "primary", groups: { "a": { label: "Group A", factions: ["DK", "IA", "TSC"] }, "b": { label: "Group B", factions: ["AH", "CZSK", "TWA"] } } },
+    "div2": { label: "Division 2", badge: "secondary", groups: { "a": { label: "Group A", factions: ["NDV", "AEF", "AOT"] }, "b": { label: "Group B", factions: ["RKA", "TAE", "SL"] } } },
+    "div3": { label: "Division 3", badge: "muted", groups: { "a": { label: "Group A", factions: ["SEMETYAN", "RRF", "URF"] }, "b": { label: "Group B", factions: ["DSA", "INS", "CIA"] } } }
+  };
+}
+
+function onLeagueRecordResult() {
+  const division = document.getElementById("adminLeagueDivision")?.value || "div1";
+  const group = document.getElementById("adminLeagueGroup")?.value || "a";
+  const teamA = String(document.getElementById("adminLeagueTeamA")?.value || "").trim().toUpperCase();
+  const teamB = String(document.getElementById("adminLeagueTeamB")?.value || "").trim().toUpperCase();
+  const scoreA = Number(document.getElementById("adminLeagueScoreA")?.value) || 0;
+  const scoreB = Number(document.getElementById("adminLeagueScoreB")?.value) || 0;
+  const matchDate = document.getElementById("adminLeagueMatchDate")?.value || new Date().toISOString().split("T")[0];
+  const statusNode = document.getElementById("adminLeagueResultStatus");
+
+  if (!teamA || !teamB) {
+    if (statusNode) statusNode.textContent = "Enter both team faction codes.";
+    return;
+  }
+
+  if (teamA === teamB) {
+    if (statusNode) statusNode.textContent = "Team A and B cannot be the same.";
+    return;
+  }
+
+  const standingsKey = `${division}-${group}`;
+  if (!currentLeagueStandings[standingsKey]) {
+    currentLeagueStandings[standingsKey] = { factions: {} };
+  }
+  const factions = currentLeagueStandings[standingsKey].factions;
+
+  if (!factions[teamA]) factions[teamA] = { w: 0, d: 0, l: 0, sf: 0, sa: 0, form: [] };
+  if (!factions[teamB]) factions[teamB] = { w: 0, d: 0, l: 0, sf: 0, sa: 0, form: [] };
+
+  factions[teamA].sf += scoreA;
+  factions[teamA].sa += scoreB;
+  factions[teamB].sf += scoreB;
+  factions[teamB].sa += scoreA;
+
+  if (scoreA > scoreB) {
+    factions[teamA].w++;
+    factions[teamB].l++;
+    factions[teamA].form = [...(factions[teamA].form || []), "W"].slice(-5);
+    factions[teamB].form = [...(factions[teamB].form || []), "L"].slice(-5);
+  } else if (scoreB > scoreA) {
+    factions[teamB].w++;
+    factions[teamA].l++;
+    factions[teamB].form = [...(factions[teamB].form || []), "W"].slice(-5);
+    factions[teamA].form = [...(factions[teamA].form || []), "L"].slice(-5);
+  } else {
+    factions[teamA].d++;
+    factions[teamB].d++;
+    factions[teamA].form = [...(factions[teamA].form || []), "D"].slice(-5);
+    factions[teamB].form = [...(factions[teamB].form || []), "D"].slice(-5);
+  }
+
+  // Also add to schedule as finished
+  currentLeagueSchedule.push({
+    id: `league-match-${Date.now()}`,
+    date: matchDate,
+    teamA,
+    teamB,
+    teamAName: teamA,
+    teamBName: teamB,
+    status: "finished",
+    scoreA,
+    scoreB,
+    division,
+    group
+  });
+
+  renderLeagueAdmin();
+  if (statusNode) statusNode.textContent = `Result recorded: ${teamA} ${scoreA} - ${scoreB} ${teamB}. Click Save Global Sync to publish.`;
+  setSyncStatus("League result recorded locally. Click Save Global Sync to publish.");
+  showToast(`League: ${teamA} ${scoreA}-${scoreB} ${teamB}`, "success");
+}
+
+function onLeagueClearForm() {
+  const ids = ["adminLeagueTeamA", "adminLeagueTeamB", "adminLeagueScoreA", "adminLeagueScoreB", "adminLeagueMatchDate"];
+  ids.forEach(id => { const n = document.getElementById(id); if (n) n.value = ""; });
+}
+
+function onLeagueResetStandings() {
+  if (!window.confirm("Reset ALL league standings to 0? This cannot be undone after saving.")) return;
+  currentLeagueStandings = {};
+  renderLeagueAdmin();
+  setSyncStatus("All league standings reset locally. Click Save Global Sync to publish.");
+  showToast("League standings reset.", "info");
+}
+
+function onScheduleAdd() {
+  const teamA = String(document.getElementById("adminScheduleTeamA")?.value || "").trim().toUpperCase();
+  const teamB = String(document.getElementById("adminScheduleTeamB")?.value || "").trim().toUpperCase();
+  const date = document.getElementById("adminScheduleDate")?.value || "";
+  const status = document.getElementById("adminScheduleStatus")?.value || "tbc";
+  const division = document.getElementById("adminScheduleDivision")?.value || "div1";
+
+  if (!teamA || !teamB) {
+    setSyncStatus("Enter both teams for the schedule entry.", true);
+    return;
+  }
+
+  currentLeagueSchedule.push({
+    id: `league-match-${Date.now()}`,
+    date,
+    teamA,
+    teamB,
+    teamAName: teamA,
+    teamBName: teamB,
+    status,
+    scoreA: 0,
+    scoreB: 0,
+    division,
+    group: "a"
+  });
+
+  // Clear inputs
+  ["adminScheduleTeamA", "adminScheduleTeamB", "adminScheduleDate"].forEach(id => {
+    const n = document.getElementById(id); if (n) n.value = "";
+  });
+
+  renderLeagueScheduleRows();
+  setSyncStatus("Schedule entry added locally. Click Save Global Sync to publish.");
+  showToast(`Scheduled: ${teamA} vs ${teamB}`, "success");
+}
+
+// League event wiring
+const leagueRecordBtn = document.getElementById("adminLeagueRecordResultBtn");
+const leagueClearBtn = document.getElementById("adminLeagueClearFormBtn");
+const leagueResetBtn = document.getElementById("adminLeagueResetBtn");
+const scheduleAddBtn = document.getElementById("adminScheduleAddBtn");
+
+if (leagueRecordBtn) leagueRecordBtn.addEventListener("click", onLeagueRecordResult);
+if (leagueClearBtn) leagueClearBtn.addEventListener("click", onLeagueClearForm);
+if (leagueResetBtn) leagueResetBtn.addEventListener("click", onLeagueResetStandings);
+if (scheduleAddBtn) scheduleAddBtn.addEventListener("click", onScheduleAdd);
 
 // Community Top 10 event wiring
 const communityTopAddBtn = document.getElementById("adminCommunityTopAddBtn");

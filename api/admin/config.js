@@ -597,6 +597,18 @@ module.exports = async function handler(req, res) {
       };
     const hasCommunityTop10InBody = Array.isArray(body?.communityTop10);
     const communityTop10 = normalizeCommunityTop10(hasCommunityTop10InBody ? body.communityTop10 : previousConfig?.communityTop10);
+
+    // Preserve league data — pass through from body if provided, else keep previous
+    const leagueStandings = body?.leagueStandings && typeof body.leagueStandings === "object"
+      ? body.leagueStandings
+      : (previousConfig?.leagueStandings || {});
+    const leagueSchedule = Array.isArray(body?.leagueSchedule)
+      ? body.leagueSchedule
+      : (previousConfig?.leagueSchedule || []);
+    const leagueStructure = body?.leagueStructure && typeof body.leagueStructure === "object"
+      ? body.leagueStructure
+      : (previousConfig?.leagueStructure || {});
+
     const nextConfig = {
       version: 1,
       updatedAt: new Date().toISOString(),
@@ -606,6 +618,9 @@ module.exports = async function handler(req, res) {
       transfers,
       matches,
       communityTop10,
+      leagueStandings,
+      leagueSchedule,
+      leagueStructure,
       botSettings: existingBotSettings
     };
 

@@ -41,12 +41,131 @@ function buildDefaultConfig() {
     extraPlayers: [],
     transfers: [],
     matches: [],
+    leagueStandings: {},
+    leagueSchedule: [],
+    leagueStructure: buildDefaultLeagueStructure(),
     botSettings: {
       applicationsPanelChannelId: "",
       applicationsChannelId: "",
       notificationUserIds: []
     }
   };
+}
+
+function buildDefaultLeagueStructure() {
+  return {
+    "div1": {
+      label: "Division 1",
+      badge: "primary",
+      groups: {
+        "a": { label: "Group A", factions: ["DK", "IA", "TSC"] },
+        "b": { label: "Group B", factions: ["AH", "CZSK", "TWA"] }
+      }
+    },
+    "div2": {
+      label: "Division 2",
+      badge: "secondary",
+      groups: {
+        "a": { label: "Group A", factions: ["NDV", "AEF", "AOT"] },
+        "b": { label: "Group B", factions: ["RKA", "TAE", "SL"] }
+      }
+    },
+    "div3": {
+      label: "Division 3",
+      badge: "muted",
+      groups: {
+        "a": { label: "Group A", factions: ["SEMETYAN", "RRF", "URF"] },
+        "b": { label: "Group B", factions: ["DSA", "INS", "CIA"] }
+      }
+    }
+  };
+}
+
+function normalizeLeagueFactionStats(raw) {
+  const item = raw && typeof raw === "object" ? raw : {};
+  return {
+    w: Math.max(0, Number(item.w) || 0),
+    d: Math.max(0, Number(item.d) || 0),
+    l: Math.max(0, Number(item.l) || 0),
+    sf: Math.max(0, Number(item.sf) || 0),
+    sa: Math.max(0, Number(item.sa) || 0),
+    form: Array.isArray(item.form)
+      ? item.form.slice(-5).map(v => {
+          const s = String(v || "").toUpperCase();
+          return s === "W" || s === "D" || s === "L" ? s : "L";
+        })
+      : []
+  };
+}
+
+function normalizeLeagueStandings(raw) {
+  if (!raw || typeof raw !== "object") return {};
+  const normalized = {};
+  Object.entries(raw).forEach(([groupKey, groupData]) => {
+    const key = String(groupKey || "").trim().toLowerCase();
+    if (!key) return;
+    const factions = groupData?.factions && typeof groupData.factions === "object" ? groupData.factions : {};
+    const normalizedFactions = {};
+    Object.entries(factions).forEach(([factionKey, stats]) => {
+      const fk = String(factionKey || "").trim().toUpperCase();
+      if (!fk) return;
+      normalizedFactions[fk] = normalizeLeagueFactionStats(stats);
+    });
+    normalized[key] = { factions: normalizedFactions };
+  });
+  return normalized;
+}
+
+function normalizeLeagueSchedule(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 200).map((entry, index) => {
+    const item = entry && typeof entry === "object" ? entry : {};
+    const teamA = String(item.teamA || "").trim().toUpperCase();
+    const teamB = String(item.teamB || "").trim().toUpperCase();
+    if (!teamA || !teamB) return null;
+    const status = String(item.status || "tbc").trim().toLowerCase();
+    return {
+      id: String(item.id || `league-match-${Date.now()}-${index}`).trim(),
+      date: String(item.date || "").trim(),
+      teamA,
+      teamB,
+      teamAName: String(item.teamAName || teamA).trim(),
+      teamBName: String(item.teamBName || teamB).trim(),
+      status: ["confirmed", "tbc", "finished", "cancelled"].includes(status) ? status : "tbc",
+      scoreA: Number(item.scoreA) || 0,
+      scoreB: Number(item.scoreB) || 0,
+      division: String(item.division || "").trim().toLowerCase(),
+      group: String(item.group || "").trim().toLowerCase()
+    };
+  }).filter(Boolean);
+}
+
+function normalizeLeagueStructure(raw) {
+  if (!raw || typeof raw !== "object") return buildDefaultLeagueStructure();
+  const normalized = {};
+  Object.entries(raw).forEach(([divKey, divData]) => {
+    const dk = String(divKey || "").trim().toLowerCase();
+    if (!dk || !divData || typeof divData !== "object") return;
+    const groups = {};
+    if (divData.groups && typeof divData.groups === "object") {
+      Object.entries(divData.groups).forEach(([gKey, gData]) => {
+        const gk = String(gKey || "").trim().toLowerCase();
+        if (!gk || !gData || typeof gData !== "object") return;
+        groups[gk] = {
+          label: String(gData.label || `Group ${gk.toUpperCase()}`).trim(),
+          factions: Array.isArray(gData.factions)
+            ? gData.factions.map(f => String(f || "").trim().toUpperCase()).filter(Boolean)
+            : []
+        };
+      });
+    }
+    normalized[dk] = {
+      label: String(divData.label || `Division ${dk}`).trim(),
+      badge: String(divData.badge || "primary").trim(),
+      groups
+    };
+  });
+  return Object.keys(normalized).length ? normalized : buildDefaultLeagueStructure();
 }
 
 function normalizeDiscordIds(raw) {
@@ -365,6 +484,10 @@ async function getLeaderboardConfig() {
 
     parsed.botSettings = normalizeBotSettings(parsed.botSettings);
 
+    parsed.leagueStandings = normalizeLeagueStandings(parsed.leagueStandings);
+    parsed.leagueSchedule = normalizeLeagueSchedule(parsed.leagueSchedule);
+    parsed.leagueStructure = normalizeLeagueStructure(parsed.leagueStructure);
+
     return parsed;
   } catch {
     return buildDefaultConfig();
@@ -381,6 +504,9 @@ async function saveLeaderboardConfig(config) {
     extraPlayers: normalizeExtraPlayers(config?.extraPlayers),
     transfers: normalizeTransfers(config?.transfers),
     matches: normalizeMatches(config?.matches),
+    leagueStandings: normalizeLeagueStandings(config?.leagueStandings),
+    leagueSchedule: normalizeLeagueSchedule(config?.leagueSchedule),
+    leagueStructure: normalizeLeagueStructure(config?.leagueStructure),
     botSettings: normalizeBotSettings(config?.botSettings)
   };
 

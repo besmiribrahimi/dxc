@@ -955,3 +955,50 @@
     display: none;
   }
 }
+
+/* ===== League Manager ===== */
+.admin-league-section {
+  margin-top: 1rem;
+  border: 1px solid rgba(147, 197, 253, 0.18);
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.2);
+  padding: 0.75rem;
+}
+
+.admin-league-section h3 {
+  margin: 0 0 0.6rem;
+  font-family: "Rajdhani", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.95rem;
+  color: #93c5fd;
+  border-bottom: 1px solid rgba(147, 197, 253, 0.12);
+  padding-bottom: 0.4rem;
+}
+
+.admin-league-match-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.admin-league-standings-preview {
+  padding: 0.5rem;
+  color: #c9d1e0;
+}
+
+.admin-league-standings-preview table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-league-standings-preview th,
+.admin-league-standings-preview td {
+  padding: 0.35rem 0.5rem;
+  text-align: center;
+}
+
+.admin-league-standings-preview th {
+  border-bottom: 1px solid rgba(147, 197, 253, 0.15);
+}
+

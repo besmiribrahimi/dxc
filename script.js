@@ -1,7 +1,9 @@
 (function () {
   "use strict";
 
-  // ── Maintenance Mode Injection ──
+  // ── Maintenance Mode Injection (DISABLED) ──
+  // To re-enable, uncomment the block below.
+  /*
   (function injectMaintenance() {
     const overlay = document.createElement("div");
     overlay.className = "maintenance-overlay";
@@ -26,6 +28,7 @@
     document.body.style.overflow = "hidden";
     document.body.style.pointerEvents = "none";
   })();
+  */
 
   let fallbackPlayerLines = [];
   let avatarIdMap = new Map();
