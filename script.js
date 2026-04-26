@@ -388,9 +388,9 @@
           userId: Number.isFinite(resolvedUserId) && resolvedUserId > 0 ? resolvedUserId : fallbackAvatarId,
           avatarUrl: "",
           bodyAvatarUrl: "",
-          elo: Number(p.elo ?? 1000),
-          wins: Number(p.wins || 0),
-          losses: Number(p.losses || 0),
+          elo: 1000,
+          wins: 0,
+          losses: 0,
           playerClasses: [],
           playerClass: "Unknown",
           device: "Unknown"

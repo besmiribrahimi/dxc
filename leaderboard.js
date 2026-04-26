@@ -755,7 +755,7 @@ async function loadAndRenderLeaderboard() {
     const bDiff = b.wins - b.losses;
     if (bDiff !== aDiff) return bDiff - aDiff;
     // Tertiary: Name Ascending
-    return a.player.localeCompare(b.player);
+    return a.name.localeCompare(b.name);
   });
 
   const hasManualOrder = false; // Always use automatic ELO order now
