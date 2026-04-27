@@ -1827,6 +1827,7 @@ function renderRows(players) {
     const fallback = getFallbackAvatarUrl(player.name);
     const country = `${countryToFlag(player.country)} ${player.country}`;
 
+    row.innerHTML = `
       <span class="admin-order-cell">
         <span class="admin-rank-pill">#${index + 1}</span>
         <input class="admin-rank-input" type="number" value="${index + 1}" aria-label="Current rank" readonly disabled>
