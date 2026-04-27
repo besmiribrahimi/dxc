@@ -543,3 +543,428 @@
     init();
   }
 })();
+
+/* ── Leaderboard Blur Lock (until Season One) ── */
+(function () {
+  const SEASON_START = new Date("2026-04-30T18:00:00+02:00");
+
+  // Only activate on leaderboard page
+  const path = window.location.pathname.toLowerCase();
+  const isLeaderboard = path.endsWith("/leaderboard.html") || path.endsWith("leaderboard.html") || path === "/leaderboard";
+  if (!isLeaderboard) return;
+
+  // Don't activate if season already started
+  if (Date.now() >= SEASON_START.getTime()) return;
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+
+  function getTimeRemaining() {
+    const total = Math.max(0, SEASON_START.getTime() - Date.now());
+    return {
+      total,
+      days: Math.floor(total / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((total / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((total / (1000 * 60)) % 60),
+      seconds: Math.floor((total / 1000) % 60)
+    };
+  }
+
+  function injectBlurStyles() {
+    const style = document.createElement("style");
+    style.textContent = `
+      /* ── Leaderboard Blur Lock ── */
+      .leaderboard-content.season-locked {
+        filter: blur(18px) saturate(0.3);
+        pointer-events: none;
+        user-select: none;
+        transition: filter 800ms ease;
+      }
+
+      .season-blur-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        text-align: center;
+        pointer-events: none;
+        animation: season-blur-entrance 1s ease 0.3s both;
+      }
+
+      @keyframes season-blur-entrance {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .season-blur-overlay::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at center, rgba(2, 6, 23, 0.3) 0%, rgba(2, 6, 23, 0.7) 100%);
+        pointer-events: none;
+      }
+
+      .season-blur-card {
+        position: relative;
+        max-width: 520px;
+        width: 100%;
+        padding: 2.5rem 2rem;
+        border-radius: 24px;
+        border: 1px solid rgba(147, 197, 253, 0.25);
+        background: linear-gradient(145deg, rgba(15, 23, 42, 0.92), rgba(10, 16, 33, 0.96));
+        box-shadow:
+          0 24px 64px rgba(0, 0, 0, 0.6),
+          0 0 80px rgba(59, 130, 246, 0.1),
+          inset 0 1px 0 rgba(147, 197, 253, 0.08);
+        pointer-events: auto;
+        overflow: hidden;
+      }
+
+      .season-blur-card::before {
+        content: "";
+        position: absolute;
+        inset: -2px;
+        border-radius: 26px;
+        background: conic-gradient(
+          from 90deg,
+          transparent 0deg,
+          rgba(239, 68, 68, 0.25) 45deg,
+          transparent 90deg,
+          transparent 180deg,
+          rgba(59, 130, 246, 0.2) 225deg,
+          transparent 270deg
+        );
+        z-index: -1;
+        animation: season-border-spin 8s linear infinite;
+        filter: blur(4px);
+      }
+
+      .season-blur-card::after {
+        content: "";
+        position: absolute;
+        inset: 1px;
+        border-radius: 23px;
+        background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(10, 16, 33, 1));
+        z-index: -1;
+      }
+
+      .season-blur-card > * {
+        position: relative;
+        z-index: 2;
+      }
+
+      .season-lock-icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        border: 2px solid rgba(239, 68, 68, 0.4);
+        background: rgba(239, 68, 68, 0.1);
+        color: #f87171;
+        animation: season-lock-pulse 2.5s ease-in-out infinite;
+      }
+
+      .season-lock-icon svg {
+        width: 24px;
+        height: 24px;
+      }
+
+      @keyframes season-lock-pulse {
+        0%, 100% { box-shadow: 0 0 12px rgba(239, 68, 68, 0.15); }
+        50% { box-shadow: 0 0 28px rgba(239, 68, 68, 0.3); }
+      }
+
+      .season-lock-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 0.8rem;
+        padding: 0.25rem 0.8rem;
+        border-radius: 999px;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.08);
+        font-size: 0.66rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 800;
+        color: #f87171;
+        font-family: "Exo 2", sans-serif;
+      }
+
+      .season-lock-badge-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #ef4444;
+        box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+        animation: pulse-dot 1.5s ease-in-out infinite;
+      }
+
+      .season-lock-title {
+        margin: 0 0 0.4rem;
+        font-family: "Rajdhani", sans-serif;
+        font-size: clamp(1.6rem, 5vw, 2.4rem);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #e2e8f0;
+        line-height: 1;
+      }
+
+      .season-lock-sub {
+        margin: 0 0 1.5rem;
+        font-size: 0.9rem;
+        color: #64748b;
+        line-height: 1.5;
+      }
+
+      .season-lock-sub strong {
+        color: #93c5fd;
+      }
+
+      .season-lock-countdown {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+
+      .season-lock-unit {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+        min-width: 60px;
+      }
+
+      .season-lock-digits {
+        font-family: "Rajdhani", sans-serif;
+        font-size: clamp(2rem, 6vw, 2.8rem);
+        font-weight: 700;
+        line-height: 1;
+        padding: 0.3rem 0.5rem;
+        border-radius: 10px;
+        border: 1px solid rgba(147, 197, 253, 0.15);
+        background: rgba(2, 6, 23, 0.6);
+        color: #eff6ff;
+        text-shadow: 0 0 14px rgba(59, 130, 246, 0.4);
+        min-width: 56px;
+        transition: transform 250ms cubic-bezier(0.2, 1, 0.3, 1);
+      }
+
+      .season-lock-digits.tick {
+        transform: scale(1.1);
+      }
+
+      .season-lock-label {
+        font-size: 0.58rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #475569;
+        font-weight: 700;
+      }
+
+      .season-lock-sep {
+        font-family: "Rajdhani", sans-serif;
+        font-size: 1.8rem;
+        color: rgba(147, 197, 253, 0.2);
+        margin-top: -0.6rem;
+        animation: season-sep-blink 1s step-end infinite;
+      }
+
+      .season-lock-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        min-height: 40px;
+        padding: 0.4rem 1.2rem;
+        border-radius: 10px;
+        border: 1px solid rgba(88, 101, 242, 0.4);
+        background: linear-gradient(120deg, rgba(88, 101, 242, 0.25), rgba(37, 99, 235, 0.2));
+        color: #a5b4fc;
+        text-decoration: none;
+        font-family: "Exo 2", sans-serif;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        transition: transform 200ms, box-shadow 200ms, border-color 200ms;
+      }
+
+      .season-lock-cta:hover {
+        transform: translateY(-2px);
+        border-color: rgba(88, 101, 242, 0.7);
+        box-shadow: 0 6px 20px rgba(88, 101, 242, 0.25);
+      }
+
+      .season-lock-cta svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .season-lock-footer {
+        margin-top: 1rem;
+        font-size: 0.62rem;
+        color: rgba(100, 116, 139, 0.5);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      /* Scanline effect */
+      .season-blur-scanline {
+        position: absolute;
+        inset: 0;
+        border-radius: 24px;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      .season-blur-scanline::after {
+        content: "";
+        position: absolute;
+        top: -100%;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.15), rgba(59, 130, 246, 0.15), transparent);
+        animation: season-scanline 4s linear infinite;
+        filter: blur(1px);
+      }
+
+      @keyframes season-scanline {
+        0% { top: -2%; }
+        100% { top: 102%; }
+      }
+
+      @media (max-width: 480px) {
+        .season-blur-card {
+          padding: 2rem 1.2rem 1.5rem;
+        }
+        .season-lock-unit {
+          min-width: 48px;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function createBlurOverlay() {
+    const t = getTimeRemaining();
+    const overlay = document.createElement("div");
+    overlay.className = "season-blur-overlay";
+    overlay.id = "seasonBlurOverlay";
+    overlay.innerHTML = `
+      <div class="season-blur-card">
+        <div class="season-blur-scanline"></div>
+
+        <div class="season-lock-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+
+        <div class="season-lock-badge">
+          <span class="season-lock-badge-dot"></span>
+          Classified
+        </div>
+
+        <h2 class="season-lock-title">Rankings Locked</h2>
+        <p class="season-lock-sub">The leaderboard will be revealed when <strong>Season One</strong> officially begins. Check back soon.</p>
+
+        <div class="season-lock-countdown">
+          <div class="season-lock-unit">
+            <span class="season-lock-digits" id="blurDays">${pad(t.days)}</span>
+            <span class="season-lock-label">Days</span>
+          </div>
+          <span class="season-lock-sep">:</span>
+          <div class="season-lock-unit">
+            <span class="season-lock-digits" id="blurHours">${pad(t.hours)}</span>
+            <span class="season-lock-label">Hours</span>
+          </div>
+          <span class="season-lock-sep">:</span>
+          <div class="season-lock-unit">
+            <span class="season-lock-digits" id="blurMinutes">${pad(t.minutes)}</span>
+            <span class="season-lock-label">Min</span>
+          </div>
+          <span class="season-lock-sep">:</span>
+          <div class="season-lock-unit">
+            <span class="season-lock-digits" id="blurSeconds">${pad(t.seconds)}</span>
+            <span class="season-lock-label">Sec</span>
+          </div>
+        </div>
+
+        <a class="season-lock-cta" href="https://discord.gg/kTsPZcwK" target="_blank" rel="noreferrer noopener">
+          <svg viewBox="0 0 127.14 96.36" fill="currentColor"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,33.35-1.71,58,0.54,82.3A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.2a68.42,68.42,0,0,1-10.85-5.18c.91-.68,1.8-1.39,2.66-2.14,20.94,9.75,43.79,9.75,64.47,0,.87.75,1.76,1.46,2.67,2.14A68.68,68.68,0,0,1,87.67,85.2a77.5,77.5,0,0,0,6.89,11.16A105.25,105.25,0,0,0,126.73,82.3C129.37,54.12,122.22,29.72,107.7,8.07ZM42.45,67.14C36.18,67.14,31,61.42,31,54.39S36.08,41.65,42.45,41.65,54,47.37,53.91,54.39,48.82,67.14,42.45,67.14Zm42.24,0c-6.27,0-11.43-5.72-11.43-12.75s5.08-12.74,11.43-12.74,11.54,5.72,11.43,12.74S91,67.14,84.69,67.14Z"/></svg>
+          Stay Updated on Discord
+        </a>
+
+        <p class="season-lock-footer">Ascend Entrenched Competitive Circuit</p>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  function startBlurCountdown() {
+    const daysEl = document.getElementById("blurDays");
+    const hoursEl = document.getElementById("blurHours");
+    const minutesEl = document.getElementById("blurMinutes");
+    const secondsEl = document.getElementById("blurSeconds");
+
+    function tick(el, val) {
+      if (!el) return;
+      if (el.textContent !== val) {
+        el.textContent = val;
+        el.classList.add("tick");
+        setTimeout(() => el.classList.remove("tick"), 250);
+      }
+    }
+
+    function update() {
+      const t = getTimeRemaining();
+      if (t.total <= 0) {
+        // Season started! Remove blur
+        const main = document.querySelector(".leaderboard-content");
+        if (main) main.classList.remove("season-locked");
+        const overlay = document.getElementById("seasonBlurOverlay");
+        if (overlay) overlay.remove();
+        return;
+      }
+
+      tick(daysEl, pad(t.days));
+      tick(hoursEl, pad(t.hours));
+      tick(minutesEl, pad(t.minutes));
+      tick(secondsEl, pad(t.seconds));
+    }
+
+    update();
+    setInterval(update, 1000);
+  }
+
+  function initBlur() {
+    const main = document.querySelector(".leaderboard-content");
+    if (!main) return;
+
+    injectBlurStyles();
+    main.classList.add("season-locked");
+    createBlurOverlay();
+    startBlurCountdown();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initBlur);
+  } else {
+    initBlur();
+  }
+})();
