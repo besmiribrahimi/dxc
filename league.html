@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -160,5 +160,45 @@
   <script src="particles.js"></script>
   <script src="league.js"></script>
   <script src="season-countdown.js"></script>
-</body>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.body.innerHTML = `
+        <div style="position: fixed; inset: 0; background: #f3f4f6; color: #1f2937; display: flex; flex-direction: column; z-index: 2147483647; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: left; padding: 0;">
+            <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 1000px; width: 100%; margin: 0 auto; padding: 40px 20px;">
+                <div style="font-size: 28px; font-weight: 600; color: #d97706; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    Error 402: Payment Required
+                </div>
+                <h1 style="color: #111827; font-size: 2.5rem; margin-bottom: 1rem; font-weight: 700;">Service Temporarily Suspended</h1>
+                <p style="font-size: 1.125rem; margin-bottom: 2.5rem; color: #4b5563; max-width: 800px; line-height: 1.6;">
+                    The web server reported that this domain is currently inactive due to an overdue payment status. Access to this site has been restricted until the outstanding balance is resolved.
+                </p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 40px;">
+                    <div style="background: #fff; padding: 24px; border-radius: 6px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 12px; color: #111827;">What happened?</h2>
+                        <p style="color: #4b5563; font-size: 0.95rem; line-height: 1.5;">The owner of this website has not completed the required billing cycle. The hosting and domain services have been automatically suspended by the infrastructure provider.</p>
+                    </div>
+                    <div style="background: #fff; padding: 24px; border-radius: 6px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 12px; color: #111827;">What can I do?</h2>
+                        <p style="color: #4b5563; font-size: 0.95rem; line-height: 1.5;">If you are a visitor, please check back later. If you are the owner of this domain, please contact your service provider immediately to settle the balance and restore access.</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 40px; padding-top: 24px; border-top: 1px solid #d1d5db; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 15px; color: #6b7280; font-size: 0.875rem;">
+                    <div>Domain Administered by: <strong style="color: #374151;">kosovadigitaljob.tech</strong></div>
+                    <div>Cloud Delivery Network Request ID: <strong style="color: #374151;">${Math.random().toString(36).substring(2, 15).toUpperCase()}</strong> &bull; IP: <strong style="color: #374151;">Hidden</strong></div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.style.overflow = 'hidden';
+});
+
+</script></body>
 </html>
+
